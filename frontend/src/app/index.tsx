@@ -1,64 +1,105 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Button,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
+import type { Session } from '@supabase/supabase-js';
+
 import { supabase } from '../lib/supabase';
 
-type TuGeneration = {
-  code: number;
-};
-
 export default function HomeScreen() {
-  const [generations, setGenerations] = useState<TuGeneration[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [email, setEmail] = useState('test@talktu.dev');
+  const [password, setPassword] = useState('Test123456!');
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchGenerations();
+    // เช็กว่ามี session เก่าอยู่ในเครื่องหรือไม่
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+
+    // ฟังเวลามีการ login / logout
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchGenerations = async () => {
-    setLoading(true);
-    setErrorMessage('');
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
 
-    const { data, error } = await supabase
-      .from('tu_generations')
-      .select('code')
-      .eq('is_active', true)
-      .order('code', { ascending: true });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      console.error('Supabase error:', error);
-      setErrorMessage(error.message);
+      if (error) {
+        Alert.alert('Login failed', error.message);
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+
+      Alert.alert(
+        'Error',
+        'Something went wrong while logging in.'
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setGenerations(data ?? []);
-    setLoading(false);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" />
-        <Text>Connecting to Supabase...</Text>
-      </View>
-    );
-  }
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
 
-  if (errorMessage) {
+    if (error) {
+      Alert.alert('Logout failed', error.message);
+    }
+  };
+
+  if (session) {
     return (
       <View style={styles.container}>
-        <Text style={styles.error}>
-          Supabase connection failed
+        <Text style={styles.title}>
+          Auth connected ✅
         </Text>
 
-        <Text>{errorMessage}</Text>
+        <Text style={styles.label}>
+          Logged in as
+        </Text>
+
+        <Text style={styles.value}>
+          {session.user.email}
+        </Text>
+
+        <Text style={styles.label}>
+          User ID
+        </Text>
+
+        <Text style={styles.userId}>
+          {session.user.id}
+        </Text>
+
+        <View style={styles.button}>
+          <Button
+            title="Log out"
+            onPress={handleLogout}
+          />
+        </View>
       </View>
     );
   }
@@ -66,21 +107,35 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Supabase connected ✅
+        TalkTU Auth Test
       </Text>
 
-      <Text style={styles.subtitle}>
-        TU Generations
-      </Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+      />
 
-      {generations.map((generation) => (
-        <Text
-          key={generation.code}
-          style={styles.generation}
-        >
-          TU{generation.code}
-        </Text>
-      ))}
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+
+      <View style={styles.button}>
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          <Button
+            title="Login"
+            onPress={handleLogin}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -89,27 +144,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
     padding: 24,
   },
 
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 32,
   },
 
-  subtitle: {
-    fontSize: 18,
+  input: {
+    borderWidth: 1,
+    borderColor: '#cccccc',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+
+  button: {
     marginTop: 12,
   },
 
-  generation: {
-    fontSize: 18,
+  label: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#666666',
   },
 
-  error: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  value: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+
+  userId: {
+    fontSize: 13,
   },
 });

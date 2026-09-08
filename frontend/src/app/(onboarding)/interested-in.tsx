@@ -6,7 +6,7 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
-
+import { saveDatingPreferences } from '../../features/onboarding/services/onboardingService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
@@ -62,18 +62,32 @@ export default function InterestedInScreen() {
         );
     };
 
-    const handleContinue = () => {
-        if (selected.length === 0) {
-            return;
-        }
+    const handleContinue =
+        async () => {
+            if (
+                selected.length === 0
+            ) {
+                return;
+            }
 
-        console.log(
-            'interested_in:',
-            selected
-        );
+            try {
+                await saveDatingPreferences(
+                    selected
+                );
 
-        router.push('/bio1');
-    };
+                console.log(
+                    'Preferences saved:',
+                    selected
+                );
+
+                router.push('/bio1');
+            } catch (error) {
+                console.error(
+                    'Save preferences error:',
+                    error
+                );
+            }
+        };
 
     return (
         <LinearGradient

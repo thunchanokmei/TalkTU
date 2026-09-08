@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -6,24 +6,62 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import {
+  getMyFaculty,
+  getTuGenerations,
+  saveTuGeneration,
+} from '../../features/onboarding/services/onboardingService';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
-const generations = [87, 88, 89, 90, 91, 92];
-
 export default function StudyScreen() {
   const { width, height } = useWindowDimensions();
-
+  const [faculty, setFaculty] = useState('Loading...');
+  const [
+    generations,
+    setGenerations,
+  ] = useState<number[]>([]);
   const [generation, setGeneration] = useState<number | null>(null);
   const [showGenerations, setShowGenerations] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // TEMPORARY
-  // ภายหลังอ่านจาก student_accounts.faculty
-  const faculty = 'Faculty of Engineering';
+  useEffect(() => {
+    const loadStudyData =
+      async () => {
+        try {
+          const [
+            facultyValue,
+            generationValues,
+          ] = await Promise.all([
+            getMyFaculty(),
+            getTuGenerations(),
+          ]);
 
-  const handleContinue = () => {
+          setFaculty(
+            facultyValue ??
+            'Faculty information unavailable'
+          );
+
+          setGenerations(
+            generationValues
+          );
+        } catch (error) {
+          console.error(
+            'Load study data error:',
+            error
+          );
+
+          setFaculty(
+            'Faculty information unavailable'
+          );
+        }
+      };
+
+    loadStudyData();
+  }, []);
+
+  const handleContinue = async () => {
     setErrorMessage('');
 
     if (!generation) {
@@ -31,12 +69,27 @@ export default function StudyScreen() {
       return;
     }
 
-    console.log({
-      faculty,
-      generation,
-    });
+    try {
+      await saveTuGeneration(
+        generation
+      );
 
-    router.push('/gender');
+      console.log(
+        'TU generation saved:',
+        generation
+      );
+
+      router.push('/gender');
+    } catch (error) {
+      console.error(
+        'Save generation error:',
+        error
+      );
+
+      setErrorMessage(
+        'Unable to save your TU generation.'
+      );
+    }
   };
 
   const handleBack = () => {

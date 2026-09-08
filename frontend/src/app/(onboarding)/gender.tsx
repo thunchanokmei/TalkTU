@@ -9,6 +9,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { saveSexAtBirth } from '../../features/onboarding/services/onboardingService';
 
 type Gender = 'male' | 'female';
 
@@ -18,13 +19,28 @@ export default function GenderScreen() {
   const [gender, setGender] =
     useState<Gender | null>(null);
 
-  const handleContinue = () => {
-    if (!gender) return;
+  const handleContinue =
+    async () => {
+      if (!gender) return;
 
-    console.log('sex_at_birth:', gender);
+      try {
+        await saveSexAtBirth(
+          gender
+        );
 
-    router.push('/mode');
-  };
+        console.log(
+          'sex_at_birth saved:',
+          gender
+        );
+
+        router.push('/mode');
+      } catch (error) {
+        console.error(
+          'Save gender error:',
+          error
+        );
+      }
+    };
 
   return (
     <LinearGradient

@@ -13,6 +13,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
+import { saveBirthDate } from '../../features/onboarding/services/onboardingService';
 
 type WheelColumnProps = {
   items: string[];
@@ -140,7 +141,7 @@ export default function BirthdayScreen() {
     router.replace('/name');
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setErrorMessage('');
 
     if (day === 'xx' || month === 'xxxx' || year === 'xxxx') {
@@ -183,12 +184,42 @@ export default function BirthdayScreen() {
       return;
     }
 
-    console.log('Birthday:', {
-      day,
-      month,
-      year,
-    });
-    router.push('/study');
+    try {
+      const monthNumber =
+        String(monthIndex).padStart(
+          2,
+          '0'
+        );
+
+      const dayNumber =
+        String(day).padStart(
+          2,
+          '0'
+        );
+
+      const birthDate =
+        `${year}-${monthNumber}-${dayNumber}`;
+
+      await saveBirthDate(
+        birthDate
+      );
+
+      console.log(
+        'Birthday saved:',
+        birthDate
+      );
+
+      router.push('/study');
+    } catch (error) {
+      console.error(
+        'Save birthday error:',
+        error
+      );
+
+      setErrorMessage(
+        'Unable to save your birthday.'
+      );
+    }
   };
 
   return (

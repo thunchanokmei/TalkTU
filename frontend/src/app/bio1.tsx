@@ -1,22 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  ScrollView,
+  ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { supabase } from '@/lib/supabase';
 
 type PhotoBoxProps = {
   image: string | null;
@@ -27,12 +34,100 @@ type PhotoBoxProps = {
 
 export default function Bio1Screen() {
   const router = useRouter();
+  const { width, height: screenHeight } = useWindowDimensions();
+
+  const [displayName, setDisplayName] = useState('xx');
 
   const [images, setImages] = useState<(string | null)[]>(
     [null, null, null, null, null, null]
   );
 
-  const [aboutMe, setAboutMe] = useState('');
+  const [bio, setBio] = useState('');
+  const [genderIdentity, setGenderIdentity] = useState('');
+  const [height, setHeight] = useState('');
+  const [places, setPlaces] = useState<string[]>([]);
+
+  const [genderModal, setGenderModal] = useState(false);
+  const [heightModal, setHeightModal] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const pagePadding = Math.max(
+    14,
+    Math.min(width * 0.045, 24)
+  );
+
+  const largePhotoHeight = Math.max(
+    240,
+    Math.min(screenHeight * 0.34, 330)
+  );
+
+  const sidePhotoHeight = (largePhotoHeight - 10) / 2;
+  const bottomPhotoHeight = Math.max(
+    110,
+    Math.min(screenHeight * 0.15, 150)
+  );
+
+  const genderOptions = [
+    'Man',
+    'Woman',
+    'Non-binary',
+    'Prefer not to say',
+  ];
+
+  const heightOptions = Array.from(
+    { length: 61 },
+    (_, index) => `${140 + index} cm`
+  );
+
+  const placeOptions = [
+    'หอสมุดป๋วย',
+    'SC3',
+    'อินเตอร์โซน',
+    'เชียงราก 1',
+    'กรีน',
+    'TU fitness',
+    'ยิม 7',
+    'หอใน มธ. 100 ปี',
+    'เชียงราก 2',
+    'SC BUS',
+    'โรงอาหาร JC',
+    'ประตูเชียงราก',
+  ];
+
+  useEffect(() => {
+    const loadDisplayName = async () => {
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          throw error;
+        }
+
+        if (data?.display_name) {
+          setDisplayName(data.display_name);
+        }
+      } catch (error) {
+        console.error(
+          'Load display name error:',
+          error
+        );
+      }
+    };
+
+    loadDisplayName();
+  }, []);
 
   const pickImage = async (index: number) => {
     try {
@@ -65,13 +160,16 @@ export default function Bio1Screen() {
         return;
       }
 
-      setImages((currentImages) => {
-        const updatedImages = [...currentImages];
-        updatedImages[index] = selectedImage;
-        return updatedImages;
+      setImages((current) => {
+        const updated = [...current];
+        updated[index] = selectedImage;
+        return updated;
       });
     } catch (error) {
-      console.log('Image picker error:', error);
+      console.error(
+        'Image picker error:',
+        error
+      );
 
       Alert.alert(
         'Error',
@@ -81,19 +179,110 @@ export default function Bio1Screen() {
   };
 
   const removeImage = (index: number) => {
-    setImages((currentImages) => {
-      const updatedImages = [...currentImages];
-      updatedImages[index] = null;
-      return updatedImages;
+    setImages((current) => {
+      const updated = [...current];
+      updated[index] = null;
+      return updated;
     });
   };
 
-  const handleContinue = () => {
-    console.log('Bio images:', images);
-    console.log('About me:', aboutMe);
+  const togglePlace = (place: string) => {
+    setPlaces((current) => {
+      if (current.includes(place)) {
+        return current.filter(
+          (item) => item !== place
+        );
+      }
 
-    // ถ้ามีหน้าถัดไป ค่อยเปิดใช้
-    router.push('/bio2');
+      return [...current, place];
+    });
+  };
+
+  const handleStart = async () => {
+    if (saving) return;
+
+    try {
+      setSaving(true);
+      setErrorMessage('');
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        throw userError;
+      }
+
+      if (!user) {
+        throw new Error(
+          'User is not authenticated.'
+        );
+      }
+
+      const heightCm = height
+        ? parseInt(
+            height.replace(' cm', ''),
+            10
+          )
+        : null;
+
+      /*
+       * ตอนนี้ schema ที่มีอยู่บันทึก bio และ height_cm ได้แล้ว
+       * genderIdentity / places / images ยังเก็บเป็น state ฝั่ง UI ก่อน
+       * จนกว่า backend ของส่วน profile photo / gender identity /
+       * campus locations จะพร้อม
+       */
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          bio: bio.trim(),
+          height_cm: heightCm,
+          onboarding_completed: true,
+        })
+        .eq('id', user.id)
+        .select('id')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error(
+          'Profile was not updated.'
+        );
+      }
+
+      console.log(
+        'Bio/profile setup saved'
+      );
+      console.log(
+        'Selected local images:',
+        images
+      );
+      console.log(
+        'Gender identity (UI only for now):',
+        genderIdentity
+      );
+      console.log(
+        'Places (UI only for now):',
+        places
+      );
+
+      router.replace('/swipe');
+    } catch (error) {
+      console.error(
+        'Complete bio setup error:',
+        error
+      );
+
+      setErrorMessage(
+        'Unable to save your profile. Please try again.'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -107,31 +296,46 @@ export default function Bio1Screen() {
         }
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingHorizontal:
+                pagePadding,
+            },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Back button */}
+          {/* Back */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#FF7C82', '#FFD17E']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
+              colors={[
+                '#FF7C82',
+                '#FFD17E',
+              ]}
+              start={{
+                x: 0,
+                y: 0.5,
+              }}
+              end={{
+                x: 1,
+                y: 0.5,
+              }}
               style={styles.backGradient}
             >
               <Ionicons
                 name="chevron-back"
-                size={21}
+                size={20}
                 color="#111111"
               />
 
               <Ionicons
                 name="chevron-back"
-                size={21}
+                size={20}
                 color="#111111"
                 style={styles.secondArrow}
               />
@@ -141,7 +345,7 @@ export default function Bio1Screen() {
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text style={styles.title}>
-              Oh you’re xx{'\n'}
+              Oh you’re {displayName}{'\n'}
               Let them know{'\n'}
               Who u are
             </Text>
@@ -154,97 +358,277 @@ export default function Bio1Screen() {
               '#FFAF72',
               '#FFE0A1',
             ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            start={{
+              x: 0,
+              y: 0,
+            }}
+            end={{
+              x: 1,
+              y: 1,
+            }}
             style={styles.photoContainer}
           >
-            {/* First row */}
             <View style={styles.topPhotoRow}>
               <PhotoBox
                 image={images[0]}
-                style={styles.largePhoto}
-                onPress={() => pickImage(0)}
-                onRemove={() => removeImage(0)}
+                style={[
+                  styles.largePhoto,
+                  {
+                    height:
+                      largePhotoHeight,
+                  },
+                ]}
+                onPress={() =>
+                  pickImage(0)
+                }
+                onRemove={() =>
+                  removeImage(0)
+                }
               />
 
-              <View style={styles.rightPhotoColumn}>
+              <View
+                style={
+                  styles.rightPhotoColumn
+                }
+              >
                 <PhotoBox
                   image={images[1]}
-                  style={styles.sidePhoto}
-                  onPress={() => pickImage(1)}
-                  onRemove={() => removeImage(1)}
+                  style={[
+                    styles.sidePhoto,
+                    {
+                      height:
+                        sidePhotoHeight,
+                    },
+                  ]}
+                  onPress={() =>
+                    pickImage(1)
+                  }
+                  onRemove={() =>
+                    removeImage(1)
+                  }
                 />
 
                 <PhotoBox
                   image={images[2]}
-                  style={styles.sidePhoto}
-                  onPress={() => pickImage(2)}
-                  onRemove={() => removeImage(2)}
+                  style={[
+                    styles.sidePhoto,
+                    {
+                      height:
+                        sidePhotoHeight,
+                      marginBottom: 0,
+                    },
+                  ]}
+                  onPress={() =>
+                    pickImage(2)
+                  }
+                  onRemove={() =>
+                    removeImage(2)
+                  }
                 />
               </View>
             </View>
 
-            {/* Second row */}
-            <View style={styles.bottomPhotoRow}>
-              <PhotoBox
-                image={images[3]}
-                style={styles.bottomPhoto}
-                onPress={() => pickImage(3)}
-                onRemove={() => removeImage(3)}
-              />
-
-              <PhotoBox
-                image={images[4]}
-                style={styles.bottomPhoto}
-                onPress={() => pickImage(4)}
-                onRemove={() => removeImage(4)}
-              />
-
-              <PhotoBox
-                image={images[5]}
-                style={styles.bottomPhoto}
-                onPress={() => pickImage(5)}
-                onRemove={() => removeImage(5)}
-              />
+            <View
+              style={
+                styles.bottomPhotoRow
+              }
+            >
+              {[3, 4, 5].map(
+                (index) => (
+                  <PhotoBox
+                    key={index}
+                    image={images[index]}
+                    style={[
+                      styles.bottomPhoto,
+                      {
+                        height:
+                          bottomPhotoHeight,
+                      },
+                      index === 5 &&
+                        styles.lastBottomPhoto,
+                    ]}
+                    onPress={() =>
+                      pickImage(index)
+                    }
+                    onRemove={() =>
+                      removeImage(index)
+                    }
+                  />
+                )
+              )}
             </View>
           </LinearGradient>
 
-          {/* About me */}
+          {/* One continuous Bio/Profile card */}
           <LinearGradient
             colors={[
               '#FF8081',
               '#FFAE70',
-              '#FFD16E',
+              '#FFE0A1',
             ]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.aboutContainer}
+            start={{
+              x: 0,
+              y: 0,
+            }}
+            end={{
+              x: 1,
+              y: 1,
+            }}
+            style={styles.detailsCard}
           >
-            <Text style={styles.aboutTitle}>
-              About me
+            <Text style={styles.label}>
+              Bio
             </Text>
 
             <TextInput
-              value={aboutMe}
-              onChangeText={setAboutMe}
-              placeholder="Tell them something about you..."
-              placeholderTextColor="#777777"
+              value={bio}
+              onChangeText={setBio}
               multiline
-              maxLength={300}
               textAlignVertical="top"
-              style={styles.aboutInput}
+              placeholder="Tell them something about you..."
+              placeholderTextColor="#8A8A8A"
+              maxLength={300}
+              style={styles.bioInput}
             />
 
             <Text style={styles.counter}>
-              {aboutMe.length}/300
+              {bio.length}/300
             </Text>
+
+            <Text style={styles.label}>
+              Gender identity
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.dropdown}
+              onPress={() =>
+                setGenderModal(true)
+              }
+            >
+              <Text
+                style={[
+                  styles.dropdownText,
+                  !genderIdentity &&
+                    styles.placeholderText,
+                ]}
+              >
+                {genderIdentity ||
+                  'Select'}
+              </Text>
+
+              <View
+                style={
+                  styles.dropdownIcon
+                }
+              >
+                <Ionicons
+                  name="chevron-down"
+                  size={17}
+                  color="#777777"
+                />
+              </View>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>
+              Height
+            </Text>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.dropdown}
+              onPress={() =>
+                setHeightModal(true)
+              }
+            >
+              <Text
+                style={[
+                  styles.dropdownText,
+                  !height &&
+                    styles.placeholderText,
+                ]}
+              >
+                {height || 'Select'}
+              </Text>
+
+              <View
+                style={
+                  styles.dropdownIcon
+                }
+              >
+                <Ionicons
+                  name="chevron-down"
+                  size={17}
+                  color="#777777"
+                />
+              </View>
+            </TouchableOpacity>
+
+            <Text
+              style={styles.placesTitle}
+            >
+              You’ll usually find me at..
+            </Text>
+
+            <View
+              style={
+                styles.chipsContainer
+              }
+            >
+              {placeOptions.map(
+                (place) => {
+                  const selected =
+                    places.includes(place);
+
+                  return (
+                    <TouchableOpacity
+                      key={place}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        togglePlace(place)
+                      }
+                      style={[
+                        styles.chip,
+                        selected &&
+                          styles.chipSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          selected &&
+                            styles.chipTextSelected,
+                        ]}
+                      >
+                        {place}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }
+              )}
+            </View>
           </LinearGradient>
 
-          {/* Continue */}
+          {errorMessage ? (
+            <Text
+              style={
+                styles.errorText
+              }
+            >
+              {errorMessage}
+            </Text>
+          ) : null}
+
+          {/* Start Now */}
           <TouchableOpacity
-            style={styles.nextButtonContainer}
-            onPress={handleContinue}
             activeOpacity={0.85}
+            disabled={saving}
+            onPress={handleStart}
+            style={[
+              styles.startButtonContainer,
+              saving &&
+                styles.disabledButton,
+            ]}
           >
             <LinearGradient
               colors={[
@@ -252,30 +636,177 @@ export default function Bio1Screen() {
                 '#FFAA70',
                 '#FFD37B',
               ]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.nextButton}
+              start={{
+                x: 0,
+                y: 0.5,
+              }}
+              end={{
+                x: 1,
+                y: 0.5,
+              }}
+              style={
+                styles.startButton
+              }
             >
-              <Text style={styles.nextText}>
-                Continue
-              </Text>
-
-              <Ionicons
-                name="arrow-forward"
-                size={20}
-                color="#111111"
-              />
+              {saving ? (
+                <ActivityIndicator
+                  color="#111111"
+                />
+              ) : (
+                <Text
+                  style={
+                    styles.startText
+                  }
+                >
+                  Start Now!
+                </Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Gender identity modal */}
+      <Modal
+        visible={genderModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setGenderModal(false)
+        }
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() =>
+            setGenderModal(false)
+          }
+        >
+          <Pressable
+            style={styles.modalBox}
+            onPress={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <Text
+              style={styles.modalTitle}
+            >
+              Gender identity
+            </Text>
+
+            {genderOptions.map(
+              (option) => (
+                <TouchableOpacity
+                  key={option}
+                  style={
+                    styles.modalOption
+                  }
+                  onPress={() => {
+                    setGenderIdentity(
+                      option
+                    );
+                    setGenderModal(
+                      false
+                    );
+                  }}
+                >
+                  <Text
+                    style={
+                      styles.modalOptionText
+                    }
+                  >
+                    {option}
+                  </Text>
+
+                  {genderIdentity ===
+                    option && (
+                    <Ionicons
+                      name="checkmark"
+                      size={20}
+                      color="#FF7B82"
+                    />
+                  )}
+                </TouchableOpacity>
+              )
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Height modal */}
+      <Modal
+        visible={heightModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() =>
+          setHeightModal(false)
+        }
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() =>
+            setHeightModal(false)
+          }
+        >
+          <Pressable
+            style={
+              styles.heightModalBox
+            }
+            onPress={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <Text
+              style={styles.modalTitle}
+            >
+              Height
+            </Text>
+
+            <ScrollView
+              style={styles.heightList}
+              showsVerticalScrollIndicator={
+                false
+              }
+            >
+              {heightOptions.map(
+                (option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={
+                      styles.modalOption
+                    }
+                    onPress={() => {
+                      setHeight(option);
+                      setHeightModal(
+                        false
+                      );
+                    }}
+                  >
+                    <Text
+                      style={
+                        styles.modalOptionText
+                      }
+                    >
+                      {option}
+                    </Text>
+
+                    {height ===
+                      option && (
+                      <Ionicons
+                        name="checkmark"
+                        size={20}
+                        color="#FF7B82"
+                      />
+                    )}
+                  </TouchableOpacity>
+                )
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
-
-/* -------------------------------- */
-/* Photo Box                         */
-/* -------------------------------- */
 
 function PhotoBox({
   image,
@@ -285,14 +816,21 @@ function PhotoBox({
 }: PhotoBoxProps) {
   if (image !== null) {
     return (
-      <View style={[styles.photoBox, style]}>
+      <View
+        style={[
+          styles.photoBox,
+          style,
+        ]}
+      >
         <Image
           source={{ uri: image }}
           style={styles.image}
         />
 
         <TouchableOpacity
-          style={styles.removeButton}
+          style={
+            styles.removeButton
+          }
           onPress={onRemove}
           activeOpacity={0.8}
         >
@@ -308,7 +846,10 @@ function PhotoBox({
 
   return (
     <TouchableOpacity
-      style={[styles.photoBox, style]}
+      style={[
+        styles.photoBox,
+        style,
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -321,10 +862,6 @@ function PhotoBox({
   );
 }
 
-/* -------------------------------- */
-/* Styles                            */
-/* -------------------------------- */
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -336,32 +873,31 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 40,
+    paddingBottom: 42,
   },
 
-  /* Back */
-
   backButton: {
-    width: 58,
-    height: 38,
-    borderRadius: 20,
+    width: 48,
+    height: 31,
+
+    borderRadius: 999,
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 2,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 3,
-
-    elevation: 4,
+    elevation: 3,
   },
 
   backGradient: {
     flex: 1,
-    borderRadius: 20,
+
+    borderRadius: 999,
+
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -371,35 +907,34 @@ const styles = StyleSheet.create({
     marginLeft: -13,
   },
 
-  /* Title */
-
   titleContainer: {
-    marginTop: 16,
+    marginTop: 13,
     marginBottom: 12,
   },
 
   title: {
-    fontSize: 27,
-    lineHeight: 30,
-    fontWeight: '800',
+    fontSize: 25,
+    lineHeight: 28,
+
+    fontWeight: '700',
+
     color: '#080808',
   },
 
-  /* Photos */
-
   photoContainer: {
     width: '100%',
-    borderRadius: 17,
-    padding: 10,
+
+    borderRadius: 18,
+
+    padding: 9,
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-
+    shadowOpacity: 0.16,
+    shadowRadius: 4,
     elevation: 4,
   },
 
@@ -409,7 +944,6 @@ const styles = StyleSheet.create({
 
   largePhoto: {
     flex: 2,
-    height: 270,
     marginRight: 9,
   },
 
@@ -419,23 +953,27 @@ const styles = StyleSheet.create({
 
   sidePhoto: {
     width: '100%',
-    height: 130,
-    marginBottom: 9,
+    marginBottom: 10,
   },
 
   bottomPhotoRow: {
     flexDirection: 'row',
+    marginTop: 9,
   },
 
   bottomPhoto: {
     flex: 1,
-    height: 125,
     marginRight: 9,
+  },
+
+  lastBottomPhoto: {
+    marginRight: 0,
   },
 
   photoBox: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+
+    borderRadius: 13,
 
     alignItems: 'center',
     justifyContent: 'center',
@@ -443,12 +981,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
 
     borderWidth: 1,
-    borderColor: '#E5E5E5',
+    borderColor: '#E9E9E9',
   },
 
   image: {
     width: '100%',
     height: '100%',
+
     resizeMode: 'cover',
   },
 
@@ -460,95 +999,268 @@ const styles = StyleSheet.create({
 
     width: 25,
     height: 25,
-    borderRadius: 13,
+
+    borderRadius: 999,
 
     alignItems: 'center',
     justifyContent: 'center',
 
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor:
+      'rgba(255,255,255,0.92)',
   },
 
-  /* About me */
-
-  aboutContainer: {
+  detailsCard: {
     marginTop: 12,
-    borderRadius: 15,
 
-    padding: 12,
+    borderRadius: 17,
 
-    minHeight: 150,
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 16,
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 3,
-
+    shadowOpacity: 0.13,
+    shadowRadius: 4,
     elevation: 3,
   },
 
-  aboutTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#080808',
+  label: {
+    marginBottom: 6,
 
-    marginBottom: 8,
+    fontSize: 14,
+    fontWeight: '700',
+
+    color: '#111111',
   },
 
-  aboutInput: {
-    minHeight: 90,
+  bioInput: {
+    minHeight: 100,
 
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 11,
 
     paddingHorizontal: 12,
     paddingVertical: 10,
 
-    fontSize: 15,
+    backgroundColor: '#FFFFFF',
+
+    fontSize: 14,
     color: '#111111',
   },
 
   counter: {
-    fontSize: 11,
-    color: '#555555',
+    marginTop: 4,
+    marginBottom: 13,
 
     textAlign: 'right',
 
-    marginTop: 5,
+    fontSize: 10,
+
+    color: '#555555',
   },
 
-  /* Continue */
+  dropdown: {
+    minHeight: 39,
 
-  nextButtonContainer: {
-    marginTop: 20,
-  },
-
-  nextButton: {
-    height: 52,
-    borderRadius: 26,
+    borderRadius: 11,
 
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
 
-    gap: 8,
+    paddingLeft: 11,
+    paddingRight: 5,
+
+    marginBottom: 13,
+
+    backgroundColor: '#FFFFFF',
+  },
+
+  dropdownText: {
+    flex: 1,
+
+    fontSize: 13,
+
+    color: '#111111',
+  },
+
+  placeholderText: {
+    color: '#999999',
+  },
+
+  dropdownIcon: {
+    width: 27,
+    height: 27,
+
+    borderRadius: 999,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#E4E4E4',
+  },
+
+  placesTitle: {
+    marginTop: 1,
+    marginBottom: 8,
+
+    fontSize: 13,
+    fontWeight: '700',
+
+    color: '#111111',
+  },
+
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+
+    gap: 6,
+  },
+
+  chip: {
+    minHeight: 27,
+
+    borderRadius: 999,
+
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#FFFFFF',
+  },
+
+  chipSelected: {
+    backgroundColor: '#2F2F2F',
+  },
+
+  chipText: {
+    fontSize: 10,
+
+    color: '#666666',
+  },
+
+  chipTextSelected: {
+    color: '#FFFFFF',
+  },
+
+  errorText: {
+    marginTop: 10,
+
+    textAlign: 'center',
+
+    fontSize: 12,
+
+    color: '#C62828',
+  },
+
+  startButtonContainer: {
+    alignSelf: 'flex-end',
+
+    marginTop: 13,
+
+    borderRadius: 999,
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 2,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.14,
     shadowRadius: 3,
-
     elevation: 3,
   },
 
-  nextText: {
-    fontSize: 17,
-    fontWeight: '800',
+  disabledButton: {
+    opacity: 0.65,
+  },
+
+  startButton: {
+    minWidth: 98,
+    height: 38,
+
+    borderRadius: 999,
+
+    paddingHorizontal: 17,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  startText: {
+    fontSize: 12,
+    fontWeight: '700',
+
+    color: '#111111',
+  },
+
+  modalOverlay: {
+    flex: 1,
+
+    paddingHorizontal: 25,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor:
+      'rgba(0,0,0,0.35)',
+  },
+
+  modalBox: {
+    width: '100%',
+    maxWidth: 350,
+
+    borderRadius: 18,
+
+    padding: 18,
+
+    backgroundColor: '#FFFFFF',
+  },
+
+  heightModalBox: {
+    width: '100%',
+    maxWidth: 350,
+    height: 420,
+
+    borderRadius: 18,
+
+    padding: 18,
+
+    backgroundColor: '#FFFFFF',
+  },
+
+  modalTitle: {
+    marginBottom: 8,
+
+    fontSize: 18,
+    fontWeight: '700',
+
+    color: '#111111',
+  },
+
+  heightList: {
+    flex: 1,
+  },
+
+  modalOption: {
+    minHeight: 43,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    borderBottomWidth:
+      StyleSheet.hairlineWidth,
+
+    borderBottomColor: '#E5E5E5',
+  },
+
+  modalOptionText: {
+    fontSize: 14,
+
     color: '#111111',
   },
 });

@@ -8,11 +8,14 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
+  const { width, height } = useWindowDimensions();
+
   const [username, setUsername] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -31,6 +34,34 @@ export default function LoginScreen() {
     console.log('Continue to TU Gateway:', cleanUsername);
   };
 
+  /*
+   * Responsive sizing
+   *
+   * Mobile:
+   *   ใช้พื้นที่เกือบเต็มจอ
+   *
+   * Tablet / Web:
+   *   จำกัดเฉพาะ content ไม่ให้กว้างเกิน design
+   */
+  const contentWidth = Math.min(width * 0.86, 390);
+
+  /*
+   * Logo จะย่อเมื่อหน้าจอแคบ
+   * แต่จะไม่ใหญ่เกินขนาดใน Figma
+   */
+  const logoWidth = Math.min(width * 0.72, 320);
+  const logoHeight = logoWidth * 0.6875;
+
+  /*
+   * เดิมใช้ paddingTop: 190
+   * ปรับตามความสูงหน้าจอเพื่อไม่ให้จอเล็ก
+   * ดัน logo ลงไปจนเกินพื้นที่
+   */
+  const topPadding = Math.max(
+    60,
+    Math.min(height * 0.2, 190)
+  );
+
   return (
     <View style={styles.page}>
       <LinearGradient
@@ -40,12 +71,26 @@ export default function LoginScreen() {
       >
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.content}>
+          <View
+            style={[
+              styles.content,
+              {
+                width: contentWidth,
+                paddingTop: topPadding,
+              },
+            ]}
+          >
             <Image
               source={require('../../../assets/images/talktu-logo.png')}
-              style={styles.logo}
+              style={[
+                styles.logo,
+                {
+                  width: logoWidth,
+                  height: logoHeight,
+                },
+              ]}
               resizeMode="contain"
             />
 
@@ -79,39 +124,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  /*
+   * พื้นที่นอกสุด
+   * ใช้สำหรับจัดหน้าให้อยู่ตรงกลางบน Web
+   */
   page: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: '#F5F5F5',
   },
 
+  /*
+   * สำคัญ:
+   * ห้ามใส่ maxWidth: 390 ตรงนี้
+   *
+   * เพราะจะทำให้ gradient ถูกล็อกเป็น 390px
+   * และเกิดพื้นที่ว่างด้านข้างบน Chrome / iPad
+   */
   screen: {
     flex: 1,
     width: '100%',
-    maxWidth: 390,
   },
 
+  /*
+   * Content ยังคงจำกัดความกว้างไว้ประมาณ design ใน Figma
+   * แต่ตัว gradient ด้านหลังเต็มหน้าจอ
+   */
   content: {
     flex: 1,
+    alignSelf: 'center',
     alignItems: 'center',
-    paddingTop: 190,
   },
 
   logo: {
-    width: 320,
-    height: 220,
     alignSelf: 'center',
     marginBottom: 18,
   },
 
   input: {
-    width: '77%',
+    width: '100%',
     height: 44,
+
     backgroundColor: '#FFFFFF',
     borderRadius: 11,
+
     paddingHorizontal: 14,
+
     fontSize: 14,
     color: '#333333',
+
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
@@ -119,11 +180,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.18,
     shadowRadius: 4,
+
     elevation: 4,
   },
 
   errorText: {
-    width: '77%',
+    width: '100%',
     color: '#C62828',
     fontSize: 12,
     marginTop: 8,

@@ -4,9 +4,23 @@ import { withSupabase } from "@supabase/server";
 const TU_AUTH_URL =
   "https://restapi.tu.ac.th/api/v1/auth/Ad/verify";
 
+type TuAuthResponse = {
+  status?: boolean;
+  message?: string;
+  type?: string;
+  username?: string;
+  tu_status?: string;
+  statusid?: string;
+  displayname_th?: string;
+  displayname_en?: string;
+  email?: string;
+  department?: string;
+  faculty?: string;
+};
+
 export default {
   fetch: withSupabase(
-    { auth: ["publishable", "secret"] },
+    { auth: ["publishable"] },
     async (req) => {
       // Only allow POST requests
       if (req.method !== "POST") {
@@ -63,7 +77,7 @@ export default {
         }),
       });
 
-      let tuData: unknown;
+      let tuData: TuAuthResponse;
 
       try {
         tuData = await tuResponse.json();
@@ -77,13 +91,52 @@ export default {
         );
       }
 
-      // Return TU verification result
+      // TU Authentication API rejected the credentials
+      if (!tuResponse.ok || tuData.status !== true) {
+        return Response.json(
+          {
+            success: false,
+            message: tuData.message ?? "TU authentication failed",
+          },
+          { status: 401 },
+        );
+      }
+
+      // TalkTU eligibility:
+      // 1. Must be a student
+      // 2. Must have a @dome.tu.ac.th email
+      const isStudent = tuData.type === "student";
+
+      const email = tuData.email?.trim().toLowerCase() ?? "";
+      const hasDomeEmail = email.endsWith("@dome.tu.ac.th");
+
+      if (!isStudent || !hasDomeEmail) {
+        return Response.json(
+          {
+            success: false,
+            message: "Only eligible TU students can use TalkTU.",
+          },
+          { status: 403 },
+        );
+      }
+
+      // TU authentication and TalkTU eligibility passed
       return Response.json(
         {
-          verified: tuResponse.ok,
-          tu: tuData,
+          success: true,
+          student: {
+            username: tuData.username,
+            email: email,
+            display_name_th: tuData.displayname_th,
+            display_name_en: tuData.displayname_en,
+            faculty: tuData.faculty,
+            department: tuData.department,
+            tu_status: tuData.tu_status,
+            status_id: tuData.statusid,
+            account_type: tuData.type,
+          },
         },
-        { status: tuResponse.ok ? 200 : tuResponse.status },
+        { status: 200 },
       );
     },
   ),

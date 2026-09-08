@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
+
 import {
   View,
   Text,
@@ -88,13 +90,95 @@ export default function Bio1Screen() {
     });
   };
 
-  const handleContinue = () => {
-    console.log('Bio images:', images);
-    console.log('About me:', aboutMe);
+const handleContinue = async () => {
+  try {
+    // 1. เช็กว่า user login อยู่ไหม
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    // ถ้ามีหน้าถัดไป ค่อยเปิดใช้
+    if (userError || !user) {
+      Alert.alert('Error', 'กรุณา login ก่อน');
+      return;
+    }
+
+    // 2. บันทึก About Me ลง profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        bio: aboutMe.trim(),
+      })
+      .eq('id', user.id);
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
+      return;
+    }
+
+    // 3. Upload รูปทีละรูป
+    for (let i = 0; i < images.length; i++) {
+      const imageUri = images[i];
+
+      // ช่องที่ไม่ได้ใส่รูป ข้ามไป
+      if (!imageUri) continue;
+
+      const position = i + 1;
+
+      // ดึงไฟล์จาก local URI
+      const response = await fetch(imageUri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // path ที่เก็บใน Storage
+      const storagePath = `${user.id}/${position}.jpg`;
+
+      // Upload เข้า Storage
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(storagePath, arrayBuffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        Alert.alert(
+          'Error',
+          `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
+        );
+        return;
+      }
+
+      // 4. บันทึก path ลง profile_photos
+      const { error: photoError } = await supabase
+        .from('profile_photos')
+        .insert({
+          user_id: user.id,
+          storage_path: storagePath,
+          position: position,
+        });
+
+      if (photoError) {
+        console.error('Photo DB error:', photoError);
+        Alert.alert(
+          'Error',
+          `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
+        );
+        return;
+      }
+    }
+
+    console.log('Bio1 saved successfully');
+
+    // 5. ไป Bio2
     router.push('/bio2');
-  };
+
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    Alert.alert('Error', 'เกิดข้อผิดพลาด');
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>

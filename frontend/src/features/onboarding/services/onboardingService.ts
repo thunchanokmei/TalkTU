@@ -11,19 +11,19 @@ export type DatingInterest =
 
 async function getCurrentUserId(): Promise<string> {
   const {
-    data: { user },
+    data: { session },
     error,
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getSession();
 
   if (error) {
     throw error;
   }
 
-  if (!user) {
+  if (!session?.user) {
     throw new Error('User is not authenticated.');
   }
 
-  return user.id;
+  return session.user.id;
 }
 
 /* ======================================================

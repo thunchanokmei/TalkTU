@@ -1,278 +1,686 @@
 import { useState } from 'react';
+
 import {
-    Pressable,
-    StyleSheet,
-    Text,
-    useWindowDimensions,
-    View,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+
+import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
+import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
+import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
+import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
+
 import { saveMode } from '../../features/onboarding/services/onboardingService';
 
 type Mode = 'date' | 'friends';
 
 export default function ModeScreen() {
-    const { width, height } = useWindowDimensions();
-    const shortSide = Math.min(width, height);
+  const { width, height } =
+    useWindowDimensions();
 
-    const [mode, setMode] = useState<Mode | null>(null);
+  const shortSide = Math.min(
+    width,
+    height
+  );
 
-    const backButtonWidth = Math.max(
-        42,
-        Math.min(shortSide * 0.12, 64)
+  const [mode, setMode] =
+    useState<Mode | null>(null);
+
+  const [errorMessage, setErrorMessage] =
+    useState('');
+
+  /*
+   * ============================
+   * FONT
+   * ============================
+   */
+
+  const [fontsLoaded] = useFonts({
+    GoogleSans:
+      GoogleSans_400Regular,
+
+    GoogleSansMedium:
+      GoogleSans_500Medium,
+
+    GoogleSansSemiBold:
+      GoogleSans_600SemiBold,
+  });
+
+  /*
+   * ============================
+   * RESPONSIVE SIZE
+   * ============================
+   */
+
+  const horizontalPadding =
+    Math.max(
+      24,
+      width * 0.1
     );
 
-    const backButtonHeight = Math.max(
-        28,
-        Math.min(shortSide * 0.072, 38)
+  const titleSize =
+    Math.max(
+      20,
+      Math.min(
+        shortSide * 0.055,
+        30
+      )
     );
 
-    const titleSize = Math.max(
-        20,
-        Math.min(shortSide * 0.055, 30)
+  const backButtonWidth =
+    Math.max(
+      42,
+      Math.min(
+        shortSide * 0.12,
+        64
+      )
     );
 
-    const handleBack = () => {
-        router.replace('/gender');
+  const backButtonHeight =
+    Math.max(
+      28,
+      Math.min(
+        shortSide * 0.072,
+        38
+      )
+    );
+
+  /*
+   * ============================
+   * BACK
+   * ============================
+   */
+
+  const handleBack = () => {
+    router.replace('/gender');
+  };
+
+  /*
+   * ============================
+   * CONTINUE
+   * ============================
+   */
+
+  const handleContinue =
+    async () => {
+      setErrorMessage('');
+
+      if (!mode) {
+        setErrorMessage(
+          'Please select what you are looking for.'
+        );
+        return;
+      }
+
+      try {
+        await saveMode(mode);
+
+        console.log(
+          'Mode saved:',
+          mode
+        );
+
+        if (mode === 'date') {
+          router.push(
+            '/interested-in'
+          );
+          return;
+        }
+
+        // Friends ไม่ต้องเลือก dating preference
+        router.push('/bio1');
+      } catch (error) {
+        console.error(
+          'Save mode error:',
+          error
+        );
+
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : 'Unable to save your mode.'
+        );
+      }
     };
 
-    const handleContinue =
-        async () => {
-            if (!mode) return;
+  /*
+   * ============================
+   * WAIT FOR FONT
+   * ============================
+   */
 
-            try {
-                await saveMode(mode);
+  if (!fontsLoaded) {
+    return null;
+  }
 
-                if (mode === 'date') {
-                    router.push(
-                        '/interested-in'
-                    );
-                    return;
-                }
+  return (
+    <LinearGradient
+      colors={[
+        '#FF7F87',
+        '#FFA577',
+        '#FFE8C8',
+      ]}
+      locations={[
+        0,
+        0.45,
+        1,
+      ]}
+      style={styles.screen}
+    >
+      {/* =========================
+          BACK BUTTON
+          ========================= */}
 
-                // Friends ไม่ต้องเลือก dating preference
-                router.push('/bio1');
-            } catch (error) {
-                console.error(
-                    'Save mode error:',
-                    error
-                );
-            }
-        };
+      <Pressable
+        style={[
+          styles.backButton,
+          {
+            top: Math.max(
+              20,
+              height * 0.04
+            ),
 
-    return (
+            left: Math.max(
+              20,
+              width * 0.07
+            ),
+
+            width:
+              backButtonWidth,
+
+            height:
+              backButtonHeight,
+          },
+        ]}
+        onPress={handleBack}
+      >
         <LinearGradient
-            colors={['#FF7F87', '#FFA577', '#FFE8C8']}
-            locations={[0, 0.45, 1]}
-            style={styles.screen}
+          colors={[
+            '#FFE98F',
+            '#FFB873',
+          ]}
+          start={{
+            x: 0,
+            y: 0,
+          }}
+          end={{
+            x: 1,
+            y: 1,
+          }}
+          style={
+            styles.backGradient
+          }
         >
-            <Pressable
-                style={[
-                    styles.backButton,
-                    {
-                        top: Math.max(20, height * 0.04),
-                        left: Math.max(20, width * 0.07),
-                        width: backButtonWidth,
-                        height: backButtonHeight,
-                    },
-                ]}
-                onPress={handleBack}
-            >
-                <LinearGradient
-                    colors={['#FFE98F', '#FFB873']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.backGradient}
-                >
-                    <Text style={styles.backText}>
-                        {'<<'}
-                    </Text>
-                </LinearGradient>
-            </Pressable>
-
-            <View
-                style={[
-                    styles.content,
-                    {
-                        paddingHorizontal: Math.max(
-                            24,
-                            width * 0.1
-                        ),
-                        paddingTop: Math.max(
-                            110,
-                            height * 0.18
-                        ),
-                    },
-                ]}
-            >
-                <Text
-                    style={[
-                        styles.title,
-                        {
-                            fontSize: titleSize,
-                            lineHeight: titleSize * 1.12,
-                        },
-                    ]}
-                >
-                    What you{'\n'}looking for?
-                </Text>
-
-                <ChoiceRow
-                    label="Date"
-                    selected={mode === 'date'}
-                    onPress={() => setMode('date')}
-                />
-
-                <ChoiceRow
-                    label="Friends"
-                    selected={mode === 'friends'}
-                    onPress={() => setMode('friends')}
-                />
-
-                {mode ? (
-                    <Pressable
-                        style={styles.goButton}
-                        onPress={handleContinue}
-                    >
-                        <Text style={styles.goText}>
-                            go!
-                        </Text>
-                    </Pressable>
-                ) : null}
-            </View>
+          <Text
+            style={[
+              styles.backText,
+              {
+                fontSize:
+                  Math.max(
+                    12,
+                    Math.min(
+                      shortSide *
+                        0.033,
+                      17
+                    )
+                  ),
+              },
+            ]}
+          >
+            {'<<'}
+          </Text>
         </LinearGradient>
-    );
+      </Pressable>
+
+      {/* =========================
+          CONTENT
+          ========================= */}
+
+      <View
+        style={[
+          styles.content,
+          {
+            paddingHorizontal:
+              horizontalPadding,
+
+            paddingTop:
+              Math.max(
+                110,
+                height * 0.17
+              ),
+          },
+        ]}
+      >
+        {/* =========================
+            TITLE
+            ========================= */}
+
+        <Text
+          style={[
+            styles.title,
+            {
+              fontSize:
+                titleSize,
+
+              lineHeight:
+                titleSize * 1.15,
+            },
+          ]}
+        >
+          What you
+          {'\n'}
+          looking for?
+        </Text>
+
+        {/* =========================
+            OPTIONS
+            ========================= */}
+
+        <ChoiceRow
+          label="Date"
+          selected={
+            mode === 'date'
+          }
+          onPress={() => {
+            setMode('date');
+            setErrorMessage('');
+          }}
+        />
+
+        <ChoiceRow
+          label="Friends"
+          selected={
+            mode === 'friends'
+          }
+          onPress={() => {
+            setMode('friends');
+            setErrorMessage('');
+          }}
+        />
+
+        {/* =========================
+            ERROR
+            ========================= */}
+
+        {errorMessage ? (
+          <Text
+            style={[
+              styles.errorText,
+              {
+                fontSize:
+                  Math.max(
+                    11,
+                    Math.min(
+                      shortSide *
+                        0.03,
+                      15
+                    )
+                  ),
+              },
+            ]}
+          >
+            {errorMessage}
+          </Text>
+        ) : null}
+
+        {/* =========================
+            GO BUTTON
+            ========================= */}
+
+        {mode ? (
+          <Pressable
+            style={[
+              styles.goButton,
+              {
+                minWidth:
+                  Math.max(
+                    58,
+                    Math.min(
+                      shortSide *
+                        0.15,
+                      84
+                    )
+                  ),
+
+                height:
+                  Math.max(
+                    34,
+                    Math.min(
+                      height *
+                        0.045,
+                      44
+                    )
+                  ),
+              },
+            ]}
+            onPress={
+              handleContinue
+            }
+          >
+            <Text
+              style={[
+                styles.goText,
+                {
+                  fontSize:
+                    Math.max(
+                      15,
+                      Math.min(
+                        shortSide *
+                          0.04,
+                        20
+                      )
+                    ),
+                },
+              ]}
+            >
+              go!
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </LinearGradient>
+  );
 }
+
+/*
+ * ======================================================
+ * CHOICE ROW
+ * ======================================================
+ */
 
 function ChoiceRow({
-    label,
-    selected,
-    onPress,
+  label,
+  selected,
+  onPress,
 }: {
-    label: string;
-    selected: boolean;
-    onPress: () => void;
+  label: string;
+  selected: boolean;
+  onPress: () => void;
 }) {
-    return (
-        <Pressable
-            style={styles.choice}
-            onPress={onPress}
-        >
-            <Text style={styles.choiceText}>
-                {label}
-            </Text>
+  return (
+    <Pressable
+      style={[
+        styles.choice,
+        selected &&
+          styles.choiceSelected,
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={
+          styles.choiceText
+        }
+      >
+        {label}
+      </Text>
 
-            <View
-                style={[
-                    styles.circle,
-                    selected && styles.circleSelected,
-                ]}
-            />
-        </Pressable>
-    );
+      <View
+        style={[
+          styles.circle,
+          selected &&
+            styles.circleSelected,
+        ]}
+      />
+    </Pressable>
+  );
 }
 
+/*
+ * ======================================================
+ * STYLES
+ * ======================================================
+ */
+
 const styles = StyleSheet.create({
-    screen: {
-        flex: 1,
+  /*
+   * ============================
+   * SCREEN
+   * ============================
+   */
+
+  screen: {
+    flex: 1,
+    width: '100%',
+  },
+
+  content: {
+    flex: 1,
+  },
+
+  /*
+   * ============================
+   * BACK BUTTON
+   * ============================
+   */
+
+  backButton: {
+    position: 'absolute',
+
+    zIndex: 20,
+
+    borderRadius: 999,
+
+    overflow: 'hidden',
+
+    shadowColor:
+      '#000000',
+
+    shadowOffset: {
+      width: 0,
+      height: 3,
     },
 
-    content: {
-        flex: 1,
+    shadowOpacity: 0.22,
+
+    shadowRadius: 4,
+
+    elevation: 5,
+  },
+
+  backGradient: {
+    flex: 1,
+
+    width: '100%',
+    height: '100%',
+
+    borderRadius: 999,
+
+    justifyContent:
+      'center',
+
+    alignItems:
+      'center',
+  },
+
+  backText: {
+    fontFamily:
+      'GoogleSansMedium',
+
+    color: '#222222',
+  },
+
+  /*
+   * ============================
+   * TITLE
+   * ============================
+   */
+
+  title: {
+    fontFamily:
+      'GoogleSansSemiBold',
+
+    fontWeight: '600',
+
+    color: '#FFFFFF',
+
+    marginBottom: 20,
+
+    textShadowColor:
+      'rgba(75, 50, 45, 0.35)',
+
+    textShadowOffset: {
+      width: 1,
+      height: 2,
     },
 
-    backButton: {
-        position: 'absolute',
-        borderRadius: 999,
-        overflow: 'hidden',
-        zIndex: 20,
+    textShadowRadius: 2,
+  },
+
+  /*
+   * ============================
+   * CHOICE
+   * ============================
+   */
+
+  choice: {
+    width: '100%',
+
+    minHeight: 44,
+
+    backgroundColor:
+      '#FFFFFF',
+
+    borderRadius: 12,
+
+    paddingHorizontal: 16,
+
+    marginBottom: 10,
+
+    flexDirection: 'row',
+
+    alignItems: 'center',
+
+    justifyContent:
+      'space-between',
+
+    shadowColor:
+      '#000000',
+
+    shadowOffset: {
+      width: 0,
+      height: 2,
     },
 
-    backGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 999,
+    shadowOpacity: 0.15,
+
+    shadowRadius: 3,
+
+    elevation: 3,
+  },
+
+  choiceSelected: {
+    backgroundColor:
+      '#FFF9E8',
+  },
+
+  choiceText: {
+    fontFamily:
+      'GoogleSans',
+
+    fontSize: 16,
+
+    color: '#333333',
+  },
+
+  /*
+   * ============================
+   * CIRCLE
+   * ============================
+   */
+
+  circle: {
+    width: 16,
+
+    height: 16,
+
+    borderRadius: 999,
+
+    backgroundColor:
+      '#F2D3C3',
+  },
+
+  circleSelected: {
+    backgroundColor:
+      '#F19068',
+  },
+
+  /*
+   * ============================
+   * ERROR
+   * ============================
+   */
+
+  errorText: {
+    fontFamily:
+      'GoogleSans',
+
+    color: '#C62828',
+
+    marginTop: 7,
+  },
+
+  /*
+   * ============================
+   * GO BUTTON
+   * ============================
+   */
+
+  goButton: {
+    alignSelf:
+      'flex-end',
+
+    paddingHorizontal: 14,
+
+    marginTop: 16,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      '#FFF6AE',
+
+    justifyContent:
+      'center',
+
+    alignItems:
+      'center',
+
+    shadowColor:
+      '#000000',
+
+    shadowOffset: {
+      width: 0,
+      height: 4,
     },
 
-    backText: {
-        fontSize: 13,
-        fontWeight: '500',
-        color: '#222222',
+    shadowOpacity: 0.28,
+
+    shadowRadius: 5,
+
+    elevation: 6,
+  },
+
+  goText: {
+    fontFamily:
+      'GoogleSansSemiBold',
+
+    fontWeight: '600',
+
+    color: '#111111',
+
+    textShadowColor:
+      'rgba(0, 0, 0, 0.15)',
+
+    textShadowOffset: {
+      width: 0,
+      height: 1,
     },
 
-    title: {
-        color: '#FFFFFF',
-        fontWeight: '600',
-        marginBottom: 30,
-
-        textShadowColor:
-            'rgba(75, 50, 45, 0.35)',
-
-        textShadowOffset: {
-            width: 1,
-            height: 2,
-        },
-
-        textShadowRadius: 2,
-    },
-
-    choice: {
-        width: '100%',
-        minHeight: 44,
-
-        backgroundColor: '#FFFFFF',
-
-        borderRadius: 14,
-
-        paddingHorizontal: 16,
-        marginBottom: 10,
-
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-
-    choiceText: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: '#222222',
-    },
-
-    circle: {
-        width: 16,
-        height: 16,
-
-        borderRadius: 999,
-
-        backgroundColor: '#F2D3C3',
-    },
-
-    circleSelected: {
-        backgroundColor: '#F19068',
-    },
-
-    goButton: {
-        alignSelf: 'flex-end',
-
-        marginTop: 10,
-        paddingHorizontal: 18,
-
-        minHeight: 34,
-
-        borderRadius: 12,
-
-        backgroundColor: '#FFF6AE',
-
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-
-    goText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#111111',
-    },
+    textShadowRadius: 1,
+  },
 });

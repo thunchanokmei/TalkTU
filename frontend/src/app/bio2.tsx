@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import {
   View,
   Text,
@@ -65,17 +66,51 @@ export default function Bio2Screen() {
     });
   };
 
-  const handleStart = () => {
-    console.log('bio:', bio);
-    console.log('gender:', gender);
-    console.log('height:', height);
-    console.log('places:', places);
-    // ถ้าหน้าถัดไปคือหน้า Profile ให้เปลี่ยนเป็น:
-    // router.push('/profile');
+const handleStart = async () => {
+  try {
+    // เช็กว่า user ที่ login อยู่คือใคร
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    // ตอนนี้กลับไปหน้าแรกก่อน
+    if (userError) {
+      console.error('Get user error:', userError);
+      return;
+    }
+
+    if (!user) {
+      console.log('ยังไม่ได้ login');
+      return;
+    }
+
+    // แปลง "170 cm" -> 170
+    const heightCm = height
+      ? parseInt(height.replace(' cm', ''), 10)
+      : null;
+
+    // บันทึกลง profiles
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        bio: bio.trim(),
+        height_cm: heightCm,
+        onboarding_completed: true,
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      console.error('Save profile error:', error);
+      return;
+    }
+
+    console.log('บันทึก profile สำเร็จ');
+
     router.push('/');
-  };
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+};
 
   return (
     <SafeAreaView style={styles.safeArea}>

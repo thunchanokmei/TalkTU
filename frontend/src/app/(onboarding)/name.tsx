@@ -11,6 +11,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { saveDisplayName } from '../../features/onboarding/services/onboardingService';
 
 export default function NameScreen() {
   const [name, setName] = useState('');
@@ -31,24 +32,42 @@ export default function NameScreen() {
     router.replace('/login');
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const cleanName = name.trim();
 
     setErrorMessage('');
 
     if (!cleanName) {
-      setErrorMessage('Please enter your name.');
+      setErrorMessage(
+        'Please enter your name.'
+      );
       return;
     }
 
-    console.log('Name:', cleanName);
+    try {
+      await saveDisplayName(cleanName);
 
-    router.push({
-      pathname: '/(onboarding)/birthday',
-      params: {
-        name: cleanName,
-      },
-    });
+      console.log(
+        'Display name saved:',
+        cleanName
+      );
+
+      router.push({
+        pathname: '/birthday',
+        params: {
+          name: cleanName,
+        },
+      });
+    } catch (error) {
+      console.error(
+        'Save display name error:',
+        error
+      );
+
+      setErrorMessage(
+        'Unable to save your name.'
+      );
+    }
   };
 
   return (

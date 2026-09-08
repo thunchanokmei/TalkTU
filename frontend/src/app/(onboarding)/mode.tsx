@@ -9,6 +9,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { saveMode } from '../../features/onboarding/services/onboardingService';
 
 type Mode = 'date' | 'friends';
 
@@ -37,19 +38,29 @@ export default function ModeScreen() {
         router.replace('/gender');
     };
 
-    const handleContinue = () => {
-        if (!mode) return;
+    const handleContinue =
+        async () => {
+            if (!mode) return;
 
-        console.log('mode:', mode);
+            try {
+                await saveMode(mode);
 
-        if (mode === 'date') {
-            router.push('/interested-in');
-            return;
-        }
+                if (mode === 'date') {
+                    router.push(
+                        '/interested-in'
+                    );
+                    return;
+                }
 
-        // Friends mode ไม่ต้องเลือก interested_in
-        router.push('/bio1');
-    };
+                // Friends ไม่ต้องเลือก dating preference
+                router.push('/bio1');
+            } catch (error) {
+                console.error(
+                    'Save mode error:',
+                    error
+                );
+            }
+        };
 
     return (
         <LinearGradient

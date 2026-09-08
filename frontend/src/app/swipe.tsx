@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   PanResponder,
   StyleSheet,
   Text,
@@ -16,9 +16,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '@/lib/supabase';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
 
@@ -51,6 +48,9 @@ type Candidate = {
 type SwipeAction = 'like' | 'pass';
 
 export default function SwipeScreen() {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const swipeThreshold = screenWidth * 0.25;
+
   const [mode, setMode] = useState<SwipeMode>('date');
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -262,7 +262,7 @@ export default function SwipeScreen() {
 
     Animated.timing(position, {
       toValue: {
-        x: direction * SCREEN_WIDTH * 1.3,
+        x: direction * screenWidth * 1.3,
         y: 0,
       },
       duration: SWIPE_OUT_DURATION,
@@ -289,12 +289,12 @@ export default function SwipeScreen() {
       },
 
       onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > SWIPE_THRESHOLD) {
+        if (gesture.dx > swipeThreshold) {
           swipeCard('like');
           return;
         }
 
-        if (gesture.dx < -SWIPE_THRESHOLD) {
+        if (gesture.dx < -swipeThreshold) {
           swipeCard('pass');
           return;
         }
@@ -342,7 +342,7 @@ export default function SwipeScreen() {
    * Card rotation
    */
   const rotate = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+    inputRange: [-screenWidth, 0, screenWidth],
     outputRange: ['-12deg', '0deg', '12deg'],
     extrapolate: 'clamp',
   });
@@ -351,7 +351,7 @@ export default function SwipeScreen() {
    * Like overlay opacity
    */
   const likeOpacity = position.x.interpolate({
-    inputRange: [0, SWIPE_THRESHOLD, SCREEN_WIDTH * 0.7],
+    inputRange: [0, swipeThreshold, screenWidth * 0.7],
     outputRange: [0, 0.8, 1],
     extrapolate: 'clamp',
   });
@@ -360,7 +360,7 @@ export default function SwipeScreen() {
    * Pass overlay opacity
    */
   const passOpacity = position.x.interpolate({
-    inputRange: [-SCREEN_WIDTH * 0.7, -SWIPE_THRESHOLD, 0],
+    inputRange: [-screenWidth * 0.7, -swipeThreshold, 0],
     outputRange: [1, 0.8, 0],
     extrapolate: 'clamp',
   });
@@ -501,7 +501,17 @@ export default function SwipeScreen() {
             ]}
           >
             {/* Photo */}
-            <View style={styles.photoContainer}>
+            <View
+              style={[
+                styles.photoContainer,
+                {
+                  height: Math.max(
+                    400,
+                    Math.min(screenHeight * 0.55, 560)
+                  ),
+                },
+              ]}
+            >
               {currentPhoto?.storage_path ? (
                 <PhotoFromStorage
                   storagePath={currentPhoto.storage_path}
@@ -946,10 +956,6 @@ const styles = StyleSheet.create({
 
   photoContainer: {
     width: '100%',
-    height: SCREEN_HEIGHT * 0.55,
-
-    minHeight: 400,
-    maxHeight: 560,
 
     position: 'relative',
 

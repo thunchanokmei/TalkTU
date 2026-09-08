@@ -28,7 +28,7 @@ export default function NameScreen() {
   const backButtonHeight = Math.max(28, Math.min(shortSide * 0.072, 38));
 
   const handleBack = () => {
-    router.replace('/(auth)/login');
+    router.replace('/login');
   };
 
   const handleContinue = () => {

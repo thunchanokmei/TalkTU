@@ -23,7 +23,7 @@ export default function GenderScreen() {
 
     console.log('sex_at_birth:', gender);
 
-    router.push('/(onboarding)/mode');
+    router.push('/mode');
   };
 
   return (
@@ -43,7 +43,7 @@ export default function GenderScreen() {
           },
         ]}
         onPress={() =>
-          router.replace('/(onboarding)/study')
+          router.replace('/study')
         }
       >
         <LinearGradient

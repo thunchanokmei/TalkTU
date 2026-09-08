@@ -1,373 +1,371 @@
 import { useState } from 'react';
 import {
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
+    Pressable,
+    StyleSheet,
+    Text,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 
 type Interest =
-  | 'men'
-  | 'women'
-  | 'beyond_binary';
+    | 'men'
+    | 'women'
+    | 'beyond_binary';
 
 export default function InterestedInScreen() {
-  const { width, height } =
-    useWindowDimensions();
+    const { width, height } =
+        useWindowDimensions();
 
-  const shortSide = Math.min(
-    width,
-    height
-  );
+    const shortSide = Math.min(
+        width,
+        height
+    );
 
-  const [selected, setSelected] =
-    useState<Interest[]>([]);
+    const [selected, setSelected] =
+        useState<Interest[]>([]);
 
-  const backButtonWidth = Math.max(
-    42,
-    Math.min(shortSide * 0.12, 64)
-  );
+    const backButtonWidth = Math.max(
+        42,
+        Math.min(shortSide * 0.12, 64)
+    );
 
-  const backButtonHeight = Math.max(
-    28,
-    Math.min(shortSide * 0.072, 38)
-  );
+    const backButtonHeight = Math.max(
+        28,
+        Math.min(shortSide * 0.072, 38)
+    );
 
-  const titleSize = Math.max(
-    20,
-    Math.min(shortSide * 0.055, 30)
-  );
+    const titleSize = Math.max(
+        20,
+        Math.min(shortSide * 0.055, 30)
+    );
 
-  const toggleInterest = (
-    value: Interest
-  ) => {
-    setSelected((current) => {
-      if (current.includes(value)) {
-        return current.filter(
-          (item) => item !== value
+    const toggleInterest = (
+        value: Interest
+    ) => {
+        setSelected((current) => {
+            if (current.includes(value)) {
+                return current.filter(
+                    (item) => item !== value
+                );
+            }
+
+            return [...current, value];
+        });
+    };
+
+    const handleBack = () => {
+        router.replace(
+            '/mode'
         );
-      }
+    };
 
-      return [...current, value];
-    });
-  };
+    const handleContinue = () => {
+        if (selected.length === 0) {
+            return;
+        }
 
-  const handleBack = () => {
-    router.replace(
-      '/(onboarding)/mode'
-    );
-  };
+        console.log(
+            'interested_in:',
+            selected
+        );
 
-  const handleContinue = () => {
-    if (selected.length === 0) {
-      return;
-    }
+        router.push('/bio1');
+    };
 
-    console.log(
-      'interested_in:',
-      selected
-    );
-
-    // TEMPORARY
-    // ต่อไปจะไป Profile Details
-    // ที่เพื่อนของเหม่ยเหมยรับผิดชอบ
-  };
-
-  return (
-    <LinearGradient
-      colors={[
-        '#FF7F87',
-        '#FFA577',
-        '#FFE8C8',
-      ]}
-      locations={[0, 0.45, 1]}
-      style={styles.screen}
-    >
-      <Pressable
-        style={[
-          styles.backButton,
-          {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
-
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
-          },
-        ]}
-        onPress={handleBack}
-      >
+    return (
         <LinearGradient
-          colors={[
-            '#FFE98F',
-            '#FFB873',
-          ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
-          style={
-            styles.backGradient
-          }
+            colors={[
+                '#FF7F87',
+                '#FFA577',
+                '#FFE8C8',
+            ]}
+            locations={[0, 0.45, 1]}
+            style={styles.screen}
         >
-          <Text
-            style={styles.backText}
-          >
-            {'<<'}
-          </Text>
-        </LinearGradient>
-      </Pressable>
+            <Pressable
+                style={[
+                    styles.backButton,
+                    {
+                        top: Math.max(
+                            20,
+                            height * 0.04
+                        ),
 
-      <View
-        style={[
-          styles.content,
-          {
-            paddingHorizontal:
-              Math.max(
-                24,
-                width * 0.1
-              ),
+                        left: Math.max(
+                            20,
+                            width * 0.07
+                        ),
 
-            paddingTop:
-              Math.max(
-                110,
-                height * 0.18
-              ),
-          },
-        ]}
-      >
-        <Text
-          style={[
-            styles.title,
-            {
-              fontSize:
-                titleSize,
+                        width:
+                            backButtonWidth,
 
-              lineHeight:
-                titleSize * 1.12,
-            },
-          ]}
-        >
-          Who u wanna{'\n'}date ?
-        </Text>
-
-        <ChoiceRow
-          label="Men"
-          selected={selected.includes(
-            'men'
-          )}
-          onPress={() =>
-            toggleInterest('men')
-          }
-        />
-
-        <ChoiceRow
-          label="Women"
-          selected={selected.includes(
-            'women'
-          )}
-          onPress={() =>
-            toggleInterest(
-              'women'
-            )
-          }
-        />
-
-        <ChoiceRow
-          label="Beyond Binary"
-          selected={selected.includes(
-            'beyond_binary'
-          )}
-          onPress={() =>
-            toggleInterest(
-              'beyond_binary'
-            )
-          }
-        />
-
-        {selected.length > 0 ? (
-          <Pressable
-            style={styles.goButton}
-            onPress={handleContinue}
-          >
-            <Text
-              style={styles.goText}
+                        height:
+                            backButtonHeight,
+                    },
+                ]}
+                onPress={handleBack}
             >
-              go!
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </LinearGradient>
-  );
+                <LinearGradient
+                    colors={[
+                        '#FFE98F',
+                        '#FFB873',
+                    ]}
+                    start={{
+                        x: 0,
+                        y: 0,
+                    }}
+                    end={{
+                        x: 1,
+                        y: 1,
+                    }}
+                    style={
+                        styles.backGradient
+                    }
+                >
+                    <Text
+                        style={styles.backText}
+                    >
+                        {'<<'}
+                    </Text>
+                </LinearGradient>
+            </Pressable>
+
+            <View
+                style={[
+                    styles.content,
+                    {
+                        paddingHorizontal:
+                            Math.max(
+                                24,
+                                width * 0.1
+                            ),
+
+                        paddingTop:
+                            Math.max(
+                                110,
+                                height * 0.18
+                            ),
+                    },
+                ]}
+            >
+                <Text
+                    style={[
+                        styles.title,
+                        {
+                            fontSize:
+                                titleSize,
+
+                            lineHeight:
+                                titleSize * 1.12,
+                        },
+                    ]}
+                >
+                    Who u wanna{'\n'}date ?
+                </Text>
+
+                <ChoiceRow
+                    label="Men"
+                    selected={selected.includes(
+                        'men'
+                    )}
+                    onPress={() =>
+                        toggleInterest('men')
+                    }
+                />
+
+                <ChoiceRow
+                    label="Women"
+                    selected={selected.includes(
+                        'women'
+                    )}
+                    onPress={() =>
+                        toggleInterest(
+                            'women'
+                        )
+                    }
+                />
+
+                <ChoiceRow
+                    label="Beyond Binary"
+                    selected={selected.includes(
+                        'beyond_binary'
+                    )}
+                    onPress={() =>
+                        toggleInterest(
+                            'beyond_binary'
+                        )
+                    }
+                />
+
+                {selected.length > 0 ? (
+                    <Pressable
+                        style={styles.goButton}
+                        onPress={handleContinue}
+                    >
+                        <Text
+                            style={styles.goText}
+                        >
+                            go!
+                        </Text>
+                    </Pressable>
+                ) : null}
+            </View>
+        </LinearGradient>
+    );
 }
 
 function ChoiceRow({
-  label,
-  selected,
-  onPress,
+    label,
+    selected,
+    onPress,
 }: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
+    label: string;
+    selected: boolean;
+    onPress: () => void;
 }) {
-  return (
-    <Pressable
-      style={styles.choice}
-      onPress={onPress}
-    >
-      <Text
-        style={styles.choiceText}
-      >
-        {label}
-      </Text>
+    return (
+        <Pressable
+            style={styles.choice}
+            onPress={onPress}
+        >
+            <Text
+                style={styles.choiceText}
+            >
+                {label}
+            </Text>
 
-      <View
-        style={[
-          styles.circle,
-          selected &&
-            styles.circleSelected,
-        ]}
-      />
-    </Pressable>
-  );
+            <View
+                style={[
+                    styles.circle,
+                    selected &&
+                    styles.circleSelected,
+                ]}
+            />
+        </Pressable>
+    );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  backButton: {
-    position: 'absolute',
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-
-    zIndex: 20,
-  },
-
-  backGradient: {
-    flex: 1,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    borderRadius: 999,
-  },
-
-  backText: {
-    fontSize: 13,
-    fontWeight: '500',
-
-    color: '#222222',
-  },
-
-  title: {
-    color: '#FFFFFF',
-
-    fontWeight: '600',
-
-    marginBottom: 30,
-
-    textShadowColor:
-      'rgba(75, 50, 45, 0.35)',
-
-    textShadowOffset: {
-      width: 1,
-      height: 2,
+    screen: {
+        flex: 1,
     },
 
-    textShadowRadius: 2,
-  },
+    content: {
+        flex: 1,
+    },
 
-  choice: {
-    width: '100%',
+    backButton: {
+        position: 'absolute',
 
-    minHeight: 44,
+        borderRadius: 999,
 
-    backgroundColor: '#FFFFFF',
+        overflow: 'hidden',
 
-    borderRadius: 14,
+        zIndex: 20,
+    },
 
-    paddingHorizontal: 16,
+    backGradient: {
+        flex: 1,
 
-    marginBottom: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
 
-    flexDirection: 'row',
+        borderRadius: 999,
+    },
 
-    alignItems: 'center',
+    backText: {
+        fontSize: 13,
+        fontWeight: '500',
 
-    justifyContent:
-      'space-between',
-  },
+        color: '#222222',
+    },
 
-  choiceText: {
-    fontSize: 14,
+    title: {
+        color: '#FFFFFF',
 
-    fontWeight: '500',
+        fontWeight: '600',
 
-    color: '#222222',
-  },
+        marginBottom: 30,
 
-  circle: {
-    width: 16,
-    height: 16,
+        textShadowColor:
+            'rgba(75, 50, 45, 0.35)',
 
-    borderRadius: 999,
+        textShadowOffset: {
+            width: 1,
+            height: 2,
+        },
 
-    backgroundColor: '#F2D3C3',
-  },
+        textShadowRadius: 2,
+    },
 
-  circleSelected: {
-    backgroundColor: '#F19068',
-  },
+    choice: {
+        width: '100%',
 
-  goButton: {
-    alignSelf: 'flex-end',
+        minHeight: 44,
 
-    marginTop: 10,
+        backgroundColor: '#FFFFFF',
 
-    paddingHorizontal: 18,
+        borderRadius: 14,
 
-    minHeight: 34,
+        paddingHorizontal: 16,
 
-    borderRadius: 12,
+        marginBottom: 10,
 
-    backgroundColor: '#FFF6AE',
+        flexDirection: 'row',
 
-    justifyContent: 'center',
+        alignItems: 'center',
 
-    alignItems: 'center',
-  },
+        justifyContent:
+            'space-between',
+    },
 
-  goText: {
-    fontSize: 16,
+    choiceText: {
+        fontSize: 14,
 
-    fontWeight: '600',
+        fontWeight: '500',
 
-    color: '#111111',
-  },
+        color: '#222222',
+    },
+
+    circle: {
+        width: 16,
+        height: 16,
+
+        borderRadius: 999,
+
+        backgroundColor: '#F2D3C3',
+    },
+
+    circleSelected: {
+        backgroundColor: '#F19068',
+    },
+
+    goButton: {
+        alignSelf: 'flex-end',
+
+        marginTop: 10,
+
+        paddingHorizontal: 18,
+
+        minHeight: 34,
+
+        borderRadius: 12,
+
+        backgroundColor: '#FFF6AE',
+
+        justifyContent: 'center',
+
+        alignItems: 'center',
+    },
+
+    goText: {
+        fontSize: 16,
+
+        fontWeight: '600',
+
+        color: '#111111',
+    },
 });

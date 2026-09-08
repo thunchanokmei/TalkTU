@@ -36,11 +36,11 @@ export default function StudyScreen() {
       generation,
     });
 
-    router.push('/(onboarding)/gender');
+    router.push('/gender');
   };
 
   const handleBack = () => {
-    router.replace('/(onboarding)/birthday');
+    router.replace('/birthday');
   };
 
   return (

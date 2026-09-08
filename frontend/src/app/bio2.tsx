@@ -70,7 +70,6 @@ export default function Bio2Screen() {
     console.log('gender:', gender);
     console.log('height:', height);
     console.log('places:', places);
-
     // ถ้าหน้าถัดไปคือหน้า Profile ให้เปลี่ยนเป็น:
     // router.push('/profile');
 

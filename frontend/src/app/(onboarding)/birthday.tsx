@@ -137,7 +137,7 @@ export default function BirthdayScreen() {
   }, []);
 
   const handleBack = () => {
-    router.replace('/(onboarding)/name');
+    router.replace('/name');
   };
 
   const handleContinue = () => {
@@ -188,7 +188,7 @@ export default function BirthdayScreen() {
       month,
       year,
     });
-    router.push('/(onboarding)/study');
+    router.push('/study');
   };
 
   return (

@@ -106,7 +106,7 @@ const handleStart = async () => {
 
     console.log('บันทึก profile สำเร็จ');
 
-    router.push('/');
+    router.push('/swipe');
   } catch (error) {
     console.error('Unexpected error:', error);
   }

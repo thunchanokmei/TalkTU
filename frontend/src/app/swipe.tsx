@@ -189,14 +189,24 @@ export default function SwipeScreen() {
    * เพราะ backend มี RLS และคุณกำหนดให้ใช้ API/RPC ที่ backend เตรียมไว้
    */
   const saveSwipe = async (
-    candidate: Candidate,
-    action: SwipeAction
-  ) => {
-    console.log('SWIPE', {
-      target_user_id: candidate.user_id,
-      action,
-      mode,
-    });
+  candidate: Candidate,
+  action: SwipeAction
+) => {
+  const { data, error } = await supabase.rpc('submit_swipe', {
+    p_target_id: candidate.user_id,
+    p_mode: mode,
+    p_action: action,
+  });
+
+  if (error) {
+    console.error('submit_swipe error:', error);
+    throw error;
+  }
+
+  console.log('submit_swipe result:', data);
+
+  return data;
+};
 
     /*
       เมื่อคุณส่ง RPC สำหรับบันทึก swipe มา
@@ -213,7 +223,6 @@ export default function SwipeScreen() {
         throw error;
       }
     */
-  };
 
   /**
    * หลัง swipe เสร็จ

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Image,
   ActivityIndicator,
   Animated,
   useWindowDimensions,
@@ -13,8 +14,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
+import BottomNavigation from '../components/navigation/BottomNavigation';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
@@ -48,8 +51,59 @@ type Candidate = {
 type SwipeAction = 'like' | 'pass';
 
 export default function SwipeScreen() {
+  const router = useRouter();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const shortSide = Math.min(
+    screenWidth,
+    screenHeight
+  );
+
+  const horizontalPadding = Math.max(
+    20,
+    screenWidth * 0.06
+  );
+
+  const cardWidth =
+    screenWidth - horizontalPadding * 2;
+
+  // Keep the card tall, but reserve visible breathing room above the bottom nav.
+  const cardHeight = Math.min(
+    screenHeight * 0.74,
+    cardWidth * 1.82
+  );
   const swipeThreshold = screenWidth * 0.25;
+
+  // Responsive sizing tuned to keep the header and swipe actions visually balanced
+  const logoWidth = Math.max(
+    180,
+    Math.min(shortSide * 0.52, 280)
+  );
+  const logoHeight = logoWidth * 0.50;
+
+  const topIconButtonSize = Math.max(
+    42,
+    Math.min(shortSide * 0.11, 54)
+  );
+  const topIconSize = Math.max(
+    26,
+    Math.min(shortSide * 0.07, 34)
+  );
+
+  // Icons that appear while dragging left/right
+  const swipeOverlayIconSize = Math.max(
+    88,
+    Math.min(shortSide * 0.23, 112)
+  );
+
+  // Floating like button on the card
+  const actionButtonSize = Math.max(
+    60,
+    Math.min(shortSide * 0.17, 74)
+  );
+  const actionIconSize = Math.max(
+    32,
+    Math.min(shortSide * 0.09, 42)
+  );
 
   const [mode, setMode] = useState<SwipeMode>('date');
 
@@ -66,9 +120,21 @@ export default function SwipeScreen() {
 
   const currentCandidate = candidates[currentIndex];
 
-  /**
-   * ดึง candidate จาก PostgreSQL RPC
-   */
+  const openCandidateProfile = () => {
+    if (!currentCandidate) {
+      return;
+    }
+
+    router.push({
+      pathname: '/user/[userId]',
+      params: {
+        userId: currentCandidate.user_id,
+        candidate: JSON.stringify(currentCandidate),
+        mode,
+      },
+    });
+  };
+
   const fetchCandidates = useCallback(
     async (selectedMode: SwipeMode, offset: number, append = false) => {
       try {
@@ -120,16 +186,10 @@ export default function SwipeScreen() {
     []
   );
 
-  /**
-   * โหลดครั้งแรก / เปลี่ยน mode
-   */
   useEffect(() => {
     fetchCandidates(mode, 0, false);
   }, [mode, fetchCandidates]);
 
-  /**
-   * โหลดเพิ่มเมื่อใกล้หมด
-   */
   useEffect(() => {
     const remaining = candidates.length - currentIndex;
 
@@ -148,9 +208,6 @@ export default function SwipeScreen() {
     fetchCandidates,
   ]);
 
-  /**
-   * ไป photo ก่อนหน้า
-   */
   const previousPhoto = () => {
     if (!currentCandidate?.photos?.length) {
       return;
@@ -163,9 +220,6 @@ export default function SwipeScreen() {
     );
   };
 
-  /**
-   * ไป photo ถัดไป
-   */
   const nextPhoto = () => {
     if (!currentCandidate?.photos?.length) {
       return;
@@ -189,44 +243,24 @@ export default function SwipeScreen() {
    * เพราะ backend มี RLS และคุณกำหนดให้ใช้ API/RPC ที่ backend เตรียมไว้
    */
   const saveSwipe = async (
-  candidate: Candidate,
-  action: SwipeAction
-) => {
-  const { data, error } = await supabase.rpc('submit_swipe', {
-    p_target_id: candidate.user_id,
-    p_mode: mode,
-    p_action: action,
-  });
+    candidate: Candidate,
+    action: SwipeAction
+  ) => {
+    const { data, error } = await supabase.rpc('submit_swipe', {
+      p_target_id: candidate.user_id,
+      p_mode: mode,
+      p_action: action,
+    });
 
-  if (error) {
-    console.error('submit_swipe error:', error);
-    throw error;
-  }
+    if (error) {
+      console.error('submit_swipe error:', error);
+      throw error;
+    }
 
-  console.log('submit_swipe result:', data);
+    console.log('submit_swipe result:', data);
 
-  return data;
-};
-
-    /*
-      เมื่อคุณส่ง RPC สำหรับบันทึก swipe มา
-      ให้ใส่เฉพาะตรงนี้ เช่น:
-
-      const { error } = await supabase.rpc(
-        'ชื่อ_RPC_จริง',
-        {
-          ...parameters ตาม backend จริง
-        }
-      );
-
-      if (error) {
-        throw error;
-      }
-    */
-
-  /**
-   * หลัง swipe เสร็จ
-   */
+    return data;
+  };
   const finishSwipe = async (
     action: SwipeAction
   ) => {
@@ -263,9 +297,6 @@ export default function SwipeScreen() {
     }
   };
 
-  /**
-   * Swipe card ออกจอ
-   */
   const swipeCard = (action: SwipeAction) => {
     const direction = action === 'like' ? 1 : -1;
 
@@ -281,9 +312,7 @@ export default function SwipeScreen() {
     });
   };
 
-  /**
-   * ปัดการ์ดด้วยนิ้ว
-   */
+  /*ปัดการ์ดด้วยนิ้ว*/
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
@@ -329,9 +358,6 @@ export default function SwipeScreen() {
     })
   ).current;
 
-  /**
-   * เปลี่ยน mode
-   */
   const changeMode = (newMode: SwipeMode) => {
     if (newMode === mode) {
       return;
@@ -347,365 +373,363 @@ export default function SwipeScreen() {
     });
   };
 
-  /**
-   * Card rotation
-   */
   const rotate = position.x.interpolate({
     inputRange: [-screenWidth, 0, screenWidth],
     outputRange: ['-12deg', '0deg', '12deg'],
     extrapolate: 'clamp',
   });
-
-  /**
-   * Like overlay opacity
-   */
   const likeOpacity = position.x.interpolate({
     inputRange: [0, swipeThreshold, screenWidth * 0.7],
     outputRange: [0, 0.8, 1],
     extrapolate: 'clamp',
   });
-
-  /**
-   * Pass overlay opacity
-   */
   const passOpacity = position.x.interpolate({
     inputRange: [-screenWidth * 0.7, -swipeThreshold, 0],
     outputRange: [1, 0.8, 0],
     extrapolate: 'clamp',
   });
 
-  /**
-   * Loading
-   */
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" />
-
-          <Text style={styles.loadingText}>
-            Finding people...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  /**
-   * Error
-   */
-  if (error && candidates.length === 0) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.center}>
-          <Ionicons
-            name="cloud-offline-outline"
-            size={48}
-            color="#111"
-          />
-
-          <Text style={styles.emptyTitle}>
-            Something went wrong
-          </Text>
-
-          <Text style={styles.emptyText}>
-            {error}
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => fetchCandidates(mode, 0, false)}
-            activeOpacity={0.85}
-          >
-            <LinearGradient
-              colors={['#FF7B82', '#FFAA70', '#FFD37B']}
-              style={styles.retryButton}
-            >
-              <Text style={styles.retryText}>
-                Try again
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  /**
-   * Empty state
-   */
-  if (!currentCandidate) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <ModeSwitch
-            mode={mode}
-            onChange={changeMode}
-          />
-
-          <View style={styles.center}>
-            <Ionicons
-              name="people-outline"
-              size={56}
-              color="#111"
-            />
-
-            <Text style={styles.emptyTitle}>
-              No more people
-            </Text>
-
-            <Text style={styles.emptyText}>
-              There are no more candidates right now.
-            </Text>
-
-            <TouchableOpacity
-              onPress={() =>
-                fetchCandidates(mode, 0, false)
-              }
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[
-                  '#FF7B82',
-                  '#FFAA70',
-                  '#FFD37B',
-                ]}
-                style={styles.retryButton}
-              >
-                <Text style={styles.retryText}>
-                  Refresh
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const currentPhoto =
-    currentCandidate.photos?.[photoIndex];
+    currentCandidate?.photos?.[photoIndex];
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Mode */}
-        <ModeSwitch
-          mode={mode}
-          onChange={changeMode}
-        />
 
-        {/* Card */}
+        {/* ================= HEADER ================= */}
+
+        <View
+          style={[
+            styles.header,
+            {
+              paddingHorizontal:
+                horizontalPadding,
+            },
+          ]}
+        >
+          <Image
+            source={require('../../assets/images/talktu-logo2.png')}
+            style={[
+              styles.logo,
+              {
+                width: logoWidth,
+                height: logoHeight,
+              },
+            ]}
+            resizeMode="contain"
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              {
+                width: topIconButtonSize,
+                height: topIconButtonSize,
+              },
+            ]}
+            activeOpacity={0.7}
+            onPress={() => {
+              console.log('Open filter');
+            }}
+          >
+            <Ionicons
+              name="options-outline"
+              size={topIconSize}
+              color="#FF7F87"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ================= CARD / STATE AREA ================= */}
+
         <View style={styles.cardArea}>
+          {loading ? (
+            <View style={styles.statusState}>
+              <ActivityIndicator
+                size="large"
+                color="#FF7F87"
+              />
+
+              <Text style={styles.loadingText}>
+                Finding people...
+              </Text>
+            </View>
+          ) : error && candidates.length === 0 ? (
+            <View style={styles.statusState}>
+              <Ionicons
+                name="cloud-offline-outline"
+                size={54}
+                color="#555555"
+              />
+
+              <Text style={styles.emptyTitle}>
+                Something went wrong
+              </Text>
+
+              <Text style={styles.emptyText}>
+                {error}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  fetchCandidates(mode, 0, false)
+                }
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[
+                    '#FF7B82',
+                    '#FFAA70',
+                    '#FFD37B',
+                  ]}
+                  style={styles.retryButton}
+                >
+                  <Text style={styles.retryText}>
+                    Try again
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          ) : !currentCandidate ? (
+            <View style={styles.statusState}>
+              <Ionicons
+                name="people-outline"
+                size={58}
+                color="#555555"
+              />
+
+              <Text style={styles.emptyTitle}>
+                No more people
+              </Text>
+
+              <Text style={styles.emptyText}>
+                There are no more candidates right now.
+              </Text>
+
+              <TouchableOpacity
+                onPress={() =>
+                  fetchCandidates(mode, 0, false)
+                }
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[
+                    '#FF7B82',
+                    '#FFAA70',
+                    '#FFD37B',
+                  ]}
+                  style={styles.retryButton}
+                >
+                  <Text style={styles.retryText}>
+                    Refresh
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          ) : (
           <Animated.View
             {...panResponder.panHandlers}
             style={[
               styles.card,
               {
+                width: cardWidth,
+                height: cardHeight,
+
                 transform: [
-                  { translateX: position.x },
-                  { translateY: position.y },
-                  { rotate },
+                  {
+                    translateX:
+                      position.x,
+                  },
+                  {
+                    translateY:
+                      position.y,
+                  },
+                  {
+                    rotate,
+                  },
                 ],
               },
             ]}
           >
-            {/* Photo */}
-            <View
+            {/* PROFILE PHOTO */}
+
+            {currentPhoto?.storage_path ? (
+              <PhotoFromStorage
+                storagePath={
+                  currentPhoto.storage_path
+                }
+              />
+            ) : (
+              <View style={styles.noPhoto}>
+                <Ionicons
+                  name="person-outline"
+                  size={80}
+                  color="#AAAAAA"
+                />
+              </View>
+            )}
+
+            {/* ================= PHOTO COUNTER ================= */}
+
+            {currentCandidate.photos
+              ?.length > 0 ? (
+              <View
+                style={
+                  styles.photoCounter
+                }
+              >
+                <Text
+                  style={
+                    styles.photoCounterText
+                  }
+                >
+                  {photoIndex + 1}/
+                  {
+                    currentCandidate
+                      .photos.length
+                  }
+                </Text>
+              </View>
+            ) : null}
+            {/* ================= PHOTO TAP ZONES ================= */}
+
+            <TouchableOpacity
               style={[
-                styles.photoContainer,
-                {
-                  height: Math.max(
-                    400,
-                    Math.min(screenHeight * 0.55, 560)
-                  ),
-                },
+                styles.profileOpenZone,
+                currentCandidate.photos?.length > 1
+                  ? styles.profileOpenZoneWithPhotoNav
+                  : styles.profileOpenZoneFull,
+              ]}
+              onPress={openCandidateProfile}
+              activeOpacity={1}
+            />
+
+            {currentCandidate.photos?.length > 1 ? (
+              <>
+                <TouchableOpacity
+                  style={styles.leftPhotoZone}
+                  onPress={previousPhoto}
+                  activeOpacity={1}
+                />
+
+                <TouchableOpacity
+                  style={styles.rightPhotoZone}
+                  onPress={nextPhoto}
+                  activeOpacity={1}
+                />
+              </>
+            ) : null}
+
+            {/* LIKE */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.swipeIcon,
+                styles.likeIcon,
+                { opacity: likeOpacity },
               ]}
             >
-              {currentPhoto?.storage_path ? (
-                <PhotoFromStorage
-                  storagePath={currentPhoto.storage_path}
-                />
-              ) : (
-                <View style={styles.noPhoto}>
-                  <Ionicons
-                    name="person-outline"
-                    size={70}
-                    color="#999"
-                  />
-                </View>
-              )}
+              <Ionicons
+                name="heart"
+                size={swipeOverlayIconSize}
+                color="#FF4D5A"
+              />
+            </Animated.View>
 
-              {/* Photo counter */}
-              {currentCandidate.photos?.length > 0 && (
-                <View style={styles.photoCounter}>
-                  <Text style={styles.photoCounterText}>
-                    {photoIndex + 1}/
-                    {currentCandidate.photos.length}
-                  </Text>
-                </View>
-              )}
+            {/* PASS */}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.swipeIcon,
+                styles.passIcon,
+                { opacity: passOpacity },
+              ]}
+            >
+              <Ionicons
+                name="close"
+                size={swipeOverlayIconSize + 4}
+                color="#444444"
+              />
+            </Animated.View>
 
-              {/* Photo tap zones */}
-              {currentCandidate.photos?.length > 1 && (
-                <>
-                  <TouchableOpacity
-                    style={styles.leftPhotoZone}
-                    onPress={previousPhoto}
-                    activeOpacity={1}
-                  />
+            {/* ================= DARK GRADIENT ================= */}
 
-                  <TouchableOpacity
-                    style={styles.rightPhotoZone}
-                    onPress={nextPhoto}
-                    activeOpacity={1}
-                  />
-                </>
-              )}
+            <LinearGradient
+              pointerEvents="none"
+              colors={[
+                'transparent',
+                'rgba(0,0,0,0.02)',
+                'rgba(0,0,0,0.75)',
+              ]}
+              locations={[
+                0,
+                0.56,
+                1,
+              ]}
+              style={
+                styles.profileGradient
+              }
+            />
 
-              {/* LIKE */}
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.actionLabel,
-                  styles.likeLabel,
-                  {
-                    opacity: likeOpacity,
-                  },
-                ]}
+            {/* ================= PROFILE INFO ================= */}
+
+            <View
+              style={
+                styles.profileInfo
+              }
+            >
+              <Text
+                style={styles.nameText}
+                numberOfLines={1}
               >
-                <Text style={styles.likeLabelText}>
-                  LIKE
-                </Text>
-              </Animated.View>
+                {
+                  currentCandidate.display_name
+                }{' '}
+                {currentCandidate.age}
+              </Text>
 
-              {/* PASS */}
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.actionLabel,
-                  styles.passLabel,
-                  {
-                    opacity: passOpacity,
-                  },
-                ]}
+              <Text
+                style={
+                  styles.detailText
+                }
+                numberOfLines={1}
               >
-                <Text style={styles.passLabelText}>
-                  PASS
-                </Text>
-              </Animated.View>
-
-              {/* Profile info */}
-              <LinearGradient
-                colors={[
-                  'transparent',
-                  'rgba(0,0,0,0.15)',
-                  'rgba(0,0,0,0.85)',
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.infoGradient}
-                pointerEvents="none"
-              >
-                <View style={styles.info}>
-                  <Text style={styles.name}>
-                    {currentCandidate.display_name},{' '}
-                    {currentCandidate.age}
-                  </Text>
-
-                  <Text style={styles.faculty}>
-                    {currentCandidate.faculty}
-                    {currentCandidate.department
-                      ? ` • ${currentCandidate.department}`
-                      : ''}
-                  </Text>
-
-                  {currentCandidate.height_cm !== null && (
-                    <Text style={styles.height}>
-                      {currentCandidate.height_cm} cm
-                    </Text>
-                  )}
-                </View>
-              </LinearGradient>
+                {currentCandidate.department
+                  ? `${currentCandidate.department}, ${currentCandidate.faculty}`
+                  : currentCandidate.faculty}
+              </Text>
             </View>
 
-            {/* Details */}
-            <View style={styles.details}>
-              {currentCandidate.bio && (
-                <Text
-                  style={styles.bio}
-                  numberOfLines={3}
-                >
-                  {currentCandidate.bio}
-                </Text>
-              )}
+            {/* ================= FLOATING LIKE BUTTON ================= */}
 
-              {currentCandidate.interests?.length > 0 && (
-                <View style={styles.interests}>
-                  {currentCandidate.interests.map(
-                    (interest) => (
-                      <View
-                        key={interest.id}
-                        style={styles.interestChip}
-                      >
-                        <Text style={styles.interestText}>
-                          {interest.name}
-                        </Text>
-                      </View>
-                    )
-                  )}
-                </View>
-              )}
-            </View>
+            <TouchableOpacity
+              style={[
+                styles.floatingLikeButton,
+                {
+                  width: actionButtonSize,
+                  height: actionButtonSize,
+                  borderRadius: actionButtonSize / 2,
+                },
+              ]}
+              activeOpacity={0.85}
+              onPress={() =>
+                swipeCard('like')
+              }
+            >
+              <Ionicons
+                name="heart"
+                size={actionIconSize}
+                color="#FF5964"
+              />
+            </TouchableOpacity>
           </Animated.View>
+          )}
         </View>
 
-        {/* Error banner */}
-        {error && (
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerText}>
-              {error}
-            </Text>
-          </View>
-        )}
+        {/* ================= BOTTOM NAV ================= */}
 
-        {/* Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.passButton,
-            ]}
-            onPress={() => swipeCard('pass')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="close"
-              size={32}
-              color="#111"
-            />
-          </TouchableOpacity>
+        <BottomNavigation activeTab="swap" />
 
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.likeButton,
-            ]}
-            onPress={() => swipeCard('like')}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="heart"
-              size={28}
-              color="#111"
-            />
-          </TouchableOpacity>
-        </View>
-
-        {loadingMore && (
-          <View style={styles.loadingMore}>
-            <ActivityIndicator size="small" />
-          </View>
-        )}
       </View>
     </SafeAreaView>
   );
@@ -749,7 +773,7 @@ function ModeSwitch({
         style={[
           styles.modeButton,
           mode === 'friends' &&
-            styles.modeButtonActive,
+          styles.modeButtonActive,
         ]}
         onPress={() => onChange('friends')}
         activeOpacity={0.8}
@@ -868,107 +892,77 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
-    paddingHorizontal: 16,
-  },
-
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-  },
-
-  loadingText: {
-    marginTop: 12,
-    fontSize: 15,
-    color: '#555',
-  },
-
-  /* Mode */
-
-  modeContainer: {
-    alignSelf: 'center',
-    flexDirection: 'row',
-
-    marginTop: 8,
-    marginBottom: 10,
-
-    padding: 4,
-
-    borderRadius: 24,
-
-    backgroundColor: '#F2F2F2',
-  },
-
-  modeButton: {
-    height: 38,
-
-    paddingHorizontal: 18,
-
-    borderRadius: 20,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    gap: 6,
-  },
-
-  modeButtonActive: {
     backgroundColor: '#FFFFFF',
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-
-    elevation: 2,
   },
 
-  modeText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111',
+  /* ================= HEADER ================= */
+
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
+    paddingTop: 0,
   },
 
-  /* Card */
+  logo: {
+    alignSelf: 'flex-start',
+  },
+
+  topRightButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  filterButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+  },
+
+  /* ================= CARD ================= */
 
   cardArea: {
     flex: 1,
+
     alignItems: 'center',
     justifyContent: 'center',
+
+    paddingTop: 2,
+    paddingBottom: 18,
+  },
+
+  statusState: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
   },
 
   card: {
-    width: '100%',
-    maxWidth: 390,
+    position: 'relative',
 
-    borderRadius: 22,
-
-    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
 
     overflow: 'hidden',
 
-    shadowColor: '#000',
+    backgroundColor:
+      '#EEEEEE',
+
+    shadowColor: '#000000',
+
     shadowOffset: {
       width: 0,
-      height: 6,
+      height: 3,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
 
-    elevation: 7,
-  },
+    shadowOpacity: 0.13,
 
-  photoContainer: {
-    width: '100%',
+    shadowRadius: 6,
 
-    position: 'relative',
-
-    backgroundColor: '#EDEDED',
+    elevation: 5,
   },
 
   photo: {
@@ -982,312 +976,280 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
 
-    backgroundColor: '#EEEEEE',
+    backgroundColor:
+      '#E7E7E7',
   },
 
-  noPhotoText: {
-    marginTop: 8,
-
-    fontSize: 13,
-    color: '#777',
-  },
-
-  /* Photo counter */
+  /* ================= PHOTO COUNTER ================= */
 
   photoCounter: {
     position: 'absolute',
 
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
 
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    minWidth: 38,
+    height: 24,
 
-    borderRadius: 14,
+    paddingHorizontal: 8,
 
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 999,
+
+    backgroundColor:
+      '#FFFFFF',
+
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    zIndex: 10,
   },
 
   photoCounterText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    color: '#111111',
+
+    fontSize: 13,
     fontWeight: '700',
   },
 
-  /* Photo navigation */
+  profileOpenZone: {
+    position: 'absolute',
+
+    top: 0,
+    bottom: 105,
+
+    zIndex: 4,
+  },
+
+  profileOpenZoneWithPhotoNav: {
+    left: '18%',
+    right: '18%',
+  },
+
+  profileOpenZoneFull: {
+    left: 0,
+    right: 0,
+  },
 
   leftPhotoZone: {
     position: 'absolute',
 
-    left: 0,
     top: 0,
-    bottom: 0,
+    bottom: 105,
+    left: 0,
 
-    width: '50%',
+    width: '18%',
+
+    zIndex: 5,
   },
 
   rightPhotoZone: {
     position: 'absolute',
 
-    right: 0,
     top: 0,
-    bottom: 0,
+    bottom: 105,
+    right: 0,
 
-    width: '50%',
+    width: '18%',
+
+    zIndex: 5,
   },
 
-  /* Like / Pass */
+  /* ================= PROFILE ================= */
 
-  actionLabel: {
-    position: 'absolute',
-
-    top: 35,
-
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-
-    borderWidth: 3,
-    borderRadius: 10,
-  },
-
-  likeLabel: {
-    right: 25,
-
-    transform: [
-      {
-        rotate: '12deg',
-      },
-    ],
-
-    borderColor: '#6CCB7B',
-  },
-
-  passLabel: {
-    left: 25,
-
-    transform: [
-      {
-        rotate: '-12deg',
-      },
-    ],
-
-    borderColor: '#FF6F6F',
-  },
-
-  likeLabelText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#6CCB7B',
-  },
-
-  passLabelText: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FF6F6F',
-  },
-
-  /* Info */
-
-  infoGradient: {
+  profileGradient: {
     position: 'absolute',
 
     left: 0,
     right: 0,
+    top: 0,
     bottom: 0,
-
-    height: 180,
-
-    justifyContent: 'flex-end',
   },
 
-  info: {
-    paddingHorizontal: 18,
-    paddingBottom: 18,
+  profileInfo: {
+    position: 'absolute',
+
+    left: 13,
+    right: 70,
+    bottom: 27,
+
+    zIndex: 6,
   },
 
-  name: {
-    fontSize: 29,
-    lineHeight: 34,
-
-    fontWeight: '900',
-
+  nameText: {
     color: '#FFFFFF',
-  },
 
-  faculty: {
-    marginTop: 4,
+    fontSize: 32,
+    lineHeight: 36,
 
-    fontSize: 14,
     fontWeight: '600',
 
+    letterSpacing: -0.7,
+
+    textShadowColor:
+      'rgba(0,0,0,0.35)',
+
+    textShadowOffset: {
+      width: 0,
+      height: 1,
+    },
+
+    textShadowRadius: 2,
+  },
+
+  detailText: {
     color: '#FFFFFF',
+
+    fontSize: 11,
+
+    marginTop: 2,
+
+    opacity: 0.95,
+
+    textShadowColor:
+      'rgba(0,0,0,0.45)',
+
+    textShadowOffset: {
+      width: 0,
+      height: 1,
+    },
+
+    textShadowRadius: 2,
   },
 
-  height: {
-    marginTop: 3,
+  /* ================= HEART BUTTON ================= */
 
-    fontSize: 13,
+  floatingLikeButton: {
+    position: 'absolute',
 
-    color: '#FFFFFF',
-  },
+    right: 14,
+    bottom: 18,
 
-  /* Details */
+    backgroundColor:
+      '#FFFFFF',
 
-  details: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-
-    minHeight: 90,
-  },
-
-  bio: {
-    fontSize: 14,
-    lineHeight: 20,
-
-    color: '#222',
-  },
-
-  interests: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-
-    gap: 7,
-
-    marginTop: 10,
-  },
-
-  interestChip: {
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-
-    borderRadius: 16,
-
-    backgroundColor: '#FFE4A8',
-  },
-
-  interestText: {
-    fontSize: 12,
-    fontWeight: '600',
-
-    color: '#333',
-  },
-
-  /* Buttons */
-
-  actionButtons: {
-    height: 82,
-
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-
-    gap: 28,
-  },
-
-  actionButton: {
-    width: 58,
-    height: 58,
-
-    borderRadius: 29,
-
     alignItems: 'center',
-    justifyContent: 'center',
 
-    backgroundColor: '#FFFFFF',
+    zIndex: 12,
 
-    shadowColor: '#000',
+    shadowColor: '#000000',
+
     shadowOffset: {
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.16,
+
+    shadowOpacity: 0.25,
+
     shadowRadius: 4,
 
-    elevation: 4,
+    elevation: 7,
   },
 
-  passButton: {
-    borderWidth: 2,
-    borderColor: '#FF8585',
+  /* ================= SWIPE LABELS ================= */
+
+  swipeIcon: {
+    position: 'absolute',
+    top: 30,
+    zIndex: 20,
   },
 
-  likeButton: {
-    borderWidth: 2,
-    borderColor: '#FFB36E',
+  likeIcon: {
+    left: 28,
+    transform: [{ rotate: '-12deg' }],
   },
 
-  /* Empty */
+  passIcon: {
+    right: 28,
+    transform: [{ rotate: '12deg' }],
+  },
+
+  /* ================= LOADING / ERROR ================= */
+
+  center: {
+    flex: 1,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    paddingHorizontal: 28,
+  },
+
+  loadingText: {
+    marginTop: 12,
+
+    fontSize: 14,
+    color: '#444444',
+  },
 
   emptyTitle: {
     marginTop: 15,
 
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: 20,
+    fontWeight: '600',
 
-    color: '#111',
+    color: '#111111',
   },
 
   emptyText: {
     marginTop: 7,
 
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+
+    color: '#777777',
 
     textAlign: 'center',
-
-    color: '#666',
   },
 
   retryButton: {
-    marginTop: 20,
+    marginTop: 18,
 
-    minWidth: 120,
-    height: 44,
+    borderRadius: 18,
 
     paddingHorizontal: 20,
-
-    borderRadius: 22,
-
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 10,
   },
 
   retryText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
 
-    color: '#111',
+    color: '#111111',
   },
 
-  /* Error */
+  /* ================= MODE SWITCH ================= */
 
-  errorBanner: {
-    position: 'absolute',
-
-    left: 20,
-    right: 20,
-    bottom: 90,
-
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-
-    borderRadius: 12,
-
-    backgroundColor: '#FFE0E0',
-  },
-
-  errorBannerText: {
-    fontSize: 12,
-
-    textAlign: 'center',
-
-    color: '#A33',
-  },
-
-  loadingMore: {
-    position: 'absolute',
-
-    bottom: 88,
+  modeContainer: {
     alignSelf: 'center',
+    flexDirection: 'row',
+    marginTop: 8,
+    marginBottom: 10,
+    backgroundColor: '#F2F2F2',
+    borderRadius: 999,
+    padding: 4,
+  },
+
+  modeButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+
+  modeButtonActive: {
+    backgroundColor: '#FF9A7A',
+  },
+
+  modeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111111',
+  },
+
+  /* ================= NO PHOTO TEXT ================= */
+
+  noPhotoText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#777777',
   },
 });

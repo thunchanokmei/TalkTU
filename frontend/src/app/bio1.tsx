@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { completeOnboarding } from '@/features/onboarding/services/onboardingService';
 
 import {
   ActivityIndicator,
@@ -275,10 +276,11 @@ export default function Bio1Screen() {
         }
       }
 
-      console.log('Bio1 saved successfully');
+      await completeOnboarding();
 
-      // 5. ไป Bio2
-      router.push('/swipe');
+console.log('Onboarding completed successfully');
+
+router.push('/swipe');
 
     } catch (error) {
       console.error('Unexpected error:', error);

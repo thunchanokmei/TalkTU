@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 import {
@@ -24,7 +24,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { supabase } from '@/lib/supabase';
 
 type PhotoBoxProps = {
   image: string | null;
@@ -187,95 +186,105 @@ export default function Bio1Screen() {
     });
   };
 
-const handleContinue = async () => {
-  try {
-    // 1. เช็กว่า user login อยู่ไหม
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+  const togglePlace = (place: string) => {
+    setPlaces((current) => {
+      if (current.includes(place)) {
+        return current.filter((item) => item !== place);
+      }
 
-    if (userError || !user) {
-      Alert.alert('Error', 'กรุณา login ก่อน');
-      return;
-    }
+      return [...current, place];
+    });
+  };
 
-    // 2. บันทึก About Me ลง profiles
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        bio: aboutMe.trim(),
-      })
-      .eq('id', user.id);
+  const handleStart = async () => {
+    try {
+      // 1. เช็กว่า user login อยู่ไหม
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
 
-    if (profileError) {
-      console.error('Profile error:', profileError);
-      Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
-      return;
-    }
-
-    // 3. Upload รูปทีละรูป
-    for (let i = 0; i < images.length; i++) {
-      const imageUri = images[i];
-
-      // ช่องที่ไม่ได้ใส่รูป ข้ามไป
-      if (!imageUri) continue;
-
-      const position = i + 1;
-
-      // ดึงไฟล์จาก local URI
-      const response = await fetch(imageUri);
-      const arrayBuffer = await response.arrayBuffer();
-
-      // path ที่เก็บใน Storage
-      const storagePath = `${user.id}/${position}.jpg`;
-
-      // Upload เข้า Storage
-      const { error: uploadError } = await supabase.storage
-        .from('profile-photos')
-        .upload(storagePath, arrayBuffer, {
-          contentType: 'image/jpeg',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        Alert.alert(
-          'Error',
-          `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
-        );
+      if (userError || !user) {
+        Alert.alert('Error', 'กรุณา login ก่อน');
         return;
       }
 
-      // 4. บันทึก path ลง profile_photos
-      const { error: photoError } = await supabase
-        .from('profile_photos')
-        .insert({
-          user_id: user.id,
-          storage_path: storagePath,
-          position: position,
-        });
+      // 2. บันทึก About Me ลง profiles
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          bio: bio.trim(),
+        })
+        .eq('id', user.id);
 
-      if (photoError) {
-        console.error('Photo DB error:', photoError);
-        Alert.alert(
-          'Error',
-          `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
-        );
+      if (profileError) {
+        console.error('Profile error:', profileError);
+        Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
         return;
       }
+
+      // 3. Upload รูปทีละรูป
+      for (let i = 0; i < images.length; i++) {
+        const imageUri = images[i];
+
+        // ช่องที่ไม่ได้ใส่รูป ข้ามไป
+        if (!imageUri) continue;
+
+        const position = i + 1;
+
+        // ดึงไฟล์จาก local URI
+        const response = await fetch(imageUri);
+        const arrayBuffer = await response.arrayBuffer();
+
+        // path ที่เก็บใน Storage
+        const storagePath = `${user.id}/${position}.jpg`;
+
+        // Upload เข้า Storage
+        const { error: uploadError } = await supabase.storage
+          .from('profile-photos')
+          .upload(storagePath, arrayBuffer, {
+            contentType: 'image/jpeg',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          Alert.alert(
+            'Error',
+            `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
+          );
+          return;
+        }
+
+        // 4. บันทึก path ลง profile_photos
+        const { error: photoError } = await supabase
+          .from('profile_photos')
+          .insert({
+            user_id: user.id,
+            storage_path: storagePath,
+            position: position,
+          });
+
+        if (photoError) {
+          console.error('Photo DB error:', photoError);
+          Alert.alert(
+            'Error',
+            `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
+          );
+          return;
+        }
+      }
+
+      console.log('Bio1 saved successfully');
+
+      // 5. ไป Bio2
+      router.push('/swipe');
+
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      Alert.alert('Error', 'เกิดข้อผิดพลาด');
     }
-
-    console.log('Bio1 saved successfully');
-
-    // 5. ไป Bio2
-    router.push('/bio2');
-
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    Alert.alert('Error', 'เกิดข้อผิดพลาด');
-  }
-};
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -437,7 +446,7 @@ const handleContinue = async () => {
                           bottomPhotoHeight,
                       },
                       index === 5 &&
-                        styles.lastBottomPhoto,
+                      styles.lastBottomPhoto,
                     ]}
                     onPress={() =>
                       pickImage(index)
@@ -502,7 +511,7 @@ const handleContinue = async () => {
                 style={[
                   styles.dropdownText,
                   !genderIdentity &&
-                    styles.placeholderText,
+                  styles.placeholderText,
                 ]}
               >
                 {genderIdentity ||
@@ -537,7 +546,7 @@ const handleContinue = async () => {
                 style={[
                   styles.dropdownText,
                   !height &&
-                    styles.placeholderText,
+                  styles.placeholderText,
                 ]}
               >
                 {height || 'Select'}
@@ -582,14 +591,14 @@ const handleContinue = async () => {
                       style={[
                         styles.chip,
                         selected &&
-                          styles.chipSelected,
+                        styles.chipSelected,
                       ]}
                     >
                       <Text
                         style={[
                           styles.chipText,
                           selected &&
-                            styles.chipTextSelected,
+                          styles.chipTextSelected,
                         ]}
                       >
                         {place}
@@ -619,7 +628,7 @@ const handleContinue = async () => {
             style={[
               styles.startButtonContainer,
               saving &&
-                styles.disabledButton,
+              styles.disabledButton,
             ]}
           >
             <LinearGradient
@@ -711,12 +720,12 @@ const handleContinue = async () => {
 
                   {genderIdentity ===
                     option && (
-                    <Ionicons
-                      name="checkmark"
-                      size={20}
-                      color="#FF7B82"
-                    />
-                  )}
+                      <Ionicons
+                        name="checkmark"
+                        size={20}
+                        color="#FF7B82"
+                      />
+                    )}
                 </TouchableOpacity>
               )
             )}
@@ -783,12 +792,12 @@ const handleContinue = async () => {
 
                     {height ===
                       option && (
-                      <Ionicons
-                        name="checkmark"
-                        size={20}
-                        color="#FF7B82"
-                      />
-                    )}
+                        <Ionicons
+                          name="checkmark"
+                          size={20}
+                          color="#FF7B82"
+                        />
+                      )}
                   </TouchableOpacity>
                 )
               )}

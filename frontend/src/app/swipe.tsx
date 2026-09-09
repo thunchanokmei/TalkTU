@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -115,10 +116,15 @@ export default function SwipeScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const [photoIndex, setPhotoIndex] = useState(0);
-
   const position = useRef(new Animated.ValueXY()).current;
 
   const currentCandidate = candidates[currentIndex];
+
+  const [genderModal, setGenderModal] = useState(false);
+const [heightModal, setHeightModal] = useState(false);
+
+const [showMatchModal, setShowMatchModal] = useState(false);
+const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
   const openCandidateProfile = () => {
     if (!currentCandidate) {
@@ -153,6 +159,10 @@ export default function SwipeScreen() {
             p_offset: offset,
           }
         );
+
+
+        console.log('get_discovery_candidates data:', data);
+        console.log('get_discovery_candidates error:', rpcError);
 
         if (rpcError) {
           throw rpcError;
@@ -261,41 +271,48 @@ export default function SwipeScreen() {
 
     return data;
   };
-  const finishSwipe = async (
-    action: SwipeAction
-  ) => {
-    if (!currentCandidate) {
-      return;
-    }
+const finishSwipe = async (
+  action: SwipeAction
+) => {
+  if (!currentCandidate) {
+    return;
+  }
 
-    const candidate = currentCandidate;
+  const candidate = currentCandidate;
 
-    try {
-      await saveSwipe(candidate, action);
+  try {
+    const result = await saveSwipe(candidate, action);
 
-      setCurrentIndex((previous) => previous + 1);
-      setPhotoIndex(0);
+    if (result?.[0]?.matched) {
+  console.log('🎉 MATCH!', result[0].match_id);
 
-      position.setValue({
-        x: 0,
-        y: 0,
-      });
-    } catch (err) {
-      console.error('save swipe error:', err);
+  setMatchedCandidate(candidate);
+  setShowMatchModal(true);
+}
 
-      // ถ้าบันทึกไม่สำเร็จ ไม่ข้าม candidate
-      position.setValue({
-        x: 0,
-        y: 0,
-      });
+    setCurrentIndex((previous) => previous + 1);
 
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to save your swipe.'
-      );
-    }
-  };
+    setPhotoIndex(0);
+
+    position.setValue({
+      x: 0,
+      y: 0,
+    });
+  } catch (err) {
+    console.error('save swipe error:', err);
+
+    position.setValue({
+      x: 0,
+      y: 0,
+    });
+
+    setError(
+      err instanceof Error
+        ? err.message
+        : 'Unable to save your swipe.'
+    );
+  }
+};
 
   const swipeCard = (action: SwipeAction) => {
     const direction = action === 'like' ? 1 : -1;
@@ -731,6 +748,80 @@ export default function SwipeScreen() {
         <BottomNavigation activeTab="swap" />
 
       </View>
+
+      {/* Match Modal */}
+      <Modal
+        visible={showMatchModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMatchModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 24,
+              padding: 28,
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 32,
+                fontWeight: '700',
+                color: '#111111',
+                marginBottom: 12,
+              }}
+            >
+              It's a Match! 💕
+            </Text>
+
+            <Text
+              style={{
+                fontSize: 16,
+                color: '#555555',
+                textAlign: 'center',
+                marginBottom: 24,
+              }}
+            >
+              You and {matchedCandidate?.display_name} liked each other!
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setShowMatchModal(false)}
+              activeOpacity={0.85}
+              style={{
+                width: '100%',
+                backgroundColor: '#FF7B82',
+                paddingVertical: 14,
+                borderRadius: 14,
+                alignItems: 'center',
+              }}
+            >
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 16,
+                  fontWeight: '700',
+                }}
+              >
+                Continue
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -803,47 +894,20 @@ type PhotoFromStorageProps = {
 function PhotoFromStorage({
   storagePath,
 }: PhotoFromStorageProps) {
-  /*
-    ตอนนี้ RPC ส่ง storage_path มา
-    แต่ยังไม่มีชื่อ bucket ในข้อมูลที่ให้มา
-
-    ถ้า storage_path เป็น URL อยู่แล้ว
-    สามารถใช้ตรง ๆ ได้
-
-    ถ้าเป็น Supabase Storage path:
-    ต้องรู้ชื่อ bucket จริงก่อน
-    จึงจะเรียก:
-
-    supabase.storage
-      .from('BUCKET_NAME')
-      .getPublicUrl(storagePath)
-  */
-
-  if (
-    storagePath.startsWith('http://') ||
+  const imageUrl = storagePath.startsWith('http://') ||
     storagePath.startsWith('https://')
-  ) {
-    return (
-      <AnimatedImage
-        uri={storagePath}
-      />
-    );
-  }
+    ? storagePath
+    : supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(storagePath)
+        .data.publicUrl;
 
-  return (
-    <View style={styles.noPhoto}>
-      <Ionicons
-        name="image-outline"
-        size={64}
-        color="#999"
-      />
+  console.log('PHOTO PATH:', storagePath);
+  console.log('PHOTO URL:', imageUrl);
 
-      <Text style={styles.noPhotoText}>
-        Photo unavailable
-      </Text>
-    </View>
-  );
+  return <AnimatedImage uri={imageUrl} />;
 }
+
 
 function AnimatedImage({
   uri,

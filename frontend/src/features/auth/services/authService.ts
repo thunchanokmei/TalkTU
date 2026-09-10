@@ -2,12 +2,12 @@ import { supabase } from '../../../lib/supabase';
 
 export type TuLoginResult =
   | {
-      success: true;
-    }
+    success: true;
+  }
   | {
-      success: false;
-      message: string;
-    };
+    success: false;
+    message: string;
+  };
 
 export async function loginWithTu(
   username: string,
@@ -32,30 +32,37 @@ export async function loginWithTu(
     });
 
     if (error) {
-  console.error('TU login function error:', error);
+      //console.error('TU login function error:', error);
 
-  const functionError = error as {
-    message?: string;
-    context?: Response;
-  };
+      const functionError = error as {
+        message?: string;
+        context?: Response;
+      };
 
-  console.error('TU login status:', functionError.context?.status);
+      if (functionError.context) {
+        try {
+          const errorBody = await functionError.context.json();
 
-  if (functionError.context) {
-    try {
-      const errorBody = await functionError.context.text();
-      console.error('TU login response body:', errorBody);
-    } catch (readError) {
-      console.error('Unable to read TU login error body:', readError);
+          //console.error('TU login response body:', errorBody);
+
+          if (errorBody?.message) {
+            return {
+              success: false,
+              message: 'Invalid username or password.',
+            };
+          }
+        } catch (readError) {
+          console.warn('Unable to read TU login error body:', readError);
+          //console.error('Unable to read TU login error body:', readError);
+        }
+      }
+
+      return {
+        success: false,
+        message:
+          'Unable to connect to the login service. Please try again.',
+      };
     }
-  }
-
-  return {
-    success: false,
-    message:
-      functionError.message || 'Unable to connect to the login service.',
-  };
-}
 
     if (!data?.success) {
       return {
@@ -87,6 +94,13 @@ export async function loginWithTu(
           verifyError.message || 'Unable to create Supabase session.',
       };
     }
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    console.log('Supabase session exists:', !!session);
+    console.log('Supabase user id:', session?.user.id);
 
     return {
       success: true,

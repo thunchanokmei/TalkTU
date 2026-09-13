@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
 import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
@@ -22,6 +22,9 @@ type Gender = 'male' | 'female';
 
 export default function GenderScreen() {
   const { width, height } = useWindowDimensions();
+  const { name } = useLocalSearchParams<{
+    name?: string;
+  }>();
 
   const shortSide = Math.min(width, height);
 
@@ -114,7 +117,10 @@ export default function GenderScreen() {
           gender
         );
 
-        router.push('/mode');
+        router.push({
+          pathname: '/mode',
+          params: { name },
+    });
       } catch (error) {
         console.error(
           'Save gender error:',
@@ -136,8 +142,8 @@ export default function GenderScreen() {
    */
 
   const handleBack = () => {
-    router.replace('/study');
-  };
+  router.replace('/study');
+};
 
   /*
    * ============================

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
 import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
@@ -21,13 +21,11 @@ import { saveMode } from '../../features/onboarding/services/onboardingService';
 type Mode = 'date' | 'friends';
 
 export default function ModeScreen() {
-  const { width, height } =
-    useWindowDimensions();
-
-  const shortSide = Math.min(
-    width,
-    height
-  );
+    const { width, height } = useWindowDimensions();
+    const { name } = useLocalSearchParams<{
+        name?: string;
+    }>();
+    const shortSide = Math.min(width, height);
 
   const [mode, setMode] =
     useState<Mode | null>(null);
@@ -107,47 +105,45 @@ export default function ModeScreen() {
    * ============================
    */
 
-  const handleContinue =
-    async () => {
-      setErrorMessage('');
+const handleContinue = async () => {
+  setErrorMessage('');
 
-      if (!mode) {
-        setErrorMessage(
-          'Please select what you are looking for.'
-        );
-        return;
-      }
+  if (!mode) {
+    setErrorMessage(
+      'Please select what you are looking for.'
+    );
+    return;
+  }
 
-      try {
-        await saveMode(mode);
+  try {
+    await saveMode(mode);
 
-        console.log(
-          'Mode saved:',
-          mode
-        );
+    console.log(
+      'Mode saved:',
+      mode
+    );
 
-        if (mode === 'date') {
-          router.push(
-            '/interested-in'
-          );
-          return;
-        }
+    if (mode === 'date') {
+      router.push({
+        pathname: '/interested-in',
+        params: { name },
+      });
+      return;
+    }
 
-        // Friends ไม่ต้องเลือก dating preference
-        router.push('/bio1');
-      } catch (error) {
-        console.error(
-          'Save mode error:',
-          error
-        );
+    // Friends mode ไม่ต้องเลือก interested_in
+    router.push({
+      pathname: '/bio1',
+      params: { name },
+    });
+  } catch (error) {
+    console.error('Mode save error:', error);
 
-        setErrorMessage(
-          error instanceof Error
-            ? error.message
-            : 'Unable to save your mode.'
-        );
-      }
-    };
+    setErrorMessage(
+      'Something went wrong. Please try again.'
+    );
+  }
+};
 
   /*
    * ============================

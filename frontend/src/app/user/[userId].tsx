@@ -538,16 +538,52 @@ function ProfilePhoto({
 }: {
   storagePath: string;
 }) {
-  const [failed, setFailed] =
-    useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
-  if (
-    failed ||
-    !(
-      storagePath.startsWith('http://') ||
-      storagePath.startsWith('https://')
-    )
-  ) {
+  React.useEffect(() => {
+    let cancelled = false;
+
+    async function loadImage() {
+      try {
+        if (
+          storagePath.startsWith('http://') ||
+          storagePath.startsWith('https://')
+        ) {
+          if (!cancelled) {
+            setImageUrl(storagePath);
+          }
+          return;
+        }
+
+        const { data, error } = await supabase.storage
+          .from('profile-photos')
+          .createSignedUrl(storagePath, 60 * 60);
+
+        if (error) {
+          throw error;
+        }
+
+        if (!cancelled) {
+          setImageUrl(data.signedUrl);
+        }
+      } catch (error) {
+        console.error('Profile photo error:', error);
+
+        if (!cancelled) {
+          setFailed(true);
+        }
+      }
+    }
+
+    loadImage();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storagePath]);
+
+  if (failed) {
     return (
       <View style={styles.noPhoto}>
         <Ionicons
@@ -555,7 +591,6 @@ function ProfilePhoto({
           size={64}
           color="#999999"
         />
-
         <Text style={styles.noPhotoText}>
           Photo unavailable
         </Text>
@@ -563,16 +598,20 @@ function ProfilePhoto({
     );
   }
 
+  if (!imageUrl) {
+    return (
+      <View style={styles.noPhoto}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <Image
-      source={{
-        uri: storagePath,
-      }}
+      source={{ uri: imageUrl }}
       style={styles.photo}
       resizeMode="cover"
-      onError={() =>
-        setFailed(true)
-      }
+      onError={() => setFailed(true)}
     />
   );
 }

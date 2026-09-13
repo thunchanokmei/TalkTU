@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { completeOnboarding } from '@/features/onboarding/services/onboardingService';
+import {
+  completeOnboarding,
+  saveDisplayName,
+} from '@/features/onboarding/services/onboardingService';
 
 import {
   ActivityIndicator,
@@ -20,11 +23,10 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
 
 type PhotoBoxProps = {
   image: string | null;
@@ -38,6 +40,10 @@ export default function Bio1Screen() {
   const { width, height: screenHeight } = useWindowDimensions();
 
   const [displayName, setDisplayName] = useState('xx');
+
+  const { name } = useLocalSearchParams<{
+    name?: string;
+  }>();
 
   const [images, setImages] = useState<(string | null)[]>(
     [null, null, null, null, null, null]
@@ -187,106 +193,125 @@ export default function Bio1Screen() {
     });
   };
 
-  const togglePlace = (place: string) => {
-    setPlaces((current) => {
-      if (current.includes(place)) {
-        return current.filter((item) => item !== place);
-      }
-
-      return [...current, place];
-    });
-  };
-
-  const handleStart = async () => {
-    try {
-      // 1. เช็กว่า user login อยู่ไหม
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        Alert.alert('Error', 'กรุณา login ก่อน');
-        return;
-      }
-
-      // 2. บันทึก About Me ลง profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          bio: bio.trim(),
-        })
-        .eq('id', user.id);
-
-      if (profileError) {
-        console.error('Profile error:', profileError);
-        Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
-        return;
-      }
-
-      // 3. Upload รูปทีละรูป
-      for (let i = 0; i < images.length; i++) {
-        const imageUri = images[i];
-
-        // ช่องที่ไม่ได้ใส่รูป ข้ามไป
-        if (!imageUri) continue;
-
-        const position = i + 1;
-
-        // ดึงไฟล์จาก local URI
-        const response = await fetch(imageUri);
-        const arrayBuffer = await response.arrayBuffer();
-
-        // path ที่เก็บใน Storage
-        const storagePath = `${user.id}/${position}.jpg`;
-
-        // Upload เข้า Storage
-        const { error: uploadError } = await supabase.storage
-          .from('profile-photos')
-          .upload(storagePath, arrayBuffer, {
-            contentType: 'image/jpeg',
-            upsert: false,
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          Alert.alert(
-            'Error',
-            `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
-          );
-          return;
-        }
-
-        // 4. บันทึก path ลง profile_photos
-        const { error: photoError } = await supabase
-          .from('profile_photos')
-          .insert({
-            user_id: user.id,
-            storage_path: storagePath,
-            position: position,
-          });
-
-        if (photoError) {
-          console.error('Photo DB error:', photoError);
-          Alert.alert(
-            'Error',
-            `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
-          );
-          return;
-        }
-      }
-
-      await completeOnboarding();
-
-console.log('Onboarding completed successfully');
-
-router.push('/swipe');
-
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      Alert.alert('Error', 'เกิดข้อผิดพลาด');
+const togglePlace = (place: string) => {
+  setPlaces((current) => {
+    if (current.includes(place)) {
+      return current.filter((item) => item !== place);
     }
-  };
+
+    return [...current, place];
+  });
+};
+const handleStart = async () => {
+  console.log('START NOW PRESSED');
+  try {
+    // 1. เช็กว่า user login อยู่ไหม
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    console.log('1. getUser done');
+    console.log('NAME:', name);
+
+    if (userError || !user) {
+      Alert.alert('Error', 'กรุณา login ก่อน');
+      return;
+    }
+
+    // 2. บันทึกชื่อจาก Name screen ลง profiles
+    if (!name) {
+      Alert.alert('Error', 'ไม่พบชื่อผู้ใช้');
+      return;
+    }
+
+    await saveDisplayName(name);
+    console.log('2. display name saved');
+
+    // 3. บันทึก About Me ลง profiles
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        bio: bio.trim(),
+      })
+      .eq('id', user.id);
+
+      console.log('3. bio update done');
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
+      return;
+    }
+    
+    console.log('4. starting photo upload');
+
+    // 4. Upload รูปทีละรูป
+    for (let i = 0; i < images.length; i++) {
+      const imageUri = images[i];
+
+      // ช่องที่ไม่ได้ใส่รูป ข้ามไป
+      if (!imageUri) continue;
+
+      const position = i + 1;
+
+      // ดึงไฟล์จาก local URI
+      const response = await fetch(imageUri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // path ที่เก็บใน Storage
+      const storagePath = `${user.id}/${position}.jpg`;
+
+      // Upload เข้า Storage
+      const { error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(storagePath, arrayBuffer, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        Alert.alert(
+          'Error',
+          `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
+        );
+        return;
+      }
+
+      // 5. บันทึก path ลง profile_photos
+      const { error: photoError } = await supabase
+        .from('profile_photos')
+        .insert({
+          user_id: user.id,
+          storage_path: storagePath,
+          position: position,
+        });
+
+      if (photoError) {
+        console.error('Photo DB error:', photoError);
+        Alert.alert(
+          'Error',
+          `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
+        );
+        return;
+      }
+      console.log('5. photos done');
+    }
+
+    // 6. จบ onboarding
+    await completeOnboarding();
+
+    console.log('Onboarding completed successfully');
+
+    router.push('/swipe');
+    console.log('7. navigating to swipe');
+    } catch (error) {
+    console.error('Unexpected error:', error);
+    Alert.alert('Error', 'เกิดข้อผิดพลาด');
+  }
+};
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -808,8 +833,7 @@ router.push('/swipe');
         </Pressable>
       </Modal>
     </SafeAreaView>
-  );
-}
+  );}
 
 function PhotoBox({
   image,

@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import {
   getMyFaculty,
@@ -25,6 +25,10 @@ import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBo
 export default function StudyScreen() {
   const { width, height } = useWindowDimensions();
   const shortSide = Math.min(width, height);
+  const { name } = useLocalSearchParams<{
+    name?: string;
+  }>();
+  console.log('STUDY NAME:', name);
 
   const [faculty, setFaculty] = useState('Loading...');
   const [generations, setGenerations] = useState<number[]>([]);
@@ -154,6 +158,10 @@ export default function StudyScreen() {
           : 'Unable to save your TU generation.'
       );
     }
+    router.push({
+      pathname: '/gender',
+      params: { name },
+    });
   };
 
   /*

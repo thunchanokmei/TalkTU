@@ -126,6 +126,8 @@ const [heightModal, setHeightModal] = useState(false);
 const [showMatchModal, setShowMatchModal] = useState(false);
 const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
+const [hasMore, setHasMore] = useState(true);
+
   const openCandidateProfile = () => {
     if (!currentCandidate) {
       return;
@@ -170,6 +172,10 @@ const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null)
 
         const newCandidates = (data ?? []) as Candidate[];
 
+if (newCandidates.length === 0 && append) {
+  setHasMore(false);
+}
+
         if (append) {
           setCandidates((previous) => [
             ...previous,
@@ -206,7 +212,8 @@ const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null)
     if (
       remaining <= 3 &&
       candidates.length > 0 &&
-      !loadingMore
+      !loadingMore &&
+      hasMore
     ) {
       fetchCandidates(mode, candidates.length, true);
     }

@@ -8,7 +8,8 @@ import {
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router,
+    useLocalSearchParams, } from 'expo-router';
 
 import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
 import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
@@ -61,6 +62,9 @@ export default function InterestedInScreen() {
       24,
       width * 0.1
     );
+    const { name } = useLocalSearchParams<{
+            name?: string;
+        }>();
 
   const titleSize =
     Math.max(
@@ -153,16 +157,19 @@ export default function InterestedInScreen() {
       }
 
       try {
-        await saveDatingPreferences(
-          selected
-        );
+        await saveDatingPreferences(selected);
 
-        console.log(
-          'Preferences saved:',
-          selected
-        );
+console.log(
+  'Preferences saved:',
+  selected
+);
 
-        router.push('/bio1');
+router.push({
+  pathname: '/bio1',
+  params: { name },
+});
+
+
       } catch (error) {
         console.error(
           'Save preferences error:',

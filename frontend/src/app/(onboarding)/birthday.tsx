@@ -205,6 +205,7 @@ export default function BirthdayScreen() {
     useLocalSearchParams<{
       name?: string;
     }>();
+    console.log('BIRTHDAY NAME:', name);
 
   const [fontsLoaded] = useFonts({
     GoogleSans:
@@ -578,8 +579,12 @@ export default function BirthdayScreen() {
         await saveBirthDate(birthDate);
 
         console.log('Birthday saved:', birthDate);
+        console.log('GOING TO STUDY WITH NAME:', name);
 
-        router.push('/study');
+        router.push({
+  pathname: '/study',
+  params: { name },
+});
       } catch (error) {
         console.error('Save birthday error:', error);
 

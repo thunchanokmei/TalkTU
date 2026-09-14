@@ -354,14 +354,25 @@ export default function Bio1Screen() {
       return [...current, place];
     });
   };
-  const handleStart = async () => {
-    if (saving) {
-      return;
-    }
+const handleStart = async () => {
+  if (saving) {
+    return;
+  }
 
-    try {
-      setSaving(true);
-      setErrorMessage('');
+  const hasSelectedPhoto = images.some(
+    (image) => image !== null
+  );
+
+  if (!hasSelectedPhoto) {
+    setErrorMessage(
+      'Please add at least one photo.'
+    );
+    return;
+  }
+
+  try {
+    setSaving(true);
+    setErrorMessage('');
 
       const {
         data: { user },

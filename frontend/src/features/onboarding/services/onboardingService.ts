@@ -430,8 +430,77 @@ export async function getOnboardingStatus() {
 }
 
 export async function completeOnboarding() {
-  const userId =
-    await getCurrentUserId();
+  const userId = await getCurrentUserId();
+
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
+    .from('profiles')
+    .select(
+      'display_name, tu_generation'
+    )
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  const {
+    data: privateData,
+    error: privateError,
+  } = await supabase
+    .from('user_private')
+    .select('birth_date')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (privateError) {
+    throw privateError;
+  }
+
+  const {
+    count: photoCount,
+    error: photoError,
+  } = await supabase
+    .from('profile_photos')
+    .select('id', {
+      count: 'exact',
+      head: true,
+    })
+    .eq('user_id', userId);
+
+  if (photoError) {
+    throw photoError;
+  }
+
+  const hasDisplayName =
+    Boolean(
+      profile?.display_name?.trim()
+    );
+
+  const hasBirthDate =
+    Boolean(
+      privateData?.birth_date
+    );
+
+  const hasTuGeneration =
+    profile?.tu_generation != null;
+
+  const hasPhoto =
+    (photoCount ?? 0) >= 1;
+
+  if (
+    !hasDisplayName ||
+    !hasBirthDate ||
+    !hasTuGeneration ||
+    !hasPhoto
+  ) {
+    throw new Error(
+      'Please complete your name, birthday, TU generation, and add at least one photo.'
+    );
+  }
 
   const { error } =
     await supabase

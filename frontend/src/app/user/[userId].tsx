@@ -35,6 +35,12 @@ type CandidateInterest = {
   name: string;
 };
 
+type GenderIdentity =
+  | 'man'
+  | 'woman'
+  | 'non_binary'
+  | 'prefer_not_to_say';
+
 type CandidateLocation = {
   id: string | number;
   name: string;
@@ -47,6 +53,7 @@ type Candidate = {
   tu_generation: number;
   bio: string | null;
   height_cm: number | null;
+  gender_identity: GenderIdentity | null;
   faculty: string;
   department: string | null;
   photos: CandidatePhoto[];
@@ -54,6 +61,24 @@ type Candidate = {
 
   locations?: CandidateLocation[];
 };
+
+function getGenderIdentityLabel(
+  value: GenderIdentity
+) {
+  switch (value) {
+    case 'man':
+      return 'Man';
+
+    case 'woman':
+      return 'Woman';
+
+    case 'non_binary':
+      return 'Non-binary';
+
+    case 'prefer_not_to_say':
+      return 'Prefer not to say';
+  }
+}
 
 export default function UserProfileScreen() {
   const router = useRouter();
@@ -375,6 +400,15 @@ export default function UserProfileScreen() {
             <InfoRow
               icon="resize-outline"
               text={`${profile.height_cm} cm`}
+            />
+          ) : null}
+
+          {profile.gender_identity ? (
+            <InfoRow
+              icon="male-female-outline"
+              text={getGenderIdentityLabel(
+                profile.gender_identity
+              )}
             />
           ) : null}
 

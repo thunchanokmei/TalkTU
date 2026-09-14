@@ -44,13 +44,28 @@ type Candidate = {
   tu_generation: number;
   bio: string | null;
   height_cm: number | null;
+  gender_identity:
+  | GenderIdentity
+  | null;
   faculty: string;
   department: string | null;
   photos: CandidatePhoto[];
   interests: CandidateInterest[];
+  locations: CandidateLocation[];
 };
 
 type SwipeAction = 'like' | 'pass';
+
+type GenderIdentity =
+  | 'man'
+  | 'woman'
+  | 'non_binary'
+  | 'prefer_not_to_say';
+
+type CandidateLocation = {
+  id: number;
+  name: string;
+};
 
 export default function SwipeScreen() {
   const router = useRouter();

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   completeOnboarding,
-  saveDisplayName,
 } from '@/features/onboarding/services/onboardingService';
 
 import {
@@ -23,11 +22,15 @@ import {
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import WheelPicker from '../components/WheelPicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
+import {
+  ImageManipulator,
+  SaveFormat,
+} from 'expo-image-manipulator';
 
 type PhotoBoxProps = {
   image: string | null;
@@ -36,23 +39,32 @@ type PhotoBoxProps = {
   style?: object;
 };
 
+const GENDER_IDENTITY_MAP = {
+  Man: 'man',
+  Woman: 'woman',
+  'Non-binary': 'non_binary',
+  'Prefer not to say': 'prefer_not_to_say',
+} as const;
+
+type GenderIdentityLabel =
+  keyof typeof GENDER_IDENTITY_MAP;
+
 export default function Bio1Screen() {
   const router = useRouter();
   const { width, height: screenHeight } = useWindowDimensions();
 
-  const [displayName, setDisplayName] = useState('xx');
-
-  const { name } = useLocalSearchParams<{
-    name?: string;
-  }>();
+  const [displayName, setDisplayName] = useState('');
 
   const [images, setImages] = useState<(string | null)[]>(
     [null, null, null, null, null, null]
   );
 
   const [bio, setBio] = useState('');
-  const [genderIdentity, setGenderIdentity] = useState('');
-  const [height, setHeight] = useState('');
+  const [
+    genderIdentity,
+    setGenderIdentity,
+  ] = useState<GenderIdentityLabel | ''>('');
+  const [heightCm, setHeightCm] = useState(170);
   const [places, setPlaces] = useState<string[]>([]);
 
   const [genderModal, setGenderModal] = useState(false);
@@ -77,7 +89,7 @@ export default function Bio1Screen() {
     Math.min(screenHeight * 0.15, 150)
   );
 
-  const genderOptions = [
+  const genderOptions: GenderIdentityLabel[] = [
     'Man',
     'Woman',
     'Non-binary',
@@ -85,8 +97,8 @@ export default function Bio1Screen() {
   ];
 
   const heightOptions = Array.from(
-    { length: 61 },
-    (_, index) => `${140 + index} cm`
+    { length: 251 },
+    (_, index) => String(index)
   );
 
   const placeOptions = [
@@ -105,37 +117,176 @@ export default function Bio1Screen() {
   ];
 
   useEffect(() => {
-    const loadDisplayName = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+    const loadExistingProfile =
+      async () => {
+        try {
+          const {
+            data: { user },
+            error: userError,
+          } =
+            await supabase.auth
+              .getUser();
 
-        if (!user) return;
+          if (userError) {
+            throw userError;
+          }
 
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .maybeSingle();
+          if (!user) {
+            return;
+          }
 
-        if (error) {
-          throw error;
+          const {
+            data: profile,
+            error: profileError,
+          } =
+            await supabase
+              .from('profiles')
+              .select(
+                'display_name, bio, height_cm, gender_identity'
+              )
+              .eq('id', user.id)
+              .maybeSingle();
+
+          if (profileError) {
+            throw profileError;
+          }
+
+          setDisplayName(
+            profile?.display_name ??
+              ''
+          );
+
+          setBio(
+            profile?.bio ??
+              ''
+          );
+
+          if (
+            typeof profile?.height_cm ===
+            'number'
+          ) {
+            setHeightCm(
+              profile.height_cm
+            );
+          }
+
+          const identity =
+            profile?.gender_identity;
+
+          if (
+            identity === 'man'
+          ) {
+            setGenderIdentity(
+              'Man'
+            );
+          } else if (
+            identity === 'woman'
+          ) {
+            setGenderIdentity(
+              'Woman'
+            );
+          } else if (
+            identity ===
+            'non_binary'
+          ) {
+            setGenderIdentity(
+              'Non-binary'
+            );
+          } else if (
+            identity ===
+            'prefer_not_to_say'
+          ) {
+            setGenderIdentity(
+              'Prefer not to say'
+            );
+          }
+
+          /*
+           * Reload saved campus locations.
+           * This makes Back -> forward preserve
+           * the actual database value.
+           */
+          const {
+            data:
+              userLocationRows,
+            error:
+              userLocationsError,
+          } =
+            await supabase
+              .from(
+                'user_locations'
+              )
+              .select(
+                'location_id'
+              )
+              .eq(
+                'user_id',
+                user.id
+              );
+
+          if (
+            userLocationsError
+          ) {
+            throw userLocationsError;
+          }
+
+          const locationIds =
+            (
+              userLocationRows ??
+              []
+            ).map(
+              (row) =>
+                row.location_id
+            );
+
+          if (
+            locationIds.length > 0
+          ) {
+            const {
+              data:
+                locationRows,
+              error:
+                locationError,
+            } =
+              await supabase
+                .from(
+                  'campus_locations'
+                )
+                .select(
+                  'id, name'
+                )
+                .in(
+                  'id',
+                  locationIds
+                );
+
+            if (locationError) {
+              throw locationError;
+            }
+
+            setPlaces(
+              (
+                locationRows ??
+                []
+              ).map(
+                (row) =>
+                  row.name
+              )
+            );
+          } else {
+            setPlaces([]);
+          }
+        } catch (error) {
+          console.error(
+            'Load existing Bio profile error:',
+            error
+          );
         }
+      };
 
-        if (data?.display_name) {
-          setDisplayName(data.display_name);
-        }
-      } catch (error) {
-        console.error(
-          'Load display name error:',
-          error
-        );
-      }
-    };
-
-    loadDisplayName();
+    loadExistingProfile();
   }, []);
+
 
   const pickImage = async (index: number) => {
     try {
@@ -204,139 +355,299 @@ export default function Bio1Screen() {
     });
   };
   const handleStart = async () => {
-    console.log('START NOW PRESSED');
+    if (saving) {
+      return;
+    }
+
     try {
-      // 1. เช็กว่า user login อยู่ไหม
+      setSaving(true);
+      setErrorMessage('');
+
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      console.log('1. getUser done');
-      console.log('NAME:', name);
-
-      if (userError || !user) {
-        Alert.alert('Error', 'กรุณา login ก่อน');
-        return;
+      if (userError) {
+        throw userError;
       }
 
-      // 2. บันทึกชื่อจาก Name screen ลง profiles
-      if (!name) {
-        Alert.alert('Error', 'ไม่พบชื่อผู้ใช้');
-        return;
+      if (!user) {
+        throw new Error(
+          'User is not authenticated.'
+        );
       }
 
-      await saveDisplayName(name);
-      console.log('2. display name saved');
+      const genderValue =
+        genderIdentity
+          ? GENDER_IDENTITY_MAP[
+              genderIdentity
+            ]
+          : null;
 
-      // 3. บันทึก About Me ลง profiles
-      const { error: profileError } = await supabase
+      // ------------------------------------------------------
+      // 1. Save Bio / Height / Gender identity
+      // Height 0 is treated as "not specified".
+      // ------------------------------------------------------
+      const {
+        error: profileError,
+      } = await supabase
         .from('profiles')
         .update({
           bio: bio.trim(),
+          height_cm:
+            heightCm,
+          gender_identity:
+            genderValue,
         })
         .eq('id', user.id);
 
-      console.log('3. bio update done');
-
       if (profileError) {
-        console.error('Profile error:', profileError);
-        Alert.alert('Error', 'บันทึก About Me ไม่สำเร็จ');
-        return;
+        throw profileError;
       }
 
-      console.log('4. starting photo upload');
+      // ------------------------------------------------------
+      // 2. Replace campus locations
+      // ------------------------------------------------------
+      const {
+        error:
+          deleteLocationsError,
+      } = await supabase
+        .from('user_locations')
+        .delete()
+        .eq('user_id', user.id);
 
-      // 4. Upload รูปทีละรูป
-      for (let i = 0; i < images.length; i++) {
-        const imageUri = images[i];
+      if (deleteLocationsError) {
+        throw deleteLocationsError;
+      }
 
-        // ช่องที่ไม่ได้ใส่รูป ข้ามไป
-        if (!imageUri) continue;
+      if (places.length > 0) {
+        const {
+          data: locationRows,
+          error:
+            locationsQueryError,
+        } = await supabase
+          .from('campus_locations')
+          .select('id, name')
+          .in('name', places);
+
+        if (locationsQueryError) {
+          throw locationsQueryError;
+        }
+
+        if (
+          locationRows &&
+          locationRows.length > 0
+        ) {
+          const {
+            error:
+              insertLocationsError,
+          } = await supabase
+            .from('user_locations')
+            .insert(
+              locationRows.map(
+                (location) => ({
+                  user_id:
+                    user.id,
+
+                  location_id:
+                    location.id,
+                })
+              )
+            );
+
+          if (
+            insertLocationsError
+          ) {
+            throw insertLocationsError;
+          }
+        }
+      }
+
+      // ------------------------------------------------------
+      // 3. Upload selected photos
+      // ------------------------------------------------------
+      for (
+        let i = 0;
+        i < images.length;
+        i++
+      ) {
+        const imageUri =
+          images[i];
+
+        if (!imageUri) {
+          continue;
+        }
 
         const position = i + 1;
 
-        // compress รูปก่อน upload
+        let arrayBuffer:
+          ArrayBuffer;
 
-        const originalResponse = await fetch(imageUri);
-        const originalBuffer = await originalResponse.arrayBuffer();
+        let contentType =
+          'image/jpeg';
 
-        console.log(
-          'Original image size:',
-          (originalBuffer.byteLength / 1024).toFixed(2),
-          'KB'
-        );
+        let extension =
+          'jpg';
 
-        // Resize + compress
-        const compressedImage = await ImageManipulator.manipulateAsync(
-          imageUri,
-          [{ resize: { width: 1200 } }],
-          {
-            compress: 0.75,
-            format: ImageManipulator.SaveFormat.JPEG,
+        /*
+         * expo-image-manipulator currently crashes
+         * on Web for some browser blob images with:
+         * "source height is zero or not a number".
+         *
+         * On Web we upload the ImagePicker file
+         * directly. On iOS/Android we still resize
+         * and compress before upload.
+         */
+        if (
+          Platform.OS === 'web'
+        ) {
+          const response =
+            await fetch(
+              imageUri
+            );
+
+          const blob =
+            await response.blob();
+
+          contentType =
+            blob.type ||
+            'image/jpeg';
+
+          if (
+            contentType.includes(
+              'png'
+            )
+          ) {
+            extension =
+              'png';
+          } else if (
+            contentType.includes(
+              'webp'
+            )
+          ) {
+            extension =
+              'webp';
+          } else {
+            extension =
+              'jpg';
           }
-        );
 
-        // ดึงไฟล์ที่บีบอัดแล้ว
-        const response = await fetch(compressedImage.uri);
-        const arrayBuffer = await response.arrayBuffer();
+          arrayBuffer =
+            await blob.arrayBuffer();
+        } else {
+          const imageContext =
+            ImageManipulator
+              .manipulate(
+                imageUri
+              );
 
-        console.log(
-          'Compressed image size:',
-          (arrayBuffer.byteLength / 1024).toFixed(2),
-          'KB'
-        );
-
-        // path ที่เก็บใน Storage
-        const storagePath = `${user.id}/${position}.jpg`;
-
-        // Upload เข้า Storage
-        const { error: uploadError } = await supabase.storage
-          .from('profile-photos')
-          .upload(storagePath, arrayBuffer, {
-            contentType: 'image/jpeg',
-            upsert: false,
+          /*
+           * Do not pass height: null.
+           * Let the manipulator preserve
+           * the original aspect ratio.
+           */
+          imageContext.resize({
+            width: 1200,
           });
+
+          const renderedImage =
+            await imageContext
+              .renderAsync();
+
+          const compressedImage =
+            await renderedImage
+              .saveAsync({
+                compress: 0.75,
+                format:
+                  SaveFormat.JPEG,
+              });
+
+          const response =
+            await fetch(
+              compressedImage.uri
+            );
+
+          arrayBuffer =
+            await response
+              .arrayBuffer();
+
+          contentType =
+            'image/jpeg';
+
+          extension =
+            'jpg';
+        }
+
+        const storagePath =
+          `${user.id}/${position}.${extension}`;
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from('profile-photos')
+          .upload(
+            storagePath,
+            arrayBuffer,
+            {
+              contentType,
+
+              // Allows the user to edit/re-run
+              // onboarding without duplicate-file errors.
+              upsert: true,
+            }
+          );
 
         if (uploadError) {
-          console.error('Upload error:', uploadError);
-          Alert.alert(
-            'Error',
-            `อัปโหลดรูปที่ ${position} ไม่สำเร็จ`
-          );
-          return;
+          throw uploadError;
         }
 
-        // 5. บันทึก path ลง profile_photos
-        const { error: photoError } = await supabase
+        const {
+          error: photoError,
+        } = await supabase
           .from('profile_photos')
-          .insert({
-            user_id: user.id,
-            storage_path: storagePath,
-            position: position,
-          });
+          .upsert(
+            {
+              user_id: user.id,
+              storage_path:
+                storagePath,
+              position,
+            },
+            {
+              onConflict:
+                'user_id,position',
+            }
+          );
 
         if (photoError) {
-          console.error('Photo DB error:', photoError);
-          Alert.alert(
-            'Error',
-            `บันทึกข้อมูลรูปที่ ${position} ไม่สำเร็จ`
-          );
-          return;
+          throw photoError;
         }
-        console.log('5. photos done');
       }
 
-      // 6. จบ onboarding
+      // ------------------------------------------------------
+      // 4. Complete onboarding
+      // ------------------------------------------------------
       await completeOnboarding();
 
-      console.log('Onboarding completed successfully');
-
-      router.push('/swipe');
-      console.log('7. navigating to swipe');
+      router.replace('/swipe');
     } catch (error) {
-      console.error('Unexpected error:', error);
-      Alert.alert('Error', 'เกิดข้อผิดพลาด');
+      console.error(
+        'Complete bio setup error:',
+        error
+      );
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to save your profile.'
+      );
+
+      Alert.alert(
+        'Error',
+        'บันทึกโปรไฟล์ไม่สำเร็จ กรุณาลองอีกครั้ง'
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -401,7 +712,7 @@ export default function Bio1Screen() {
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text style={styles.title}>
-              Oh you’re {displayName}{'\n'}
+              Oh you’re {displayName || '...'}{'\n'}
               Let them know{'\n'}
               Who u are
             </Text>
@@ -597,21 +908,11 @@ export default function Bio1Screen() {
                 setHeightModal(true)
               }
             >
-              <Text
-                style={[
-                  styles.dropdownText,
-                  !height &&
-                  styles.placeholderText,
-                ]}
-              >
-                {height || 'Select'}
+              <Text style={styles.dropdownText}>
+                {heightCm} cm
               </Text>
 
-              <View
-                style={
-                  styles.dropdownIcon
-                }
-              >
+              <View style={styles.dropdownIcon}>
                 <Ionicons
                   name="chevron-down"
                   size={17}
@@ -623,7 +924,7 @@ export default function Bio1Screen() {
             <Text
               style={styles.placesTitle}
             >
-              You’ll usually find me at..
+              You'll usually find me at..
             </Text>
 
             <View
@@ -805,7 +1106,7 @@ export default function Bio1Screen() {
         >
           <Pressable
             style={
-              styles.heightModalBox
+              styles.heightWheelModalBox
             }
             onPress={(event) =>
               event.stopPropagation()
@@ -817,46 +1118,38 @@ export default function Bio1Screen() {
               Height
             </Text>
 
-            <ScrollView
-              style={styles.heightList}
-              showsVerticalScrollIndicator={
-                false
+            <WheelPicker
+              items={heightOptions}
+              value={String(
+                heightCm
+              )}
+              itemHeight={44}
+              onValueChange={(
+                value
+              ) => {
+                setHeightCm(
+                  Number(value)
+                );
+              }}
+            />
+
+            <TouchableOpacity
+              style={
+                styles.heightDoneButton
+              }
+              activeOpacity={0.8}
+              onPress={() =>
+                setHeightModal(false)
               }
             >
-              {heightOptions.map(
-                (option) => (
-                  <TouchableOpacity
-                    key={option}
-                    style={
-                      styles.modalOption
-                    }
-                    onPress={() => {
-                      setHeight(option);
-                      setHeightModal(
-                        false
-                      );
-                    }}
-                  >
-                    <Text
-                      style={
-                        styles.modalOptionText
-                      }
-                    >
-                      {option}
-                    </Text>
-
-                    {height ===
-                      option && (
-                        <Ionicons
-                          name="checkmark"
-                          size={20}
-                          color="#FF7B82"
-                        />
-                      )}
-                  </TouchableOpacity>
-                )
-              )}
-            </ScrollView>
+              <Text
+                style={
+                  styles.heightDoneText
+                }
+              >
+                Done
+              </Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1276,18 +1569,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  heightModalBox: {
-    width: '100%',
-    maxWidth: 350,
-    height: 420,
-
-    borderRadius: 18,
-
-    padding: 18,
-
-    backgroundColor: '#FFFFFF',
-  },
-
   modalTitle: {
     marginBottom: 8,
 
@@ -1297,8 +1578,47 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
 
-  heightList: {
-    flex: 1,
+  heightWheelModalBox: {
+    width: '100%',
+    maxWidth: 350,
+
+    borderRadius: 18,
+
+    padding: 18,
+
+    backgroundColor: '#FFFFFF',
+  },
+
+
+
+
+
+
+
+
+
+
+
+
+
+  heightDoneButton: {
+    alignSelf: 'flex-end',
+
+    marginTop: 12,
+
+    borderRadius: 999,
+
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+
+    backgroundColor: '#FFE0A1',
+  },
+
+  heightDoneText: {
+    fontSize: 13,
+    fontWeight: '600',
+
+    color: '#111111',
   },
 
   modalOption: {

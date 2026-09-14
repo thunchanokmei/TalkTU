@@ -59,6 +59,16 @@ export default function Bio1Screen() {
     [null, null, null, null, null, null]
   );
 
+  const [imageStoragePaths, setImageStoragePaths] =
+    useState<(string | null)[]>([
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+
   const [bio, setBio] = useState('');
   const [
     genderIdentity,
@@ -153,13 +163,71 @@ export default function Bio1Screen() {
 
           setDisplayName(
             profile?.display_name ??
-              ''
+            ''
           );
 
           setBio(
             profile?.bio ??
-              ''
+            ''
           );
+
+          // โหลดรูปเดิมจาก profile_photos
+          const {
+            data: photoRows,
+            error: photoRowsError,
+          } = await supabase
+            .from('profile_photos')
+            .select('storage_path, position')
+            .eq('user_id', user.id)
+            .order('position', {
+              ascending: true,
+            });
+
+          if (photoRowsError) {
+            throw photoRowsError;
+          }
+
+          const loadedImages: (string | null)[] = [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+          ];
+
+          const loadedStoragePaths: (string | null)[] = [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+          ];
+
+          for (const photo of photoRows ?? []) {
+            const index = photo.position - 1;
+
+            if (
+              index < 0 ||
+              index >= loadedImages.length
+            ) {
+              continue;
+            }
+
+            const publicUrl = supabase.storage
+              .from('profile-photos')
+              .getPublicUrl(
+                photo.storage_path
+              )
+              .data.publicUrl;
+
+            loadedImages[index] = publicUrl;
+            loadedStoragePaths[index] = photo.storage_path;
+          }
+
+          setImages(loadedImages);
+          setImageStoragePaths(loadedStoragePaths);
 
           if (
             typeof profile?.height_cm ===
@@ -208,9 +276,9 @@ export default function Bio1Screen() {
            */
           const {
             data:
-              userLocationRows,
+            userLocationRows,
             error:
-              userLocationsError,
+            userLocationsError,
           } =
             await supabase
               .from(
@@ -244,9 +312,9 @@ export default function Bio1Screen() {
           ) {
             const {
               data:
-                locationRows,
+              locationRows,
               error:
-                locationError,
+              locationError,
             } =
               await supabase
                 .from(
@@ -324,6 +392,7 @@ export default function Bio1Screen() {
         updated[index] = selectedImage;
         return updated;
       });
+
     } catch (error) {
       console.error(
         'Image picker error:',
@@ -337,12 +406,67 @@ export default function Bio1Screen() {
     }
   };
 
-  const removeImage = (index: number) => {
-    setImages((current) => {
-      const updated = [...current];
-      updated[index] = null;
-      return updated;
-    });
+  const removeImage = async (index: number) => {
+    const storagePath = imageStoragePaths[index];
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        throw userError;
+      }
+
+      if (!user) {
+        throw new Error('User is not authenticated.');
+      }
+
+      if (storagePath) {
+        const { error: storageError } =
+          await supabase.storage
+            .from('profile-photos')
+            .remove([storagePath]);
+
+        if (storageError) {
+          throw storageError;
+        }
+
+        const { error: photoRowError } =
+          await supabase
+            .from('profile_photos')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('position', index + 1);
+
+        if (photoRowError) {
+          throw photoRowError;
+        }
+      }
+
+      setImages((current) => {
+        const updated = [...current];
+        updated[index] = null;
+        return updated;
+      });
+
+      setImageStoragePaths((current) => {
+        const updated = [...current];
+        updated[index] = null;
+        return updated;
+      });
+
+      setErrorMessage('');
+    } catch (error) {
+      console.error('Remove photo error:', error);
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to remove this photo.'
+      );
+    }
   };
 
   const togglePlace = (place: string) => {
@@ -354,25 +478,25 @@ export default function Bio1Screen() {
       return [...current, place];
     });
   };
-const handleStart = async () => {
-  if (saving) {
-    return;
-  }
+  const handleStart = async () => {
+    if (saving) {
+      return;
+    }
 
-  const hasSelectedPhoto = images.some(
-    (image) => image !== null
-  );
-
-  if (!hasSelectedPhoto) {
-    setErrorMessage(
-      'Please add at least one photo.'
+    const hasSelectedPhoto = images.some(
+      (image) => image !== null
     );
-    return;
-  }
 
-  try {
-    setSaving(true);
-    setErrorMessage('');
+    if (!hasSelectedPhoto) {
+      setErrorMessage(
+        'Please add at least one photo.'
+      );
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setErrorMessage('');
 
       const {
         data: { user },
@@ -392,8 +516,8 @@ const handleStart = async () => {
       const genderValue =
         genderIdentity
           ? GENDER_IDENTITY_MAP[
-              genderIdentity
-            ]
+          genderIdentity
+          ]
           : null;
 
       // ------------------------------------------------------
@@ -422,7 +546,7 @@ const handleStart = async () => {
       // ------------------------------------------------------
       const {
         error:
-          deleteLocationsError,
+        deleteLocationsError,
       } = await supabase
         .from('user_locations')
         .delete()
@@ -436,7 +560,7 @@ const handleStart = async () => {
         const {
           data: locationRows,
           error:
-            locationsQueryError,
+          locationsQueryError,
         } = await supabase
           .from('campus_locations')
           .select('id, name')
@@ -452,7 +576,7 @@ const handleStart = async () => {
         ) {
           const {
             error:
-              insertLocationsError,
+            insertLocationsError,
           } = await supabase
             .from('user_locations')
             .insert(
@@ -483,14 +607,26 @@ const handleStart = async () => {
         i < images.length;
         i++
       ) {
-        const imageUri =
-          images[i];
+
+        const imageUri = images[i];
 
         if (!imageUri) {
           continue;
         }
 
+        const isExistingPhoto =
+          imageStoragePaths[i] !== null &&
+          (
+            imageUri.startsWith('http://') ||
+            imageUri.startsWith('https://')
+          );
+
+        if (isExistingPhoto) {
+          continue;
+        }
+
         const position = i + 1;
+
 
         let arrayBuffer:
           ArrayBuffer;
@@ -590,8 +726,11 @@ const handleStart = async () => {
             'jpg';
         }
 
+        const oldStoragePath =
+          imageStoragePaths[i];
+
         const storagePath =
-          `${user.id}/${position}.${extension}`;
+          `${user.id}/${position}-${Date.now()}.${extension}`;
 
         const {
           error: uploadError,
@@ -602,10 +741,7 @@ const handleStart = async () => {
             arrayBuffer,
             {
               contentType,
-
-              // Allows the user to edit/re-run
-              // onboarding without duplicate-file errors.
-              upsert: true,
+              upsert: false,
             }
           );
 
@@ -633,6 +769,30 @@ const handleStart = async () => {
         if (photoError) {
           throw photoError;
         }
+
+        if (
+          oldStoragePath &&
+          oldStoragePath !== storagePath
+        ) {
+          const { error: removeOldError } =
+            await supabase.storage
+              .from('profile-photos')
+              .remove([oldStoragePath]);
+
+          if (removeOldError) {
+            console.warn(
+              'Unable to remove old profile photo:',
+              removeOldError
+            );
+          }
+        }
+
+        setImageStoragePaths((current) => {
+          const updated = [...current];
+          updated[i] = storagePath;
+          return updated;
+        });
+
       }
 
       // ------------------------------------------------------

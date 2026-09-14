@@ -119,12 +119,6 @@ export default function WheelPicker({
      * เช่น 31 -> 28 ตอนเปลี่ยนเดือน
      */
     useEffect(() => {
-        if (
-            isInteractingRef.current
-        ) {
-            return;
-        }
-
         currentIndexRef.current =
             selectedIndex;
 

@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   Pressable,
@@ -8,101 +11,69 @@ import {
   View,
 } from 'react-native';
 
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import {
+  LinearGradient,
+} from 'expo-linear-gradient';
 
-import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
-import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
-import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
-import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
+import {
+  router,
+} from 'expo-router';
 
-import { saveSexAtBirth } from '../../features/onboarding/services/onboardingService';
-
-type Gender = 'male' | 'female';
+import {
+  getSexAtBirth,
+  saveSexAtBirth,
+  type SexAtBirth,
+} from '../../features/onboarding/services/onboardingService';
 
 export default function GenderScreen() {
-  const { width, height } = useWindowDimensions();
-  const { name } = useLocalSearchParams<{
-    name?: string;
-  }>();
+  const {
+    width,
+    height,
+  } =
+    useWindowDimensions();
 
-  const shortSide = Math.min(width, height);
+  const [
+    gender,
+    setGender,
+  ] =
+    useState<
+      SexAtBirth | null
+    >(null);
 
-  const [gender, setGender] =
-    useState<Gender | null>(null);
-
-  const [errorMessage, setErrorMessage] =
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
     useState('');
 
-  /*
-   * ============================
-   * FONT
-   * ============================
-   */
+  useEffect(() => {
+    const loadGender =
+      async () => {
+        try {
+          const value =
+            await getSexAtBirth();
 
-  const [fontsLoaded] = useFonts({
-    GoogleSans:
-      GoogleSans_400Regular,
+          if (value) {
+            setGender(
+              value
+            );
+          }
+        } catch (error) {
+          console.error(
+            'Load gender error:',
+            error
+          );
+        }
+      };
 
-    GoogleSansMedium:
-      GoogleSans_500Medium,
-
-    GoogleSansSemiBold:
-      GoogleSans_600SemiBold,
-  });
-
-  /*
-   * ============================
-   * RESPONSIVE SIZE
-   * ============================
-   */
-
-  const horizontalPadding =
-    Math.max(
-      24,
-      width * 0.1
-    );
-
-  const titleSize =
-    Math.max(
-      20,
-      Math.min(
-        shortSide * 0.055,
-        30
-      )
-    );
-
-  const backButtonWidth =
-    Math.max(
-      42,
-      Math.min(
-        shortSide * 0.12,
-        64
-      )
-    );
-
-  const backButtonHeight =
-    Math.max(
-      28,
-      Math.min(
-        shortSide * 0.072,
-        38
-      )
-    );
-
-  /*
-   * ============================
-   * CONTINUE
-   * ============================
-   */
+    loadGender();
+  }, []);
 
   const handleContinue =
     async () => {
-      setErrorMessage('');
-
       if (!gender) {
         setErrorMessage(
-          'Please select your gender.'
+          'Please select one option.'
         );
         return;
       }
@@ -112,21 +83,10 @@ export default function GenderScreen() {
           gender
         );
 
-        console.log(
-          'sex_at_birth saved:',
-          gender
+        router.push(
+          '/mode'
         );
-
-        router.push({
-          pathname: '/mode',
-          params: { name },
-    });
       } catch (error) {
-        console.error(
-          'Save gender error:',
-          error
-        );
-
         setErrorMessage(
           error instanceof Error
             ? error.message
@@ -134,26 +94,6 @@ export default function GenderScreen() {
         );
       }
     };
-
-  /*
-   * ============================
-   * BACK
-   * ============================
-   */
-
-  const handleBack = () => {
-  router.replace('/study');
-};
-
-  /*
-   * ============================
-   * WAIT FOR FONT
-   * ============================
-   */
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   return (
     <LinearGradient
@@ -169,81 +109,53 @@ export default function GenderScreen() {
       ]}
       style={styles.screen}
     >
-      {/* =========================
-          BACK BUTTON
-          ========================= */}
-
       <Pressable
         style={[
           styles.backButton,
           {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
+            top:
+              Math.max(
+                20,
+                height * 0.04
+              ),
 
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
+            left:
+              Math.max(
+                20,
+                width * 0.07
+              ),
           },
         ]}
-        onPress={handleBack}
+        onPress={() =>
+          router.replace(
+            '/study'
+          )
+        }
       >
         <LinearGradient
           colors={[
             '#FFE98F',
             '#FFB873',
           ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
           style={
             styles.backGradient
           }
         >
-          <Text
-            style={[
-              styles.backText,
-              {
-                fontSize:
-                  Math.max(
-                    12,
-                    Math.min(
-                      shortSide *
-                        0.033,
-                      17
-                    )
-                  ),
-              },
-            ]}
-          >
+          <Text>
             {'<<'}
           </Text>
         </LinearGradient>
       </Pressable>
-
-      {/* =========================
-          CONTENT
-          ========================= */}
 
       <View
         style={[
           styles.content,
           {
             paddingHorizontal:
-              horizontalPadding,
+              Math.max(
+                24,
+                width * 0.1
+              ),
 
             paddingTop:
               Math.max(
@@ -253,30 +165,22 @@ export default function GenderScreen() {
           },
         ]}
       >
-        {/* =========================
-            TITLE
-            ========================= */}
-
         <Text
           style={[
             styles.title,
             {
               fontSize:
-                titleSize,
-
-              lineHeight:
-                titleSize * 1.15,
+                Math.max(
+                  21,
+                  width *
+                    0.055
+                ),
             },
           ]}
         >
-          What's your
-          {'\n'}
+          What's your{'\n'}
           Gender
         </Text>
-
-        {/* =========================
-            CHOICES
-            ========================= */}
 
         <ChoiceRow
           label="Men"
@@ -285,95 +189,51 @@ export default function GenderScreen() {
           }
           onPress={() => {
             setGender('male');
-            setErrorMessage('');
+            setErrorMessage(
+              ''
+            );
           }}
         />
 
         <ChoiceRow
           label="Women"
           selected={
-            gender === 'female'
+            gender ===
+            'female'
           }
           onPress={() => {
-            setGender('female');
-            setErrorMessage('');
+            setGender(
+              'female'
+            );
+            setErrorMessage(
+              ''
+            );
           }}
         />
 
-        {/* =========================
-            ERROR
-            ========================= */}
-
         {errorMessage ? (
           <Text
-            style={[
-              styles.errorText,
-              {
-                fontSize:
-                  Math.max(
-                    11,
-                    Math.min(
-                      shortSide *
-                        0.03,
-                      15
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.errorText
+            }
           >
             {errorMessage}
           </Text>
         ) : null}
 
-        {/* =========================
-            GO BUTTON
-            ========================= */}
-
         {gender ? (
           <Pressable
-            style={[
-              styles.goButton,
-              {
-                minWidth:
-                  Math.max(
-                    58,
-                    Math.min(
-                      shortSide *
-                        0.15,
-                      84
-                    )
-                  ),
-
-                height:
-                  Math.max(
-                    34,
-                    Math.min(
-                      height *
-                        0.045,
-                      44
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.goButton
+            }
             onPress={
               handleContinue
             }
           >
             <Text
-              style={[
-                styles.goText,
-                {
-                  fontSize:
-                    Math.max(
-                      15,
-                      Math.min(
-                        shortSide *
-                          0.04,
-                        20
-                      )
-                    ),
-                },
-              ]}
+              style={
+                styles.goText
+              }
             >
               go!
             </Text>
@@ -383,12 +243,6 @@ export default function GenderScreen() {
     </LinearGradient>
   );
 }
-
-/*
- * ======================================================
- * CHOICE ROW
- * ======================================================
- */
 
 function ChoiceRow({
   label,
@@ -427,256 +281,128 @@ function ChoiceRow({
   );
 }
 
-/*
- * ======================================================
- * STYLES
- * ======================================================
- */
-
-const styles = StyleSheet.create({
-  /*
-   * ============================
-   * SCREEN
-   * ============================
-   */
-
-  screen: {
-    flex: 1,
-    width: '100%',
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  /*
-   * ============================
-   * BACK BUTTON
-   * ============================
-   */
-
-  backButton: {
-    position: 'absolute',
-
-    zIndex: 20,
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
+const styles =
+  StyleSheet.create({
+    screen: {
+      flex: 1,
     },
 
-    shadowOpacity: 0.22,
-
-    shadowRadius: 4,
-
-    elevation: 5,
-  },
-
-  backGradient: {
-    flex: 1,
-
-    width: '100%',
-    height: '100%',
-
-    borderRadius: 999,
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-  },
-
-  backText: {
-    fontFamily:
-      'GoogleSansMedium',
-
-    color: '#222222',
-  },
-
-  /*
-   * ============================
-   * TITLE
-   * ============================
-   */
-
-  title: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
-    fontWeight: '600',
-
-    color: '#FFFFFF',
-
-    marginBottom: 20,
-
-    textShadowColor:
-      'rgba(75, 50, 45, 0.35)',
-
-    textShadowOffset: {
-      width: 1,
-      height: 2,
+    content: {
+      flex: 1,
     },
 
-    textShadowRadius: 2,
-  },
+    backButton: {
+      position: 'absolute',
 
-  /*
-   * ============================
-   * CHOICE
-   * ============================
-   */
+      zIndex: 20,
 
-  choice: {
-    width: '100%',
+      width: 50,
+      height: 32,
 
-    minHeight: 44,
-
-    backgroundColor:
-      '#FFFFFF',
-
-    borderRadius: 12,
-
-    paddingHorizontal: 16,
-
-    marginBottom: 10,
-
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    justifyContent:
-      'space-between',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 2,
+      borderRadius: 999,
+      overflow: 'hidden',
     },
 
-    shadowOpacity: 0.15,
+    backGradient: {
+      flex: 1,
 
-    shadowRadius: 3,
-
-    elevation: 3,
-  },
-
-  choiceSelected: {
-    backgroundColor:
-      '#FFF9E8',
-  },
-
-  choiceText: {
-    fontFamily:
-      'GoogleSans',
-
-    fontSize: 16,
-
-    color: '#333333',
-  },
-
-  /*
-   * ============================
-   * CIRCLE
-   * ============================
-   */
-
-  circle: {
-    width: 16,
-
-    height: 16,
-
-    borderRadius: 999,
-
-    backgroundColor:
-      '#F2D3C3',
-  },
-
-  circleSelected: {
-    backgroundColor:
-      '#F19068',
-  },
-
-  /*
-   * ============================
-   * ERROR
-   * ============================
-   */
-
-  errorText: {
-    fontFamily:
-      'GoogleSans',
-
-    color: '#C62828',
-
-    marginTop: 7,
-  },
-
-  /*
-   * ============================
-   * GO BUTTON
-   * ============================
-   */
-
-  goButton: {
-    alignSelf:
-      'flex-end',
-
-    paddingHorizontal: 14,
-
-    marginTop: 16,
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#FFF6AE',
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
+      alignItems: 'center',
+      justifyContent:
+        'center',
     },
 
-    shadowOpacity: 0.28,
+    title: {
+      marginBottom: 20,
 
-    shadowRadius: 5,
+      color: '#FFFFFF',
 
-    elevation: 6,
-  },
+      fontWeight: '600',
 
-  goText: {
-    fontFamily:
-      'GoogleSansSemiBold',
+      textShadowColor:
+        'rgba(75,50,45,0.35)',
 
-    fontWeight: '600',
+      textShadowOffset: {
+        width: 1,
+        height: 2,
+      },
 
-    color: '#111111',
-
-    textShadowColor:
-      'rgba(0, 0, 0, 0.15)',
-
-    textShadowOffset: {
-      width: 0,
-      height: 1,
+      textShadowRadius: 2,
     },
 
-    textShadowRadius: 1,
-  },
-});
+    choice: {
+      width: '100%',
+
+      minHeight: 44,
+
+      marginBottom: 10,
+
+      paddingHorizontal: 16,
+
+      borderRadius: 12,
+
+      flexDirection: 'row',
+
+      alignItems: 'center',
+      justifyContent:
+        'space-between',
+
+      backgroundColor:
+        '#FFFFFF',
+    },
+
+    choiceSelected: {
+      backgroundColor:
+        '#FFF9E8',
+    },
+
+    choiceText: {
+      fontSize: 16,
+
+      color: '#333333',
+    },
+
+    circle: {
+      width: 16,
+      height: 16,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#F2D3C3',
+    },
+
+    circleSelected: {
+      backgroundColor:
+        '#F19068',
+    },
+
+    errorText: {
+      marginTop: 7,
+
+      color: '#C62828',
+    },
+
+    goButton: {
+      alignSelf:
+        'flex-end',
+
+      marginTop: 16,
+
+      minHeight: 34,
+
+      paddingHorizontal: 18,
+
+      borderRadius: 12,
+
+      justifyContent:
+        'center',
+
+      backgroundColor:
+        '#FFF6AE',
+    },
+
+    goText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });

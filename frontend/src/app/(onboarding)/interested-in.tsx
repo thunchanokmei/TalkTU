@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
+
 import {
   Pressable,
   StyleSheet,
@@ -7,192 +11,99 @@ import {
   View,
 } from 'react-native';
 
-import { LinearGradient } from 'expo-linear-gradient';
-import { router,
-    useLocalSearchParams, } from 'expo-router';
+import {
+  LinearGradient,
+} from 'expo-linear-gradient';
 
-import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
-import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
-import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
-import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
+import {
+  router,
+} from 'expo-router';
 
-import { saveDatingPreferences } from '../../features/onboarding/services/onboardingService';
-
-type Interest =
-  | 'men'
-  | 'women'
-  | 'beyond_binary';
+import {
+  getDatingPreferences,
+  saveDatingPreferences,
+  type DatingInterest,
+} from '../../features/onboarding/services/onboardingService';
 
 export default function InterestedInScreen() {
-  const { width, height } = useWindowDimensions();
+  const {
+    width,
+    height,
+  } =
+    useWindowDimensions();
 
-  const shortSide = Math.min(width, height);
+  const [
+    selected,
+    setSelected,
+  ] =
+    useState<
+      DatingInterest | null
+    >(null);
 
-  const [selected, setSelected] =
-    useState<Interest[]>([]);
-
-  const [errorMessage, setErrorMessage] =
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
     useState('');
 
-  /*
-   * ============================
-   * FONT
-   * ============================
-   */
+  useEffect(() => {
+    const loadPreference =
+      async () => {
+        try {
+          const existing =
+            await getDatingPreferences();
 
-  const [fontsLoaded] = useFonts({
-    GoogleSans:
-      GoogleSans_400Regular,
+          /*
+           * Product rule requested now:
+           * exactly one dating preference.
+           *
+           * If old test data contains multiple,
+           * show the first one and the next save
+           * converts it to a one-item array.
+           */
+          if (
+            existing.length > 0
+          ) {
+            setSelected(
+              existing[0]
+            );
+          }
+        } catch (error) {
+          console.error(
+            'Load dating preference error:',
+            error
+          );
+        }
+      };
 
-    GoogleSansMedium:
-      GoogleSans_500Medium,
-
-    GoogleSansSemiBold:
-      GoogleSans_600SemiBold,
-  });
-
-  /*
-   * ============================
-   * RESPONSIVE SIZE
-   * ============================
-   */
-
-  const horizontalPadding =
-    Math.max(
-      24,
-      width * 0.1
-    );
-    const { name } = useLocalSearchParams<{
-            name?: string;
-        }>();
-
-  const titleSize =
-    Math.max(
-      20,
-      Math.min(
-        shortSide * 0.055,
-        30
-      )
-    );
-
-  const backButtonWidth =
-    Math.max(
-      42,
-      Math.min(
-        shortSide * 0.12,
-        64
-      )
-    );
-
-  const backButtonHeight =
-    Math.max(
-      28,
-      Math.min(
-        shortSide * 0.072,
-        38
-      )
-    );
-
-  const choiceHeight =
-    Math.max(
-      44,
-      Math.min(
-        height * 0.055,
-        56
-      )
-    );
-
-  /*
-   * ============================
-   * TOGGLE INTEREST
-   * ============================
-   */
-
-  const toggleInterest = (
-    value: Interest
-  ) => {
-    setErrorMessage('');
-
-    setSelected((current) => {
-      if (current.includes(value)) {
-        return current.filter(
-          (item) => item !== value
-        );
-      }
-
-      return [
-        ...current,
-        value,
-      ];
-    });
-  };
-
-  /*
-   * ============================
-   * BACK
-   * ============================
-   */
-
-  const handleBack = () => {
-    router.replace('/mode');
-  };
-
-  /*
-   * ============================
-   * CONTINUE
-   * ============================
-   */
+    loadPreference();
+  }, []);
 
   const handleContinue =
     async () => {
-      setErrorMessage('');
-
-      if (
-        selected.length === 0
-      ) {
+      if (!selected) {
         setErrorMessage(
-          'Please select at least one option.'
+          'Please select one option.'
         );
         return;
       }
 
       try {
-        await saveDatingPreferences(selected);
-
-console.log(
-  'Preferences saved:',
-  selected
-);
-
-router.push({
-  pathname: '/bio1',
-  params: { name },
-});
-
-
-      } catch (error) {
-        console.error(
-          'Save preferences error:',
-          error
+        await saveDatingPreferences(
+          [selected]
         );
 
+        router.push(
+          '/bio1'
+        );
+      } catch (error) {
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : 'Unable to save your dating preferences.'
+            : 'Unable to save your dating preference.'
         );
       }
     };
-
-  /*
-   * ============================
-   * WAIT FOR FONT
-   * ============================
-   */
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   return (
     <LinearGradient
@@ -208,81 +119,53 @@ router.push({
       ]}
       style={styles.screen}
     >
-      {/* =========================
-          BACK BUTTON
-          ========================= */}
-
       <Pressable
         style={[
           styles.backButton,
           {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
+            top:
+              Math.max(
+                20,
+                height * 0.04
+              ),
 
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
+            left:
+              Math.max(
+                20,
+                width * 0.07
+              ),
           },
         ]}
-        onPress={handleBack}
+        onPress={() =>
+          router.replace(
+            '/mode'
+          )
+        }
       >
         <LinearGradient
           colors={[
             '#FFE98F',
             '#FFB873',
           ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
           style={
             styles.backGradient
           }
         >
-          <Text
-            style={[
-              styles.backText,
-              {
-                fontSize:
-                  Math.max(
-                    12,
-                    Math.min(
-                      shortSide *
-                        0.033,
-                      17
-                    )
-                  ),
-              },
-            ]}
-          >
+          <Text>
             {'<<'}
           </Text>
         </LinearGradient>
       </Pressable>
-
-      {/* =========================
-          CONTENT
-          ========================= */}
 
       <View
         style={[
           styles.content,
           {
             paddingHorizontal:
-              horizontalPadding,
+              Math.max(
+                24,
+                width * 0.1
+              ),
 
             paddingTop:
               Math.max(
@@ -292,140 +175,91 @@ router.push({
           },
         ]}
       >
-        {/* =========================
-            TITLE
-            ========================= */}
-
         <Text
           style={[
             styles.title,
             {
               fontSize:
-                titleSize,
-
-              lineHeight:
-                titleSize * 1.12,
+                Math.max(
+                  21,
+                  width *
+                    0.055
+                ),
             },
           ]}
         >
-          Who u wanna{'\n'}date ?
+          Who u wanna{'\n'}
+          date ?
         </Text>
-
-        {/* =========================
-            OPTIONS
-            ========================= */}
 
         <ChoiceRow
           label="Men"
-          selected={selected.includes(
-            'men'
-          )}
-          height={choiceHeight}
-          onPress={() =>
-            toggleInterest('men')
+          selected={
+            selected === 'men'
           }
+          onPress={() => {
+            setSelected('men');
+            setErrorMessage(
+              ''
+            );
+          }}
         />
 
         <ChoiceRow
           label="Women"
-          selected={selected.includes(
+          selected={
+            selected ===
             'women'
-          )}
-          height={choiceHeight}
-          onPress={() =>
-            toggleInterest(
-              'women'
-            )
           }
+          onPress={() => {
+            setSelected(
+              'women'
+            );
+            setErrorMessage(
+              ''
+            );
+          }}
         />
 
         <ChoiceRow
           label="Beyond Binary"
-          selected={selected.includes(
+          selected={
+            selected ===
             'beyond_binary'
-          )}
-          height={choiceHeight}
-          onPress={() =>
-            toggleInterest(
-              'beyond_binary'
-            )
           }
+          onPress={() => {
+            setSelected(
+              'beyond_binary'
+            );
+            setErrorMessage(
+              ''
+            );
+          }}
         />
-
-        {/* =========================
-            ERROR
-            ========================= */}
 
         {errorMessage ? (
           <Text
-            style={[
-              styles.errorText,
-              {
-                fontSize:
-                  Math.max(
-                    11,
-                    Math.min(
-                      shortSide *
-                        0.03,
-                      15
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.errorText
+            }
           >
             {errorMessage}
           </Text>
         ) : null}
 
-        {/* =========================
-            GO BUTTON
-            ========================= */}
-
-        {selected.length > 0 ? (
+        {selected ? (
           <Pressable
-            style={[
-              styles.goButton,
-              {
-                minWidth:
-                  Math.max(
-                    58,
-                    Math.min(
-                      shortSide *
-                        0.15,
-                      84
-                    )
-                  ),
-
-                height:
-                  Math.max(
-                    34,
-                    Math.min(
-                      height *
-                        0.045,
-                      44
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.goButton
+            }
             onPress={
               handleContinue
             }
           >
             <Text
-              style={[
-                styles.goText,
-                {
-                  fontSize:
-                    Math.max(
-                      15,
-                      Math.min(
-                        shortSide *
-                          0.04,
-                        20
-                      )
-                    ),
-                },
-              ]}
+              style={
+                styles.goText
+              }
             >
               go!
             </Text>
@@ -436,35 +270,28 @@ router.push({
   );
 }
 
-/*
- * ======================================================
- * CHOICE ROW
- * ======================================================
- */
-
 function ChoiceRow({
   label,
   selected,
-  height,
   onPress,
 }: {
   label: string;
   selected: boolean;
-  height: number;
   onPress: () => void;
 }) {
   return (
     <Pressable
       style={[
         styles.choice,
-        {
-          height,
-        },
+        selected &&
+          styles.choiceSelected,
       ]}
       onPress={onPress}
     >
       <Text
-        style={styles.choiceText}
+        style={
+          styles.choiceText
+        }
       >
         {label}
       </Text>
@@ -480,252 +307,131 @@ function ChoiceRow({
   );
 }
 
-/*
- * ======================================================
- * STYLES
- * ======================================================
- */
-
-const styles = StyleSheet.create({
-  /*
-   * ============================
-   * SCREEN
-   * ============================
-   */
-
-  screen: {
-    flex: 1,
-    width: '100%',
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  /*
-   * ============================
-   * BACK BUTTON
-   * ============================
-   */
-
-  backButton: {
-    position: 'absolute',
-
-    zIndex: 20,
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
+const styles =
+  StyleSheet.create({
+    screen: {
+      flex: 1,
     },
 
-    shadowOpacity: 0.22,
-
-    shadowRadius: 4,
-
-    elevation: 5,
-  },
-
-  backGradient: {
-    flex: 1,
-
-    width: '100%',
-    height: '100%',
-
-    borderRadius: 999,
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-  },
-
-  backText: {
-    fontFamily:
-      'GoogleSansMedium',
-
-    color: '#222222',
-  },
-
-  /*
-   * ============================
-   * TITLE
-   * ============================
-   */
-
-  title: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
-    fontWeight: '600',
-
-    color: '#FFFFFF',
-
-    marginBottom: 30,
-
-    textShadowColor:
-      'rgba(75, 50, 45, 0.35)',
-
-    textShadowOffset: {
-      width: 1,
-      height: 2,
+    content: {
+      flex: 1,
     },
 
-    textShadowRadius: 2,
-  },
+    backButton: {
+      position: 'absolute',
 
-  /*
-   * ============================
-   * CHOICE
-   * ============================
-   */
+      zIndex: 20,
 
-  choice: {
-    width: '100%',
+      width: 50,
+      height: 32,
 
-    backgroundColor:
-      '#FFFFFF',
-
-    borderRadius: 14,
-
-    paddingHorizontal: 16,
-
-    marginBottom: 10,
-
-    flexDirection: 'row',
-
-    alignItems:
-      'center',
-
-    justifyContent:
-      'space-between',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 2,
+      borderRadius: 999,
+      overflow: 'hidden',
     },
 
-    shadowOpacity: 0.12,
+    backGradient: {
+      flex: 1,
 
-    shadowRadius: 3,
-
-    elevation: 3,
-  },
-
-  choiceText: {
-    fontFamily:
-      'GoogleSansMedium',
-
-    fontSize: 14,
-
-    fontWeight: '500',
-
-    color: '#222222',
-  },
-
-  /*
-   * ============================
-   * SELECTION CIRCLE
-   * ============================
-   */
-
-  circle: {
-    width: 16,
-
-    height: 16,
-
-    borderRadius: 999,
-
-    backgroundColor:
-      '#F2D3C3',
-  },
-
-  circleSelected: {
-    backgroundColor:
-      '#F19068',
-  },
-
-  /*
-   * ============================
-   * ERROR
-   * ============================
-   */
-
-  errorText: {
-    fontFamily:
-      'GoogleSans',
-
-    color: '#C62828',
-
-    marginTop: 7,
-  },
-
-  /*
-   * ============================
-   * GO BUTTON
-   * ============================
-   */
-
-  goButton: {
-    alignSelf:
-      'flex-end',
-
-    paddingHorizontal: 14,
-
-    marginTop: 16,
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#FFF6AE',
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
+      alignItems: 'center',
+      justifyContent:
+        'center',
     },
 
-    shadowOpacity: 0.28,
+    title: {
+      marginBottom: 30,
 
-    shadowRadius: 5,
+      color: '#FFFFFF',
 
-    elevation: 6,
-  },
+      fontWeight: '600',
 
-  goText: {
-    fontFamily:
-      'GoogleSansSemiBold',
+      textShadowColor:
+        'rgba(75,50,45,0.35)',
 
-    fontWeight: '600',
+      textShadowOffset: {
+        width: 1,
+        height: 2,
+      },
 
-    color: '#111111',
-
-    textShadowColor:
-      'rgba(0, 0, 0, 0.15)',
-
-    textShadowOffset: {
-      width: 0,
-      height: 1,
+      textShadowRadius: 2,
     },
 
-    textShadowRadius: 1,
-  },
-});
+    choice: {
+      width: '100%',
+
+      minHeight: 44,
+
+      marginBottom: 10,
+
+      paddingHorizontal: 16,
+
+      borderRadius: 14,
+
+      flexDirection: 'row',
+
+      alignItems: 'center',
+      justifyContent:
+        'space-between',
+
+      backgroundColor:
+        '#FFFFFF',
+    },
+
+    choiceSelected: {
+      backgroundColor:
+        '#FFF9E8',
+    },
+
+    choiceText: {
+      fontSize: 14,
+      fontWeight: '500',
+
+      color: '#222222',
+    },
+
+    circle: {
+      width: 16,
+      height: 16,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#F2D3C3',
+    },
+
+    circleSelected: {
+      backgroundColor:
+        '#F19068',
+    },
+
+    errorText: {
+      marginTop: 7,
+
+      color: '#C62828',
+    },
+
+    goButton: {
+      alignSelf:
+        'flex-end',
+
+      marginTop: 16,
+
+      minHeight: 34,
+
+      paddingHorizontal: 18,
+
+      borderRadius: 12,
+
+      justifyContent:
+        'center',
+
+      backgroundColor:
+        '#FFF6AE',
+    },
+
+    goText: {
+      fontSize: 16,
+      fontWeight: '600',
+
+      color: '#111111',
+    },
+  });

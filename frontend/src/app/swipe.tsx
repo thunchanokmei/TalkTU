@@ -43,13 +43,28 @@ type Candidate = {
   tu_generation: number;
   bio: string | null;
   height_cm: number | null;
+  gender_identity:
+  | GenderIdentity
+  | null;
   faculty: string;
   department: string | null;
   photos: CandidatePhoto[];
   interests: CandidateInterest[];
+  locations: CandidateLocation[];
 };
 
 type SwipeAction = 'like' | 'pass';
+
+type GenderIdentity =
+  | 'man'
+  | 'woman'
+  | 'non_binary'
+  | 'prefer_not_to_say';
+
+type CandidateLocation = {
+  id: number;
+  name: string;
+};
 
 export default function SwipeScreen() {
   const router = useRouter();
@@ -121,12 +136,12 @@ export default function SwipeScreen() {
   const currentCandidate = candidates[currentIndex];
 
   const [genderModal, setGenderModal] = useState(false);
-const [heightModal, setHeightModal] = useState(false);
+  const [heightModal, setHeightModal] = useState(false);
 
-const [showMatchModal, setShowMatchModal] = useState(false);
-const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
-const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
 
   const openCandidateProfile = () => {
     if (!currentCandidate) {
@@ -172,9 +187,9 @@ const [hasMore, setHasMore] = useState(true);
 
         const newCandidates = (data ?? []) as Candidate[];
 
-if (newCandidates.length === 0 && append) {
-  setHasMore(false);
-}
+        if (newCandidates.length === 0 && append) {
+          setHasMore(false);
+        }
 
         if (append) {
           setCandidates((previous) => [
@@ -278,48 +293,48 @@ if (newCandidates.length === 0 && append) {
 
     return data;
   };
-const finishSwipe = async (
-  action: SwipeAction
-) => {
-  if (!currentCandidate) {
-    return;
-  }
+  const finishSwipe = async (
+    action: SwipeAction
+  ) => {
+    if (!currentCandidate) {
+      return;
+    }
 
-  const candidate = currentCandidate;
+    const candidate = currentCandidate;
 
-  try {
-    const result = await saveSwipe(candidate, action);
+    try {
+      const result = await saveSwipe(candidate, action);
 
-    if (result?.[0]?.matched) {
-  console.log('🎉 MATCH!', result[0].match_id);
+      if (result?.[0]?.matched) {
+        console.log('🎉 MATCH!', result[0].match_id);
 
-  setMatchedCandidate(candidate);
-  setShowMatchModal(true);
-}
+        setMatchedCandidate(candidate);
+        setShowMatchModal(true);
+      }
 
-    setCurrentIndex((previous) => previous + 1);
+      setCurrentIndex((previous) => previous + 1);
 
-    setPhotoIndex(0);
+      setPhotoIndex(0);
 
-    position.setValue({
-      x: 0,
-      y: 0,
-    });
-  } catch (err) {
-    console.error('save swipe error:', err);
+      position.setValue({
+        x: 0,
+        y: 0,
+      });
+    } catch (err) {
+      console.error('save swipe error:', err);
 
-    position.setValue({
-      x: 0,
-      y: 0,
-    });
+      position.setValue({
+        x: 0,
+        y: 0,
+      });
 
-    setError(
-      err instanceof Error
-        ? err.message
-        : 'Unable to save your swipe.'
-    );
-  }
-};
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to save your swipe.'
+      );
+    }
+  };
 
   const swipeCard = (action: SwipeAction) => {
     const direction = action === 'like' ? 1 : -1;
@@ -551,202 +566,202 @@ const finishSwipe = async (
               </TouchableOpacity>
             </View>
           ) : (
-          <Animated.View
-            {...panResponder.panHandlers}
-            style={[
-              styles.card,
-              {
-                width: cardWidth,
-                height: cardHeight,
+            <Animated.View
+              {...panResponder.panHandlers}
+              style={[
+                styles.card,
+                {
+                  width: cardWidth,
+                  height: cardHeight,
 
-                transform: [
-                  {
-                    translateX:
-                      position.x,
-                  },
-                  {
-                    translateY:
-                      position.y,
-                  },
-                  {
-                    rotate,
-                  },
-                ],
-              },
-            ]}
-          >
-            {/* PROFILE PHOTO */}
+                  transform: [
+                    {
+                      translateX:
+                        position.x,
+                    },
+                    {
+                      translateY:
+                        position.y,
+                    },
+                    {
+                      rotate,
+                    },
+                  ],
+                },
+              ]}
+            >
+              {/* PROFILE PHOTO */}
 
-            {currentPhoto?.storage_path ? (
-              <PhotoFromStorage
-                storagePath={
-                  currentPhoto.storage_path
+              {currentPhoto?.storage_path ? (
+                <PhotoFromStorage
+                  storagePath={
+                    currentPhoto.storage_path
+                  }
+                />
+              ) : (
+                <View style={styles.noPhoto}>
+                  <Ionicons
+                    name="person-outline"
+                    size={80}
+                    color="#AAAAAA"
+                  />
+                </View>
+              )}
+
+              {/* ================= PHOTO COUNTER ================= */}
+
+              {currentCandidate.photos
+                ?.length > 0 ? (
+                <View
+                  style={
+                    styles.photoCounter
+                  }
+                >
+                  <Text
+                    style={
+                      styles.photoCounterText
+                    }
+                  >
+                    {photoIndex + 1}/
+                    {
+                      currentCandidate
+                        .photos.length
+                    }
+                  </Text>
+                </View>
+              ) : null}
+              {/* ================= PHOTO TAP ZONES ================= */}
+
+              <TouchableOpacity
+                style={[
+                  styles.profileOpenZone,
+                  currentCandidate.photos?.length > 1
+                    ? styles.profileOpenZoneWithPhotoNav
+                    : styles.profileOpenZoneFull,
+                ]}
+                onPress={openCandidateProfile}
+                activeOpacity={1}
+              />
+
+              {currentCandidate.photos?.length > 1 ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.leftPhotoZone}
+                    onPress={previousPhoto}
+                    activeOpacity={1}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.rightPhotoZone}
+                    onPress={nextPhoto}
+                    activeOpacity={1}
+                  />
+                </>
+              ) : null}
+
+              {/* LIKE */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.swipeIcon,
+                  styles.likeIcon,
+                  { opacity: likeOpacity },
+                ]}
+              >
+                <Ionicons
+                  name="heart"
+                  size={swipeOverlayIconSize}
+                  color="#FF4D5A"
+                />
+              </Animated.View>
+
+              {/* PASS */}
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.swipeIcon,
+                  styles.passIcon,
+                  { opacity: passOpacity },
+                ]}
+              >
+                <Ionicons
+                  name="close"
+                  size={swipeOverlayIconSize + 4}
+                  color="#444444"
+                />
+              </Animated.View>
+
+              {/* ================= DARK GRADIENT ================= */}
+
+              <LinearGradient
+                pointerEvents="none"
+                colors={[
+                  'transparent',
+                  'rgba(0,0,0,0.02)',
+                  'rgba(0,0,0,0.75)',
+                ]}
+                locations={[
+                  0,
+                  0.56,
+                  1,
+                ]}
+                style={
+                  styles.profileGradient
                 }
               />
-            ) : (
-              <View style={styles.noPhoto}>
-                <Ionicons
-                  name="person-outline"
-                  size={80}
-                  color="#AAAAAA"
-                />
-              </View>
-            )}
 
-            {/* ================= PHOTO COUNTER ================= */}
+              {/* ================= PROFILE INFO ================= */}
 
-            {currentCandidate.photos
-              ?.length > 0 ? (
               <View
                 style={
-                  styles.photoCounter
+                  styles.profileInfo
                 }
               >
                 <Text
-                  style={
-                    styles.photoCounterText
-                  }
+                  style={styles.nameText}
+                  numberOfLines={1}
                 >
-                  {photoIndex + 1}/
                   {
-                    currentCandidate
-                      .photos.length
+                    currentCandidate.display_name
+                  }{' '}
+                  {currentCandidate.age}
+                </Text>
+
+                <Text
+                  style={
+                    styles.detailText
                   }
+                  numberOfLines={1}
+                >
+                  {currentCandidate.department
+                    ? `${currentCandidate.department}, ${currentCandidate.faculty}`
+                    : currentCandidate.faculty}
                 </Text>
               </View>
-            ) : null}
-            {/* ================= PHOTO TAP ZONES ================= */}
 
-            <TouchableOpacity
-              style={[
-                styles.profileOpenZone,
-                currentCandidate.photos?.length > 1
-                  ? styles.profileOpenZoneWithPhotoNav
-                  : styles.profileOpenZoneFull,
-              ]}
-              onPress={openCandidateProfile}
-              activeOpacity={1}
-            />
+              {/* ================= FLOATING LIKE BUTTON ================= */}
 
-            {currentCandidate.photos?.length > 1 ? (
-              <>
-                <TouchableOpacity
-                  style={styles.leftPhotoZone}
-                  onPress={previousPhoto}
-                  activeOpacity={1}
-                />
-
-                <TouchableOpacity
-                  style={styles.rightPhotoZone}
-                  onPress={nextPhoto}
-                  activeOpacity={1}
-                />
-              </>
-            ) : null}
-
-            {/* LIKE */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.swipeIcon,
-                styles.likeIcon,
-                { opacity: likeOpacity },
-              ]}
-            >
-              <Ionicons
-                name="heart"
-                size={swipeOverlayIconSize}
-                color="#FF4D5A"
-              />
-            </Animated.View>
-
-            {/* PASS */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.swipeIcon,
-                styles.passIcon,
-                { opacity: passOpacity },
-              ]}
-            >
-              <Ionicons
-                name="close"
-                size={swipeOverlayIconSize + 4}
-                color="#444444"
-              />
-            </Animated.View>
-
-            {/* ================= DARK GRADIENT ================= */}
-
-            <LinearGradient
-              pointerEvents="none"
-              colors={[
-                'transparent',
-                'rgba(0,0,0,0.02)',
-                'rgba(0,0,0,0.75)',
-              ]}
-              locations={[
-                0,
-                0.56,
-                1,
-              ]}
-              style={
-                styles.profileGradient
-              }
-            />
-
-            {/* ================= PROFILE INFO ================= */}
-
-            <View
-              style={
-                styles.profileInfo
-              }
-            >
-              <Text
-                style={styles.nameText}
-                numberOfLines={1}
-              >
-                {
-                  currentCandidate.display_name
-                }{' '}
-                {currentCandidate.age}
-              </Text>
-
-              <Text
-                style={
-                  styles.detailText
+              <TouchableOpacity
+                style={[
+                  styles.floatingLikeButton,
+                  {
+                    width: actionButtonSize,
+                    height: actionButtonSize,
+                    borderRadius: actionButtonSize / 2,
+                  },
+                ]}
+                activeOpacity={0.85}
+                onPress={() =>
+                  swipeCard('like')
                 }
-                numberOfLines={1}
               >
-                {currentCandidate.department
-                  ? `${currentCandidate.department}, ${currentCandidate.faculty}`
-                  : currentCandidate.faculty}
-              </Text>
-            </View>
-
-            {/* ================= FLOATING LIKE BUTTON ================= */}
-
-            <TouchableOpacity
-              style={[
-                styles.floatingLikeButton,
-                {
-                  width: actionButtonSize,
-                  height: actionButtonSize,
-                  borderRadius: actionButtonSize / 2,
-                },
-              ]}
-              activeOpacity={0.85}
-              onPress={() =>
-                swipeCard('like')
-              }
-            >
-              <Ionicons
-                name="heart"
-                size={actionIconSize}
-                color="#FF5964"
-              />
-            </TouchableOpacity>
-          </Animated.View>
+                <Ionicons
+                  name="heart"
+                  size={actionIconSize}
+                  color="#FF5964"
+                />
+              </TouchableOpacity>
+            </Animated.View>
           )}
         </View>
 
@@ -905,9 +920,9 @@ function PhotoFromStorage({
     storagePath.startsWith('https://')
     ? storagePath
     : supabase.storage
-        .from('profile-photos')
-        .getPublicUrl(storagePath)
-        .data.publicUrl;
+      .from('profile-photos')
+      .getPublicUrl(storagePath)
+      .data.publicUrl;
 
   console.log('PHOTO PATH:', storagePath);
   console.log('PHOTO URL:', imageUrl);

@@ -846,7 +846,14 @@ export default function SwipeScreen() {
 
         {/* ================= BOTTOM NAV ================= */}
 
-        <BottomNavigation activeTab="swap" />
+        <BottomNavigation
+  activeTab="swap"
+  onTabPress={(tab) => {
+    if (tab === 'chat') {
+      router.replace('/chat');
+    }
+  }}
+/>
 
       </View>
 

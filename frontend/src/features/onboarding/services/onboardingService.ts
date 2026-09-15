@@ -1,265 +1,515 @@
 import { supabase } from '../../../lib/supabase';
 
-export type SexAtBirth = 'male' | 'female';
+export type SexAtBirth =
+  | 'male'
+  | 'female';
 
-export type AppMode = 'date' | 'friends';
+export type AppMode =
+  | 'date'
+  | 'friends';
 
 export type DatingInterest =
   | 'men'
   | 'women'
   | 'beyond_binary';
 
-async function getCurrentUserId(): Promise<string> {
+async function getCurrentUserId():
+Promise<string> {
   const {
     data: { session },
     error,
-  } = await supabase.auth.getSession();
+  } =
+    await supabase.auth.getSession();
 
   if (error) {
     throw error;
   }
 
   if (!session?.user) {
-    throw new Error('User is not authenticated.');
+    throw new Error(
+      'User is not authenticated.'
+    );
   }
 
   return session.user.id;
 }
 
-/* ======================================================
-   NAME
-====================================================== */
+/* ===================== NAME ===================== */
 
 export async function saveDisplayName(
   displayName: string
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const cleanName = displayName.trim();
+  const cleanName =
+    displayName.trim();
 
   if (!cleanName) {
-    throw new Error('Display name is required.');
+    throw new Error(
+      'Display name is required.'
+    );
   }
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        display_name: cleanName,
-      },
-      {
-        onConflict: 'id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          display_name:
+            cleanName,
+        },
+        {
+          onConflict: 'id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   BIRTHDAY
-====================================================== */
+export async function getDisplayName() {
+  const userId =
+    await getCurrentUserId();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', userId)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    data?.display_name ??
+    null
+  );
+}
+
+/* =================== BIRTHDAY =================== */
 
 export async function saveBirthDate(
   birthDate: string
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const { error } = await supabase
-    .from('user_private')
-    .upsert(
-      {
-        user_id: userId,
-        birth_date: birthDate,
-      },
-      {
-        onConflict: 'user_id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from('user_private')
+      .upsert(
+        {
+          user_id: userId,
+          birth_date:
+            birthDate,
+        },
+        {
+          onConflict:
+            'user_id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   FACULTY
-   อ่านอย่างเดียวจาก TU account
-====================================================== */
+export async function getBirthDate() {
+  const userId =
+    await getCurrentUserId();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('user_private')
+      .select('birth_date')
+      .eq(
+        'user_id',
+        userId
+      )
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    data?.birth_date ??
+    null
+  );
+}
+
+/* ==================== FACULTY =================== */
 
 export async function getMyFaculty() {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const { data, error } = await supabase
-    .from('student_accounts')
-    .select('faculty')
-    .eq('user_id', userId)
-    .maybeSingle();
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('student_accounts')
+      .select('faculty')
+      .eq(
+        'user_id',
+        userId
+      )
+      .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  return data?.faculty ?? null;
+  return (
+    data?.faculty ??
+    null
+  );
 }
 
-/* ======================================================
-   TU GENERATIONS
-====================================================== */
+/* ================ TU GENERATION ================= */
 
 export async function getTuGenerations() {
-  const { data, error } = await supabase
-    .from('tu_generations')
-    .select('code')
-    .eq('is_active', true)
-    .order('code', {
-      ascending: false,
-    });
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('tu_generations')
+      .select('code')
+      .eq(
+        'is_active',
+        true
+      )
+      .order(
+        'code',
+        {
+          ascending: false,
+        }
+      );
 
   if (error) {
     throw error;
   }
 
-  return data.map((item) => item.code);
+  return data.map(
+    (item) => item.code
+  );
 }
 
 export async function saveTuGeneration(
   generation: number
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        tu_generation: generation,
-      },
-      {
-        onConflict: 'id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          tu_generation:
+            generation,
+        },
+        {
+          onConflict: 'id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   SEX AT BIRTH
-====================================================== */
+/* ================= SEX AT BIRTH ================= */
 
 export async function saveSexAtBirth(
   sexAtBirth: SexAtBirth
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        sex_at_birth: sexAtBirth,
-      },
-      {
-        onConflict: 'id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          sex_at_birth:
+            sexAtBirth,
+        },
+        {
+          onConflict: 'id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   MODE
-====================================================== */
+export async function getSexAtBirth():
+Promise<SexAtBirth | null> {
+  const userId =
+    await getCurrentUserId();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('profiles')
+      .select('sex_at_birth')
+      .eq('id', userId)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const value =
+    data?.sex_at_birth;
+
+  if (
+    value === 'male' ||
+    value === 'female'
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+/* ====================== MODE ===================== */
 
 export async function saveMode(
   mode: AppMode
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        mode,
-      },
-      {
-        onConflict: 'id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from('profiles')
+      .upsert(
+        {
+          id: userId,
+          mode,
+        },
+        {
+          onConflict: 'id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   DATING PREFERENCES
-====================================================== */
+/* ============== DATING PREFERENCES ============== */
 
 export async function saveDatingPreferences(
-  interestedIn: DatingInterest[]
+  interestedIn:
+    DatingInterest[]
 ) {
-  const userId = await getCurrentUserId();
+  const userId =
+    await getCurrentUserId();
 
-  if (interestedIn.length === 0) {
+  if (
+    interestedIn.length === 0
+  ) {
     throw new Error(
       'At least one dating preference is required.'
     );
   }
 
-  const { error } = await supabase
-    .from('dating_preferences')
-    .upsert(
-      {
-        user_id: userId,
-        interested_in: interestedIn,
-      },
-      {
-        onConflict: 'user_id',
-      }
-    );
+  const { error } =
+    await supabase
+      .from(
+        'dating_preferences'
+      )
+      .upsert(
+        {
+          user_id: userId,
+          interested_in:
+            interestedIn,
+        },
+        {
+          onConflict:
+            'user_id',
+        }
+      );
 
   if (error) {
     throw error;
   }
 }
 
-/* ======================================================
-   ONBOARDING STATUS
-====================================================== */
+export async function getDatingPreferences():
+Promise<DatingInterest[]> {
+  const userId =
+    await getCurrentUserId();
 
-export async function getOnboardingStatus() {
-  const userId = await getCurrentUserId();
-
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', userId)
-    .maybeSingle();
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        'dating_preferences'
+      )
+      .select(
+        'interested_in'
+      )
+      .eq(
+        'user_id',
+        userId
+      )
+      .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  return data?.onboarding_completed ?? false;
+  const value =
+    data?.interested_in;
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(
+    (
+      item
+    ): item is DatingInterest =>
+      item === 'men' ||
+      item === 'women' ||
+      item ===
+        'beyond_binary'
+  );
+}
+
+/* ================ ONBOARDING ==================== */
+
+export async function getOnboardingStatus() {
+  const userId =
+    await getCurrentUserId();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('profiles')
+      .select(
+        'onboarding_completed'
+      )
+      .eq('id', userId)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (
+    data?.onboarding_completed ??
+    false
+  );
 }
 
 export async function completeOnboarding() {
   const userId = await getCurrentUserId();
 
-  const { error } = await supabase
+  const {
+    data: profile,
+    error: profileError,
+  } = await supabase
     .from('profiles')
-    .update({
-      onboarding_completed: true,
+    .select(
+      'display_name, tu_generation'
+    )
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  const {
+    data: privateData,
+    error: privateError,
+  } = await supabase
+    .from('user_private')
+    .select('birth_date')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (privateError) {
+    throw privateError;
+  }
+
+  const {
+    count: photoCount,
+    error: photoError,
+  } = await supabase
+    .from('profile_photos')
+    .select('id', {
+      count: 'exact',
+      head: true,
     })
-    .eq('id', userId);
+    .eq('user_id', userId);
+
+  if (photoError) {
+    throw photoError;
+  }
+
+  const hasDisplayName =
+    Boolean(
+      profile?.display_name?.trim()
+    );
+
+  const hasBirthDate =
+    Boolean(
+      privateData?.birth_date
+    );
+
+  const hasTuGeneration =
+    profile?.tu_generation != null;
+
+  const hasPhoto =
+    (photoCount ?? 0) >= 1;
+
+  if (
+    !hasDisplayName ||
+    !hasBirthDate ||
+    !hasTuGeneration ||
+    !hasPhoto
+  ) {
+    throw new Error(
+      'Please complete your name, birthday, TU generation, and add at least one photo.'
+    );
+  }
+
+  const { error } =
+    await supabase
+      .from('profiles')
+      .update({
+        onboarding_completed:
+          true,
+      })
+      .eq('id', userId);
 
   if (error) {
     throw error;

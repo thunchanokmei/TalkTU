@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { router } from 'expo-router';
+import { supabase } from '../../lib/supabase';
 
 import {
   Image,
@@ -51,6 +52,35 @@ export default function LoginScreen() {
       }
 
       console.log('TU login successful');
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error('Unable to get logged-in user:', userError);
+        setErrorMessage('Unable to load your account. Please try again.');
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Unable to load profile:', profileError);
+        setErrorMessage('Unable to load your profile. Please try again.');
+        return;
+      }
+
+      if (profile?.onboarding_completed === true) {
+        router.replace('/swipe');
+        return;
+      }
+
       router.replace('/name');
     } catch (error) {
       console.error('Login error:', error);

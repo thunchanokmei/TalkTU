@@ -14,6 +14,7 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
@@ -43,13 +44,28 @@ type Candidate = {
   tu_generation: number;
   bio: string | null;
   height_cm: number | null;
+  gender_identity:
+  | GenderIdentity
+  | null;
   faculty: string;
   department: string | null;
   photos: CandidatePhoto[];
   interests: CandidateInterest[];
+  locations: CandidateLocation[];
 };
 
 type SwipeAction = 'like' | 'pass';
+
+type GenderIdentity =
+  | 'man'
+  | 'woman'
+  | 'non_binary'
+  | 'prefer_not_to_say';
+
+type CandidateLocation = {
+  id: number;
+  name: string;
+};
 
 export default function SwipeScreen() {
   const router = useRouter();
@@ -120,6 +136,39 @@ export default function SwipeScreen() {
   const isSwiping = useRef(false);
 
   const currentCandidate = candidates[currentIndex];
+
+  useEffect(() => {
+    const urls: string[] = [];
+
+    // Prefetch รูปถัดไปของ candidate ปัจจุบัน
+    const currentPhotoUrls =
+      currentCandidate?.photos
+        ?.slice(1)
+        .map((photo) => getProfilePhotoUrl(photo.storage_path)) ?? [];
+
+    urls.push(...currentPhotoUrls);
+
+    // Prefetch รูปแรกของ candidate ถัดไป 2 คน
+    const nextCandidates = candidates.slice(
+      currentIndex + 1,
+      currentIndex + 3
+    );
+
+    for (const candidate of nextCandidates) {
+      const firstPhoto = candidate.photos?.[0];
+
+      if (firstPhoto?.storage_path) {
+        urls.push(getProfilePhotoUrl(firstPhoto.storage_path));
+      }
+    }
+
+    if (urls.length > 0) {
+      ExpoImage.prefetch(urls, 'memory-disk').catch((error) => {
+        console.warn('Unable to prefetch profile photos:', error);
+      });
+    }
+  }, [candidates, currentIndex, currentCandidate]);
+
 
   const [genderModal, setGenderModal] = useState(false);
   const [heightModal, setHeightModal] = useState(false);
@@ -314,6 +363,7 @@ export default function SwipeScreen() {
         );
       });
   };
+  
 
   const swipeCard = (action: SwipeAction) => {
     if (!currentCandidate || isSwiping.current) {
@@ -942,22 +992,30 @@ type PhotoFromStorageProps = {
   storagePath: string;
 };
 
+function getProfilePhotoUrl(storagePath: string) {
+  if (
+    storagePath.startsWith('http://') ||
+    storagePath.startsWith('https://')
+  ) {
+    return storagePath;
+  }
+
+  return supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(storagePath)
+    .data.publicUrl;
+}
+
 function PhotoFromStorage({
   storagePath,
 }: PhotoFromStorageProps) {
-  const imageUrl = storagePath.startsWith('http://') ||
-    storagePath.startsWith('https://')
-    ? storagePath
-    : supabase.storage
-      .from('profile-photos')
-      .getPublicUrl(storagePath)
-      .data.publicUrl;
+const imageUrl = getProfilePhotoUrl(storagePath);
 
-  return <AnimatedImage uri={imageUrl} />;
+  return <CandidateImage uri={imageUrl} />;
 }
 
 
-function AnimatedImage({
+function CandidateImage({
   uri,
 }: {
   uri: string;
@@ -980,13 +1038,13 @@ function AnimatedImage({
     );
   }
 
-  const { Image } = require('react-native');
-
   return (
-    <Image
+    <ExpoImage
       source={{ uri }}
       style={styles.photo}
-      resizeMode="cover"
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      transition={0}
       onError={() => setFailed(true)}
     />
   );

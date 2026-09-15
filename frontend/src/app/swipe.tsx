@@ -72,7 +72,7 @@ export default function SwipeScreen() {
     screenHeight * 0.74,
     cardWidth * 1.82
   );
-  const swipeThreshold = screenWidth * 0.25;
+  const swipeThreshold = screenWidth * 0.18;
 
   // Responsive sizing tuned to keep the header and swipe actions visually balanced
   const logoWidth = Math.max(
@@ -117,6 +117,7 @@ export default function SwipeScreen() {
 
   const [photoIndex, setPhotoIndex] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
+  const isSwiping = useRef(false);
 
   const currentCandidate = candidates[currentIndex];
 
@@ -278,79 +279,111 @@ if (newCandidates.length === 0 && append) {
 
     return data;
   };
-const finishSwipe = async (
+const finishSwipe = (
+  candidate: Candidate,
   action: SwipeAction
 ) => {
-  if (!currentCandidate) {
-    return;
-  }
+  // Move to the next card immediately. Do not wait for Supabase.
+  setCurrentIndex((previous) => previous + 1);
+  setPhotoIndex(0);
 
-  const candidate = currentCandidate;
+  position.setValue({
+    x: 0,
+    y: 0,
+  });
 
-  try {
-    const result = await saveSwipe(candidate, action);
+  isSwiping.current = false;
 
-    if (result?.[0]?.matched) {
-  console.log('🎉 MATCH!', result[0].match_id);
+  // Save the swipe in the background.
+  saveSwipe(candidate, action)
+    .then((result) => {
+      console.log('submit_swipe result:', result);
 
-  setMatchedCandidate(candidate);
-  setShowMatchModal(true);
-}
+      if (result?.[0]?.matched) {
+        console.log('🎉 MATCH!', result[0].match_id);
+        setMatchedCandidate(candidate);
+        setShowMatchModal(true);
+      }
+    })
+    .catch((err) => {
+      console.error('save swipe error:', err);
 
-    setCurrentIndex((previous) => previous + 1);
-
-    setPhotoIndex(0);
-
-    position.setValue({
-      x: 0,
-      y: 0,
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to save your swipe.'
+      );
     });
-  } catch (err) {
-    console.error('save swipe error:', err);
-
-    position.setValue({
-      x: 0,
-      y: 0,
-    });
-
-    setError(
-      err instanceof Error
-        ? err.message
-        : 'Unable to save your swipe.'
-    );
-  }
 };
 
   const swipeCard = (action: SwipeAction) => {
+    if (!currentCandidate || isSwiping.current) {
+      return;
+    }
+
+    const candidate = currentCandidate;
     const direction = action === 'like' ? 1 : -1;
+
+    isSwiping.current = true;
 
     Animated.timing(position, {
       toValue: {
-        x: direction * screenWidth * 1.3,
+        x: direction * screenWidth * 1.35,
         y: 0,
       },
       duration: SWIPE_OUT_DURATION,
       useNativeDriver: true,
-    }).start(() => {
-      finishSwipe(action);
+    }).start(({ finished }) => {
+      if (!finished) {
+        isSwiping.current = false;
+        return;
+      }
+
+      finishSwipe(candidate, action);
     });
   };
 
-  /*ปัดการ์ดด้วยนิ้ว*/
+  /* ปัดการ์ดด้วยนิ้ว */
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+
+      // Let buttons/tap zones receive a normal tap, but capture the gesture
+      // as soon as the finger actually starts moving horizontally.
       onMoveShouldSetPanResponder: (_, gesture) => {
-        return Math.abs(gesture.dx) > 8;
+        const horizontal = Math.abs(gesture.dx);
+        const vertical = Math.abs(gesture.dy);
+
+        return horizontal > 6 && horizontal > vertical;
+      },
+
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        const horizontal = Math.abs(gesture.dx);
+        const vertical = Math.abs(gesture.dy);
+
+        return horizontal > 6 && horizontal > vertical;
+      },
+
+      onPanResponderGrant: () => {
+        position.stopAnimation();
       },
 
       onPanResponderMove: (_, gesture) => {
+        if (isSwiping.current) {
+          return;
+        }
+
         position.setValue({
           x: gesture.dx,
-          y: gesture.dy * 0.15,
+          y: gesture.dy * 0.08,
         });
       },
 
       onPanResponderRelease: (_, gesture) => {
+        if (isSwiping.current) {
+          return;
+        }
+
         if (gesture.dx > swipeThreshold) {
           swipeCard('like');
           return;
@@ -366,19 +399,29 @@ const finishSwipe = async (
             x: 0,
             y: 0,
           },
+          friction: 7,
+          tension: 80,
           useNativeDriver: true,
         }).start();
       },
 
       onPanResponderTerminate: () => {
+        if (isSwiping.current) {
+          return;
+        }
+
         Animated.spring(position, {
           toValue: {
             x: 0,
             y: 0,
           },
+          friction: 7,
+          tension: 80,
           useNativeDriver: true,
         }).start();
       },
+
+      onPanResponderTerminationRequest: () => false,
     })
   ).current;
 
@@ -388,6 +431,7 @@ const finishSwipe = async (
     }
 
     setMode(newMode);
+    setHasMore(true);
     setCandidates([]);
     setCurrentIndex(0);
     setPhotoIndex(0);

@@ -852,6 +852,9 @@ export default function SwipeScreen() {
     if (tab === 'chat') {
       router.replace('/chat');
     }
+     if (tab === 'profile') {
+    router.replace('/profile');
+  }
   }}
 />
 

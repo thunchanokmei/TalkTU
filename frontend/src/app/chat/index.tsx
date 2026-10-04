@@ -317,6 +317,9 @@ export default function ChatPage() {
     if (tab === 'swap') {
       router.replace('/swipe');
     }
+    if (tab === 'profile') {
+      router.replace('/profile');
+    }
   }}
 />
 

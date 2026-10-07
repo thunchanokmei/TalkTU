@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +20,7 @@ import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import BottomNavigation from '../components/navigation/BottomNavigation';
 import { getMode } from '../features/onboarding/services/onboardingService';
+import MatchModal from '../components/MatchModal';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
@@ -180,7 +180,7 @@ export default function SwipeScreen() {
   const [hasMore, setHasMore] = useState(true);
 
   const openCandidateProfile = () => {
-     if (!currentCandidate || isSwiping.current) {
+    if (!currentCandidate || isSwiping.current) {
       return;
     }
 
@@ -286,6 +286,7 @@ export default function SwipeScreen() {
     const remaining = candidates.length - currentIndex;
 
     if (
+      mode &&
       remaining <= 3 &&
       candidates.length > 0 &&
       !loadingMore &&
@@ -615,9 +616,11 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  fetchCandidates(mode, 0, false)
-                }
+                onPress={() => {
+                  if (mode) {
+                    fetchCandidates(mode, 0, false);
+                  }
+                }}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -651,9 +654,11 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  fetchCandidates(mode, 0, false)
-                }
+                onPress={() => {
+                  if (mode) {
+                    fetchCandidates(mode, 0, false);
+                  }
+                }}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -875,6 +880,9 @@ export default function SwipeScreen() {
         <BottomNavigation
           activeTab="swap"
           onTabPress={(tab) => {
+            if (tab === 'like') {
+              router.replace('/like');
+            }
             if (tab === 'chat') {
               router.replace('/chat');
             }
@@ -887,77 +895,12 @@ export default function SwipeScreen() {
       </View>
 
       {/* Match Modal */}
-      <Modal
+      {/* Match Modal */}
+      <MatchModal
         visible={showMatchModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMatchModal(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 24,
-          }}
-        >
-          <View
-            style={{
-              width: '100%',
-              maxWidth: 360,
-              backgroundColor: '#FFFFFF',
-              borderRadius: 24,
-              padding: 28,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 32,
-                fontWeight: '700',
-                color: '#111111',
-                marginBottom: 12,
-              }}
-            >
-              It's a Match! 💕
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 16,
-                color: '#555555',
-                textAlign: 'center',
-                marginBottom: 24,
-              }}
-            >
-              You and {matchedCandidate?.display_name} liked each other!
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => setShowMatchModal(false)}
-              activeOpacity={0.85}
-              style={{
-                width: '100%',
-                backgroundColor: '#FF7B82',
-                paddingVertical: 14,
-                borderRadius: 14,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 16,
-                  fontWeight: '700',
-                }}
-              >
-                Continue
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        displayName={matchedCandidate?.display_name ?? ''}
+        onContinue={() => setShowMatchModal(false)}
+      />
 
     </SafeAreaView>
   );

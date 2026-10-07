@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import MatchModal from '../../components/MatchModal';
 
 type SwipeMode = 'date' | 'friends';
 type SwipeAction = 'like' | 'pass';
@@ -86,10 +87,12 @@ export default function UserProfileScreen() {
   const {
     candidate,
     mode,
+    source,
   } = useLocalSearchParams<{
     userId: string;
     candidate?: string;
     mode?: SwipeMode;
+    source?: 'swipe' | 'like';
   }>();
 
   const { width } = useWindowDimensions();
@@ -102,6 +105,9 @@ export default function UserProfileScreen() {
 
   const [errorMessage, setErrorMessage] =
     useState('');
+
+  const [showMatchModal, setShowMatchModal] =
+    useState(false);
 
   const profile = useMemo<Candidate | null>(
     () => {
@@ -198,26 +204,44 @@ export default function UserProfileScreen() {
           ? 'friends'
           : 'date';
 
-      const { error } =
-        await supabase.rpc(
-          'submit_swipe',
-          {
-            p_target_id:
-              profile.user_id,
+      const {
+        data,
+        error,
+      } = await supabase.rpc(
+        'submit_swipe',
+        {
+          p_target_id:
+            profile.user_id,
 
-            p_mode:
-              selectedMode,
+          p_mode:
+            selectedMode,
 
-            p_action:
-              action,
-          }
-        );
+          p_action:
+            action,
+        }
+      );
 
       if (error) {
         throw error;
       }
 
-      router.replace('/swipe');
+      const matched =
+        data?.[0]?.matched === true;
+
+      if (
+        action === 'like' &&
+        matched
+      ) {
+        setShowMatchModal(true);
+        return;
+      }
+
+      if (source === 'like') {
+        router.replace('/like');
+      } else {
+        router.replace('/swipe');
+      }
+
     } catch (error) {
       console.error(
         'submit_swipe from profile error:',
@@ -456,7 +480,7 @@ export default function UserProfileScreen() {
         {/* LOCATIONS */}
 
         {profile.locations &&
-        profile.locations.length > 0 ? (
+          profile.locations.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               You'll usually find me at..
@@ -531,6 +555,19 @@ export default function UserProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <MatchModal
+        visible={showMatchModal}
+        displayName={profile.display_name}
+        onContinue={() => {
+          setShowMatchModal(false);
+
+          if (source === 'like') {
+            router.replace('/like');
+          } else {
+            router.replace('/swipe');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

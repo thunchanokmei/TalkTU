@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 import BottomNavigation from '../components/navigation/BottomNavigation';
+import { getMode } from '../features/onboarding/services/onboardingService';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
@@ -122,7 +123,7 @@ export default function SwipeScreen() {
     Math.min(shortSide * 0.09, 42)
   );
 
-  const [mode, setMode] = useState<SwipeMode>('date');
+  const [mode, setMode] = useState<SwipeMode | null>(null);
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -193,6 +194,27 @@ export default function SwipeScreen() {
     });
   };
 
+  useEffect(() => {
+    const loadMode = async () => {
+      try {
+        const savedMode = await getMode();
+
+        if (savedMode) {
+          setMode(savedMode);
+        } else {
+          setError('Unable to determine discovery mode.');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Load swipe mode error:', err);
+        setError('Unable to load discovery mode.');
+        setLoading(false);
+      }
+    };
+
+    loadMode();
+  }, []);
+
   const fetchCandidates = useCallback(
     async (selectedMode: SwipeMode, offset: number, append = false) => {
       try {
@@ -253,6 +275,10 @@ export default function SwipeScreen() {
   );
 
   useEffect(() => {
+    if (!mode) {
+      return;
+    }
+
     fetchCandidates(mode, 0, false);
   }, [mode, fetchCandidates]);
 
@@ -363,7 +389,7 @@ export default function SwipeScreen() {
         );
       });
   };
-  
+
 
   const swipeCard = (action: SwipeAction) => {
     if (!currentCandidate || isSwiping.current) {
@@ -395,85 +421,85 @@ export default function SwipeScreen() {
 
   /* ปัดการ์ดด้วยนิ้ว */
   const panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponder: () => false,
 
-      // Let buttons/tap zones receive a normal tap, but capture the gesture
-      // as soon as the finger actually starts moving horizontally.
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        const horizontal = Math.abs(gesture.dx);
-        const vertical = Math.abs(gesture.dy);
+    // Let buttons/tap zones receive a normal tap, but capture the gesture
+    // as soon as the finger actually starts moving horizontally.
+    onMoveShouldSetPanResponder: (_, gesture) => {
+      const horizontal = Math.abs(gesture.dx);
+      const vertical = Math.abs(gesture.dy);
 
-        return horizontal > 6 && horizontal > vertical;
-      },
+      return horizontal > 6 && horizontal > vertical;
+    },
 
-      onMoveShouldSetPanResponderCapture: (_, gesture) => {
-        const horizontal = Math.abs(gesture.dx);
-        const vertical = Math.abs(gesture.dy);
+    onMoveShouldSetPanResponderCapture: (_, gesture) => {
+      const horizontal = Math.abs(gesture.dx);
+      const vertical = Math.abs(gesture.dy);
 
-        return horizontal > 6 && horizontal > vertical;
-      },
+      return horizontal > 6 && horizontal > vertical;
+    },
 
-      onPanResponderGrant: () => {
-        position.stopAnimation();
-      },
+    onPanResponderGrant: () => {
+      position.stopAnimation();
+    },
 
-      onPanResponderMove: (_, gesture) => {
-        if (isSwiping.current) {
-          return;
-        }
+    onPanResponderMove: (_, gesture) => {
+      if (isSwiping.current) {
+        return;
+      }
 
-        position.setValue({
-          x: gesture.dx,
-          y: gesture.dy * 0.08,
-        });
-      },
-
-      onPanResponderRelease: (_, gesture) => {
-        
-
-        if (isSwiping.current) {
-          return;
-        }
-
-        if (gesture.dx > swipeThreshold) {
-          swipeCard('like');
-          return;
-        }
-
-        if (gesture.dx < -swipeThreshold) {
-          swipeCard('pass');
-          return;
-        }
-
-        Animated.spring(position, {
-          toValue: {
-            x: 0,
-            y: 0,
-          },
-          friction: 7,
-          tension: 80,
-          useNativeDriver: false,
-        }).start();
-      },
-
-      onPanResponderTerminate: (_, gesture) => {
-        if (isSwiping.current) {
-          return;
-        }
-
-        Animated.spring(position, {
-          toValue: {
-            x: 0,
-            y: 0,
-          },
-          friction: 7,
-          tension: 80,
-          useNativeDriver: false,
-        }).start();
-      },
-
-      onPanResponderTerminationRequest: () => false,
+      position.setValue({
+        x: gesture.dx,
+        y: gesture.dy * 0.08,
       });
+    },
+
+    onPanResponderRelease: (_, gesture) => {
+
+
+      if (isSwiping.current) {
+        return;
+      }
+
+      if (gesture.dx > swipeThreshold) {
+        swipeCard('like');
+        return;
+      }
+
+      if (gesture.dx < -swipeThreshold) {
+        swipeCard('pass');
+        return;
+      }
+
+      Animated.spring(position, {
+        toValue: {
+          x: 0,
+          y: 0,
+        },
+        friction: 7,
+        tension: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderTerminate: (_, gesture) => {
+      if (isSwiping.current) {
+        return;
+      }
+
+      Animated.spring(position, {
+        toValue: {
+          x: 0,
+          y: 0,
+        },
+        friction: 7,
+        tension: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderTerminationRequest: () => false,
+  });
 
   const changeMode = (newMode: SwipeMode) => {
     if (newMode === mode) {
@@ -847,16 +873,16 @@ export default function SwipeScreen() {
         {/* ================= BOTTOM NAV ================= */}
 
         <BottomNavigation
-  activeTab="swap"
-  onTabPress={(tab) => {
-    if (tab === 'chat') {
-      router.replace('/chat');
-    }
-     if (tab === 'profile') {
-    router.replace('/profile');
-  }
-  }}
-/>
+          activeTab="swap"
+          onTabPress={(tab) => {
+            if (tab === 'chat') {
+              router.replace('/chat');
+            }
+            if (tab === 'profile') {
+              router.replace('/profile');
+            }
+          }}
+        />
 
       </View>
 
@@ -1019,7 +1045,7 @@ function getProfilePhotoUrl(storagePath: string) {
 function PhotoFromStorage({
   storagePath,
 }: PhotoFromStorageProps) {
-const imageUrl = getProfilePhotoUrl(storagePath);
+  const imageUrl = getProfilePhotoUrl(storagePath);
 
   return <CandidateImage uri={imageUrl} />;
 }

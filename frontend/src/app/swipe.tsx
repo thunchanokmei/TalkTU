@@ -180,7 +180,7 @@ export default function SwipeScreen() {
   const [hasMore, setHasMore] = useState(true);
 
   const openCandidateProfile = () => {
-    if (!currentCandidate) {
+     if (!currentCandidate || isSwiping.current) {
       return;
     }
 

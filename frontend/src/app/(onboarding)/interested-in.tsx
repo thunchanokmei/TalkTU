@@ -188,7 +188,7 @@ export default function InterestedInScreen() {
             },
           ]}
         >
-          Who u wanna{'\n'}
+          Who you wanna{'\n'}
           date ?
         </Text>
 

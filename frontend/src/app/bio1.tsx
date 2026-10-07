@@ -885,7 +885,7 @@ export default function Bio1Screen() {
             <Text style={styles.title}>
               Oh you’re {displayName || '...'}{'\n'}
               Let them know{'\n'}
-              Who u are
+              Who you are
             </Text>
           </View>
 

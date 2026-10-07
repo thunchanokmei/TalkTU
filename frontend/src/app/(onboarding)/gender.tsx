@@ -90,7 +90,7 @@ export default function GenderScreen() {
         setErrorMessage(
           error instanceof Error
             ? error.message
-            : 'Unable to save your gender.'
+            : 'Unable to save your sex.'
         );
       }
     };
@@ -179,11 +179,11 @@ export default function GenderScreen() {
           ]}
         >
           What's your{'\n'}
-          Gender
+          Sex at birth?
         </Text>
 
         <ChoiceRow
-          label="Men"
+          label="Male"
           selected={
             gender === 'male'
           }
@@ -196,7 +196,7 @@ export default function GenderScreen() {
         />
 
         <ChoiceRow
-          label="Women"
+          label="Female"
           selected={
             gender ===
             'female'

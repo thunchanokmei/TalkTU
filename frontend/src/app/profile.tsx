@@ -195,18 +195,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <BottomNavigation
-        activeTab="profile"
-        onTabPress={(tab) => {
-          if (tab === 'swap') {
-            router.replace('/swipe');
-          }
-
-          if (tab === 'chat') {
-            router.replace('/chat');
-          }
-        }}
-      />
+      <BottomNavigation activeTab="profile" />
     </SafeAreaView>
   );
 }

@@ -309,19 +309,7 @@ export default function ChatPage() {
           )}
         </View>
 
-        {/* ================= BOTTOM NAV ================= */}
-
-        <BottomNavigation
-  activeTab="chat"
-  onTabPress={(tab) => {
-    if (tab === 'swap') {
-      router.replace('/swipe');
-    }
-    if (tab === 'profile') {
-      router.replace('/profile');
-    }
-  }}
-/>
+        <BottomNavigation activeTab="chat"/>
 
       </View>
     </SafeAreaView>

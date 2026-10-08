@@ -325,30 +325,7 @@ export default function LikeScreen() {
         />
       )}
 
-      <BottomNavigation
-        activeTab="like"
-        onTabPress={(tab) => {
-          if (tab === 'swap') {
-            router.replace(
-              '/swipe'
-            );
-          }
-
-          if (tab === 'chat') {
-            router.replace(
-              '/chat'
-            );
-          }
-
-          if (
-            tab === 'profile'
-          ) {
-            router.replace(
-              '/profile'
-            );
-          }
-        }}
-      />
+      <BottomNavigation activeTab="like"/>
     </View>
   );
 }

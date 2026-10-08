@@ -875,26 +875,10 @@ export default function SwipeScreen() {
           )}
         </View>
 
-        {/* ================= BOTTOM NAV ================= */}
-
-        <BottomNavigation
-          activeTab="swap"
-          onTabPress={(tab) => {
-            if (tab === 'like') {
-              router.replace('/like');
-            }
-            if (tab === 'chat') {
-              router.replace('/chat');
-            }
-            if (tab === 'profile') {
-              router.replace('/profile');
-            }
-          }}
-        />
+        <BottomNavigation activeTab="swap"/>
 
       </View>
 
-      {/* Match Modal */}
       {/* Match Modal */}
       <MatchModal
         visible={showMatchModal}

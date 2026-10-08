@@ -8,6 +8,7 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 
 export type BottomNavTab =
   | 'swap'
@@ -18,7 +19,6 @@ export type BottomNavTab =
 
 type BottomNavigationProps = {
   activeTab: BottomNavTab;
-  onTabPress?: (tab: BottomNavTab) => void;
   style?: ViewStyle;
 };
 
@@ -27,38 +27,38 @@ const NAV_ITEMS: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  {
-    key: 'swap',
-    label: 'Swap',
-    icon: 'happy',
-  },
-  {
-    key: 'like',
-    label: 'Like',
-    icon: 'heart',
-  },
-  {
-    key: 'board',
-    label: 'Board',
-    icon: 'albums-outline',
-  },
-  {
-    key: 'chat',
-    label: 'Chat',
-    icon: 'chatbubble-ellipses',
-  },
-  {
-    key: 'profile',
-    label: 'Profile',
-    icon: 'person',
-  },
-];
+    {
+      key: 'swap',
+      label: 'Swap',
+      icon: 'happy',
+    },
+    {
+      key: 'like',
+      label: 'Like',
+      icon: 'heart',
+    },
+    {
+      key: 'board',
+      label: 'Board',
+      icon: 'albums-outline',
+    },
+    {
+      key: 'chat',
+      label: 'Chat',
+      icon: 'chatbubble-ellipses',
+    },
+    {
+      key: 'profile',
+      label: 'Profile',
+      icon: 'person',
+    },
+  ];
 
 export default function BottomNavigation({
   activeTab,
-  onTabPress,
   style,
 }: BottomNavigationProps) {
+  const router = useRouter();
   const { width, height } = useWindowDimensions();
 
   const shortSide = Math.min(width, height);
@@ -126,20 +126,24 @@ export default function BottomNavigation({
                 borderRadius: itemSize / 2,
               },
               active &&
-                styles.navItemActive,
+              styles.navItemActive,
             ]}
             onPress={() => {
-              if (onTabPress) {
-                onTabPress(item.key);
+              if (item.key === activeTab) return;
+
+
+              const routes = {
+                swap: '/swipe',
+                like: '/like',
+                chat: '/chat',
+                profile: '/profile',
+              } as const;
+
+              if (item.key === 'board') {
                 return;
               }
 
-              // Routes for Like/Board/Chat/Profile can be connected
-              // when those screens are added.
-              console.log(
-                'Navigation:',
-                item.key
-              );
+              router.replace(routes[item.key]);
             }}
           >
             <Ionicons

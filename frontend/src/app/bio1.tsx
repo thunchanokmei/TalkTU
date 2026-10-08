@@ -27,10 +27,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import WheelPicker from '../components/WheelPicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+
 import {
   ImageManipulator,
   SaveFormat,
 } from 'expo-image-manipulator';
+
+import {
+  GENDER_IDENTITY_MAP,
+  GENDER_IDENTITY_OPTIONS,
+  type GenderIdentityLabel,
+} from '../constants/genderIdentity';
 
 type PhotoBoxProps = {
   image: string | null;
@@ -38,16 +45,6 @@ type PhotoBoxProps = {
   onRemove: () => void;
   style?: object;
 };
-
-const GENDER_IDENTITY_MAP = {
-  Man: 'man',
-  Woman: 'woman',
-  'Non-binary': 'non_binary',
-  'Prefer not to say': 'prefer_not_to_say',
-} as const;
-
-type GenderIdentityLabel =
-  keyof typeof GENDER_IDENTITY_MAP;
 
 export default function Bio1Screen() {
   const router = useRouter();
@@ -99,12 +96,7 @@ export default function Bio1Screen() {
     Math.min(screenHeight * 0.15, 150)
   );
 
-  const genderOptions: GenderIdentityLabel[] = [
-    'Man',
-    'Woman',
-    'Non-binary',
-    'Prefer not to say',
-  ];
+  const genderOptions = GENDER_IDENTITY_OPTIONS;
 
   const heightOptions = Array.from(
     { length: 251 },
@@ -119,12 +111,13 @@ export default function Bio1Screen() {
     'กรีน',
     'TU fitness',
     'ยิม 7',
-    'หอใน มธ. 100 ปี',
+    'หอใน',
     'เชียงราก 2',
     'SC BUS',
     'โรงอาหาร JC',
-    'ประตูเชียงราก',
-  ];
+    'สวนป๋วย 100 ปี',
+    'ศกร.',
+];
 
   useEffect(() => {
     const loadExistingProfile =
@@ -238,36 +231,13 @@ export default function Bio1Screen() {
             );
           }
 
-          const identity =
-            profile?.gender_identity;
+          const savedGender = profile?.gender_identity;
 
-          if (
-            identity === 'man'
-          ) {
-            setGenderIdentity(
-              'Man'
-            );
-          } else if (
-            identity === 'woman'
-          ) {
-            setGenderIdentity(
-              'Woman'
-            );
-          } else if (
-            identity ===
-            'non_binary'
-          ) {
-            setGenderIdentity(
-              'Non-binary'
-            );
-          } else if (
-            identity ===
-            'prefer_not_to_say'
-          ) {
-            setGenderIdentity(
-              'Prefer not to say'
-            );
-          }
+          const genderLabel = GENDER_IDENTITY_OPTIONS.find(
+            (option) => GENDER_IDENTITY_MAP[option] === savedGender
+          );
+
+          setGenderIdentity(genderLabel ?? '');
 
           /*
            * Reload saved campus locations.

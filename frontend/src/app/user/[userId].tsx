@@ -17,10 +17,15 @@ import {
   useLocalSearchParams,
   useRouter,
 } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
 import MatchModal from '../../components/MatchModal';
+
+import {
+  GENDER_IDENTITY_MAP,
+  GENDER_IDENTITY_OPTIONS,
+} from '../../constants/genderIdentity';
 
 type SwipeMode = 'date' | 'friends';
 type SwipeAction = 'like' | 'pass';
@@ -37,10 +42,9 @@ type CandidateInterest = {
 };
 
 type GenderIdentity =
-  | 'man'
-  | 'woman'
-  | 'non_binary'
-  | 'prefer_not_to_say';
+  (typeof GENDER_IDENTITY_MAP)[
+  keyof typeof GENDER_IDENTITY_MAP
+  ];
 
 type CandidateLocation = {
   id: string | number;
@@ -65,20 +69,12 @@ type Candidate = {
 
 function getGenderIdentityLabel(
   value: GenderIdentity
-) {
-  switch (value) {
-    case 'man':
-      return 'Man';
-
-    case 'woman':
-      return 'Woman';
-
-    case 'non_binary':
-      return 'Non-binary';
-
-    case 'prefer_not_to_say':
-      return 'Prefer not to say';
-  }
+): string {
+  return (
+    GENDER_IDENTITY_OPTIONS.find(
+      (option) => GENDER_IDENTITY_MAP[option] === value
+    ) ?? ''
+  );
 }
 
 export default function UserProfileScreen() {

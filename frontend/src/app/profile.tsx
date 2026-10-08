@@ -65,55 +65,44 @@ export default function ProfileScreen() {
         return;
       }
 
-      // 2. โหลดชื่อ
-      const {
-        data: profile,
-        error: profileError,
-      } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', user.id)
-        .maybeSingle();
+      // Load profile data in parallel
+      const [
+        { data: profile, error: profileError },
+        { data: privateData, error: privateError },
+        { data: photo, error: photoError },
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .maybeSingle(),
 
-      if (profileError) {
-        throw profileError;
-      }
+        supabase
+          .from('user_private')
+          .select('birth_date')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+
+        supabase
+          .from('profile_photos')
+          .select('storage_path')
+          .eq('user_id', user.id)
+          .order('position', { ascending: true })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (profileError) throw profileError;
+      if (privateError) throw privateError;
+      if (photoError) throw photoError;
 
       setDisplayName(profile?.display_name ?? 'User');
 
-      // 3. โหลดวันเกิด
-      const {
-        data: privateData,
-        error: privateError,
-      } = await supabase
-        .from('user_private')
-        .select('birth_date')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (privateError) {
-        throw privateError;
-      }
-
-      if (privateData?.birth_date) {
-        setAge(calculateAge(privateData.birth_date));
-      }
-
-      // 4. โหลดรูปแรกของ Profile
-      const {
-        data: photo,
-        error: photoError,
-      } = await supabase
-        .from('profile_photos')
-        .select('storage_path')
-        .eq('user_id', user.id)
-        .order('position', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-
-      if (photoError) {
-        throw photoError;
-      }
+      setAge(
+        privateData?.birth_date
+          ? calculateAge(privateData.birth_date)
+          : null
+      );
 
       if (photo?.storage_path) {
         const { data } = supabase.storage
@@ -121,6 +110,8 @@ export default function ProfileScreen() {
           .getPublicUrl(photo.storage_path);
 
         setProfilePhoto(data.publicUrl);
+      } else {
+        setProfilePhoto(null);
       }
     } catch (error) {
       console.error('Unable to load profile:', error);

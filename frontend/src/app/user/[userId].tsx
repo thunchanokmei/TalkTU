@@ -105,6 +105,9 @@ export default function UserProfileScreen() {
   const [showMatchModal, setShowMatchModal] =
     useState(false);
 
+  const [matchedMatchId, setMatchedMatchId] =
+    useState<string | null>(null);
+
   const profile = useMemo<Candidate | null>(
     () => {
       if (!candidate) {
@@ -228,6 +231,7 @@ export default function UserProfileScreen() {
         action === 'like' &&
         matched
       ) {
+        setMatchedMatchId(data[0].match_id);
         setShowMatchModal(true);
         return;
       }
@@ -559,6 +563,7 @@ export default function UserProfileScreen() {
             .sort((a, b) => a.position - b.position)[0]
             ?.storage_path
         }
+        matchId={matchedMatchId}
         onContinue={() => {
           setShowMatchModal(false);
 

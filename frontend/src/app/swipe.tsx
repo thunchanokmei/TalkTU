@@ -175,6 +175,7 @@ export default function SwipeScreen() {
   const [heightModal, setHeightModal] = useState(false);
 
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedMatchId, setMatchedMatchId] = useState<string | null>(null);
   const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
   const [hasMore, setHasMore] = useState(true);
@@ -376,6 +377,7 @@ export default function SwipeScreen() {
 
         if (result?.[0]?.matched) {
           console.log('MATCH!', result[0].match_id);
+          setMatchedMatchId(result[0].match_id);
           setMatchedCandidate(candidate);
           setShowMatchModal(true);
         }
@@ -887,6 +889,7 @@ export default function SwipeScreen() {
             .sort((a, b) => a.position - b.position)[0]
             ?.storage_path
         }
+        matchId={matchedMatchId}
         onContinue={() => setShowMatchModal(false)}
       />
 

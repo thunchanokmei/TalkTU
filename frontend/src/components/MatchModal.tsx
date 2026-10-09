@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   ActivityIndicator,
   Image,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -11,11 +12,13 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { sendMessage } from '@/features/chat/services/chatService';
 
 type MatchModalProps = {
   visible: boolean;
   displayName: string;
   candidatePhotoPath?: string | null;
+  matchId?: string | null;
   onContinue: () => void;
 };
 
@@ -23,8 +26,64 @@ export default function MatchModal({
   visible,
   displayName,
   candidatePhotoPath,
+  matchId,
   onContinue,
 }: MatchModalProps) {
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendSucceeded, setSendSucceeded] = useState(false);
+  useEffect(() => {
+    if (visible) {
+      setMessage('');
+      setSending(false);
+      setSendSucceeded(false);
+      setToastMessage('');
+    }
+  }, [visible, matchId]);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (text: string) => {
+    if (toastTimer.current) {
+      clearTimeout(toastTimer.current);
+    }
+
+    setToastMessage(text);
+
+    toastTimer.current = setTimeout(() => {
+      setToastMessage('');
+      toastTimer.current = null;
+    }, 1500);
+  };
+
+  useEffect(() => {
+    if (!visible) {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+
+      if (successTimer.current) {
+        clearTimeout(successTimer.current);
+        successTimer.current = null;
+      }
+    }
+
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+
+      if (successTimer.current) {
+        clearTimeout(successTimer.current);
+        successTimer.current = null;
+      }
+    };
+  }, [visible, matchId]);
+
   const [candidateImageUrl, setCandidateImageUrl] =
     useState<string | null>(null);
 
@@ -125,6 +184,43 @@ export default function MatchModal({
     };
   }, [visible]);
 
+  const handleSendMessage = async () => {
+    const content = message.trim();
+
+    if (!content || sending || sendSucceeded) return;
+
+    if (!matchId) {
+      showToast('Match not found.');
+      return;
+    }
+
+    setSending(true);
+
+    try {
+      const result = await sendMessage(matchId, content);
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      setSendSucceeded(true);
+      setMessage('');
+      setToastMessage('Sent! See you in Chat 💬');
+
+      // Show the success toast briefly before returning.
+      successTimer.current = setTimeout(() => {
+        successTimer.current = null;
+        setToastMessage('');
+        onContinue();
+      }, 1500);
+    } catch (error) {
+      console.error('Match message error:', error);
+      showToast('Failed to send message. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -172,12 +268,46 @@ export default function MatchModal({
           </View>
         </View>
 
+        {toastMessage !== '' && (
+          <View style={styles.toastContainer}>
+            <Text style={styles.toastText}>
+              {toastMessage}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.bottomArea}>
-          <TextInput
-            placeholder={`Say something to ${displayName}`}
-            placeholderTextColor="#999999"
-            style={styles.messageInput}
-          />
+          <View style={styles.messageRow}>
+            <TextInput
+              placeholder={`Say something to ${displayName}`}
+              placeholderTextColor="#999999"
+              style={[
+                styles.messageInput,
+                Platform.OS === 'web' && ({
+                  outline: 'none',
+                } as any),
+              ]}
+              value={message}
+              onChangeText={setMessage}
+              editable={!sending && !sendSucceeded}
+              maxLength={5000}
+            />
+
+            {message.trim().length > 0 && (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleSendMessage}
+                disabled={sending || sendSucceeded}
+                activeOpacity={0.7}
+              >
+                {sending ? (
+                  <ActivityIndicator color="#FF7885" size="small" />
+                ) : (
+                  <Text style={styles.sendIcon}>➤</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity
             activeOpacity={0.85}
@@ -274,12 +404,22 @@ const styles = StyleSheet.create({
   },
 
   messageInput: {
+    flex: 1,
     height: 54,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 22,
     fontSize: 14,
     color: '#333333',
+    borderWidth: 0,
+    outlineWidth: 0,
+  },
+
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingRight: 12,
+    borderWidth: 0,
   },
 
   doneButton: {
@@ -298,5 +438,34 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: '100%',
+  },
+
+  toastContainer: {
+    position: 'absolute',
+    bottom: 165,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(40, 40, 40, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    zIndex: 20,
+  },
+
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  sendButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  sendIcon: {
+    fontSize: 23,
+    color: '#FF7885',
   },
 });

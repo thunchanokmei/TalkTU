@@ -554,6 +554,11 @@ export default function UserProfileScreen() {
       <MatchModal
         visible={showMatchModal}
         displayName={profile.display_name}
+        candidatePhotoPath={
+          [...(profile.photos ?? [])]
+            .sort((a, b) => a.position - b.position)[0]
+            ?.storage_path
+        }
         onContinue={() => {
           setShowMatchModal(false);
 

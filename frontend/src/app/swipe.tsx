@@ -875,14 +875,18 @@ export default function SwipeScreen() {
           )}
         </View>
 
-        <BottomNavigation activeTab="swap"/>
+        <BottomNavigation activeTab="swap" />
 
       </View>
 
-      {/* Match Modal */}
       <MatchModal
         visible={showMatchModal}
         displayName={matchedCandidate?.display_name ?? ''}
+        candidatePhotoPath={
+          [...(matchedCandidate?.photos ?? [])]
+            .sort((a, b) => a.position - b.position)[0]
+            ?.storage_path
+        }
         onContinue={() => setShowMatchModal(false)}
       />
 

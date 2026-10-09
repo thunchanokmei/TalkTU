@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Platform,
   ScrollView,
   SafeAreaView,
   StyleSheet,
@@ -132,6 +134,36 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleDeleteAccount = () => {
+    const title = 'Delete your account?';
+    const message =
+      'This will permanently delete your account and associated data. This action cannot be undone.';
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+
+      if (confirmed) {
+        console.log('Delete Account confirmed (test only)');
+      }
+
+      return;
+    }
+
+    Alert.alert(title, message, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete Account',
+        style: 'destructive',
+        onPress: () => {
+          console.log('Delete Account confirmed (test only)');
+        },
+      },
+    ]);
+  };
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -194,9 +226,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() =>
-              console.log('Delete Account')
-            }
+            onPress={handleDeleteAccount}
           >
             <Text style={styles.deleteText}>
               Delete Account

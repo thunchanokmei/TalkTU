@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sendMessage } from '@/features/chat/services/chatService';
+import { Ionicons } from '@expo/vector-icons';
 
 type MatchModalProps = {
   visible: boolean;
@@ -303,7 +304,11 @@ export default function MatchModal({
                 {sending ? (
                   <ActivityIndicator color="#FF7885" size="small" />
                 ) : (
-                  <Text style={styles.sendIcon}>➤</Text>
+                  <Ionicons
+                    name="arrow-up"
+                    size={20}
+                    color="#FF7885"
+                  />
                 )}
               </TouchableOpacity>
             )}

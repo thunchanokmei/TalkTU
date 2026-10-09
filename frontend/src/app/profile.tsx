@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Image,
+  ScrollView,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -12,9 +13,20 @@ import {
 
 import BottomNavigation from '../components/navigation/BottomNavigation';
 import { supabase } from '../lib/supabase';
+import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
+
+  const handleCopy = async (value: string) => {
+    try {
+      await Clipboard.setStringAsync(value);
+      setCopiedValue(value);
+    } catch (error) {
+      console.error('Unable to copy contact:', error);
+    }
+  };
 
   const [displayName, setDisplayName] = useState('');
   const [age, setAge] = useState<number | null>(null);
@@ -143,51 +155,113 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Profile</Text>
 
-      <View style={styles.profileSection}>
-        {profilePhoto ? (
-          <Image
-            source={{ uri: profilePhoto }}
-            style={styles.avatar}
-          />
-        ) : (
-          <View style={styles.avatarPlaceholder} />
-        )}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
 
-        <Text style={styles.name}>
-          {displayName}
-          {age !== null ? ` ${age}` : ''}
-        </Text>
+        <View style={styles.profileSection}>
+          {profilePhoto ? (
+            <Image
+              source={{ uri: profilePhoto }}
+              style={styles.avatar}
+            />
+          ) : (
+            <View style={styles.avatarPlaceholder} />
+          )}
 
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => router.push('/edit-profile')}
-        >
-          <Text style={styles.editButtonText}>
-            Edit Profile
+          <Text style={styles.name}>
+            {displayName}
+            {age !== null ? ` ${age}` : ''}
           </Text>
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.accountSection}>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.accountText}>
-            Log out
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => router.push('/edit-profile')}
+          >
+            <Text style={styles.editButtonText}>
+              Edit Profile
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          onPress={() =>
-            console.log('Delete Account')
-          }
-        >
-          <Text style={styles.deleteText}>
-            Delete Account
+        <View style={styles.accountSection}>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.accountText}>
+              Log out
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() =>
+              console.log('Delete Account')
+            }
+          >
+            <Text style={styles.deleteText}>
+              Delete Account
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 6 }}>
+            Contact Developer
           </Text>
-        </TouchableOpacity>
-      </View>
+
+          <Text style={{ color: '#777777', marginBottom: 16 }}>
+            Questions, feedback, or support? Reach out to us!
+          </Text>
+
+          {[
+            { label: 'Instagram', value: '@talktu.official' },
+            { label: 'LINE', value: 'talktuOA' },
+            { label: 'Gmail', value: 'talktu@gmail.com' },
+          ].map((contact) => (
+            <View
+              key={contact.label}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 16,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: '600' }}>
+                  {contact.label}
+                </Text>
+                <Text style={{ color: '#777777', marginTop: 3 }}>
+                  {contact.value}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => handleCopy(contact.value)}
+                style={{
+                  borderWidth: 1,
+                  borderColor: '#DDDDDD',
+                  borderRadius: 10,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    fontWeight: '600',
+                    color: copiedValue === contact.value ? '#16A34A' : '#222222',
+                  }}
+                >
+                  {copiedValue === contact.value ? '✓ Copied!' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
 
       <BottomNavigation activeTab="profile" />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 

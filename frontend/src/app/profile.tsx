@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const deletingAccountRef = useRef(false);
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
   const handleCopy = async (value: string) => {
@@ -134,6 +135,38 @@ export default function ProfileScreen() {
     }
   };
 
+  const deleteAccount = async () => {
+  if (deletingAccountRef.current) return;
+
+  deletingAccountRef.current = true;
+
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      'delete-account',
+      { body: {} },
+    );
+
+    if (error || data?.success !== true) {
+      throw error ?? new Error('Account deletion was not confirmed');
+    }
+
+    await supabase.auth.signOut({ scope: 'local' });
+    router.replace('/(auth)/login');
+  } catch (error) {
+    console.error('Unable to delete account:', error);
+
+    const message = 'Unable to delete your account. Please try again.';
+
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      Alert.alert('Delete Account Failed', message);
+    }
+  } finally {
+    deletingAccountRef.current = false;
+  }
+};
+
   const handleDeleteAccount = () => {
     const title = 'Delete your account?';
     const message =
@@ -143,7 +176,7 @@ export default function ProfileScreen() {
       const confirmed = window.confirm(`${title}\n\n${message}`);
 
       if (confirmed) {
-        console.log('Delete Account confirmed (test only)');
+        void deleteAccount();
       }
 
       return;
@@ -158,7 +191,7 @@ export default function ProfileScreen() {
         text: 'Delete Account',
         style: 'destructive',
         onPress: () => {
-          console.log('Delete Account confirmed (test only)');
+          void deleteAccount();
         },
       },
     ]);

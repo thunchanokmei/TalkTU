@@ -13,30 +13,30 @@ export default {
       }
 
       // Require an access token from the signed-in user.
-const authorization = req.headers.get("Authorization");
+      const authorization = req.headers.get("Authorization");
 
-if (!authorization?.startsWith("Bearer ")) {
-  return Response.json(
-    { error: "Unauthorized" },
-    { status: 401 },
-  );
-}
+      if (!authorization?.startsWith("Bearer ")) {
+        return Response.json(
+          { error: "Unauthorized" },
+          { status: 401 },
+        );
+      }
 
-const accessToken = authorization.slice("Bearer ".length).trim();
+      const accessToken = authorization.slice("Bearer ".length).trim();
 
-if (!accessToken) {
-  return Response.json(
-    { error: "Unauthorized" },
-    { status: 401 },
-  );
-}
+      if (!accessToken) {
+        return Response.json(
+          { error: "Unauthorized" },
+          { status: 401 },
+        );
+      }
 
-// Verify the token with Supabase Auth.
-// Never trust a user ID supplied in the request body.
-const {
-  data: { user },
-  error: userError,
-} = await ctx.supabase.auth.getUser(accessToken);
+      // Verify the token with Supabase Auth.
+      // Never trust a user ID supplied in the request body.
+      const {
+        data: { user },
+        error: userError,
+      } = await ctx.supabase.auth.getUser(accessToken);
 
       if (userError || !user) {
         return Response.json(
@@ -47,9 +47,27 @@ const {
 
       const userId = user.id;
 
+      // Check that the account is accessible to the admin client
+      // before deleting any profile photos.
+      const { data: accountData, error: accountError } = await ctx.supabaseAdmin
+        .auth.admin.getUserById(userId);
+
+      if (accountError || !accountData.user) {
+        console.error(
+          "Unable to verify account before deletion:",
+          accountError,
+        );
+
+        return Response.json(
+          { error: "Unable to delete account" },
+          { status: 500 },
+        );
+      }
+
       // Remove all profile photos belonging to this user.
       // Keep listing from the beginning because each batch is deleted.
       const bucket = ctx.supabaseAdmin.storage.from("profile-photos");
+      let previousPaths: string[] = [];
 
       while (true) {
         const { data: files, error: listError } = await bucket.list(
@@ -76,6 +94,20 @@ const {
         if (paths.length === 0) {
           break;
         }
+
+        if (
+          paths.length === previousPaths.length &&
+          paths.every((path, index) => path === previousPaths[index])
+        ) {
+          console.error("Profile photos were not removed from storage");
+
+          return Response.json(
+            { error: "Unable to delete account" },
+            { status: 500 },
+          );
+        }
+
+        previousPaths = paths;
 
         const { error: removeError } = await bucket.remove(paths);
 

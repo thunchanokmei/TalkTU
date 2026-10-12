@@ -46,96 +46,27 @@ export default {
       }
 
       const userId = user.id;
+      const { error: enqueueError } = await ctx.supabaseAdmin.rpc(
+        "enqueue_account_deletion",
+        { p_user_id: userId },
+      );
 
-      // Check that the account is accessible to the admin client
-      // before deleting any profile photos.
-      const { data: accountData, error: accountError } = await ctx.supabaseAdmin
-        .auth.admin.getUserById(userId);
-
-      if (accountError || !accountData.user) {
-        console.error(
-          "Unable to verify account before deletion:",
-          accountError,
-        );
+      if (enqueueError) {
+        console.error("Unable to enqueue account deletion:", enqueueError);
 
         return Response.json(
-          { error: "Unable to delete account" },
+          { error: "Unable to request account deletion" },
           { status: 500 },
         );
       }
 
-      // Remove all profile photos belonging to this user.
-      // Keep listing from the beginning because each batch is deleted.
-      const bucket = ctx.supabaseAdmin.storage.from("profile-photos");
-      let previousPaths: string[] = [];
-
-      while (true) {
-        const { data: files, error: listError } = await bucket.list(
-          userId,
-          {
-            limit: 100,
-            offset: 0,
-          },
-        );
-
-        if (listError) {
-          console.error("Unable to list profile photos:", listError);
-
-          return Response.json(
-            { error: "Unable to delete account" },
-            { status: 500 },
-          );
-        }
-
-        const paths = (files ?? [])
-          .filter((file) => file.name && file.id)
-          .map((file) => `${userId}/${file.name}`);
-
-        if (paths.length === 0) {
-          break;
-        }
-
-        if (
-          paths.length === previousPaths.length &&
-          paths.every((path, index) => path === previousPaths[index])
-        ) {
-          console.error("Profile photos were not removed from storage");
-
-          return Response.json(
-            { error: "Unable to delete account" },
-            { status: 500 },
-          );
-        }
-
-        previousPaths = paths;
-
-        const { error: removeError } = await bucket.remove(paths);
-
-        if (removeError) {
-          console.error("Unable to remove profile photos:", removeError);
-
-          return Response.json(
-            { error: "Unable to delete account" },
-            { status: 500 },
-          );
-        }
-      }
-
-      // Delete only the authenticated user's account.
-      // Related database rows are removed by ON DELETE CASCADE.
-      const { error: deleteError } = await ctx.supabaseAdmin.auth.admin
-        .deleteUser(userId);
-
-      if (deleteError) {
-        console.error("Unable to delete user:", deleteError);
-
-        return Response.json(
-          { error: "Unable to delete account" },
-          { status: 500 },
-        );
-      }
-
-      return Response.json({ success: true });
+      return Response.json(
+        {
+          success: true,
+          status: "pending",
+        },
+        { status: 202 },
+      );
     },
   ),
 };

@@ -147,7 +147,7 @@ export default function ChatRoom() {
       if (result.error) {
         setError(
           result.error.message ||
-            'Unable to load messages.'
+          'Unable to load messages.'
         );
 
         setMessages([]);
@@ -565,9 +565,9 @@ export default function ChatRoom() {
                     (message) => {
                       const isMe =
                         currentUserId !==
-                          null &&
+                        null &&
                         message.sender_id ===
-                          currentUserId;
+                        currentUserId;
 
                       return (
                         <MessageBubble
@@ -592,14 +592,19 @@ export default function ChatRoom() {
                   multiline
                   maxLength={5000}
                   editable={!sending}
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    Platform.OS === 'web' && ({
+                      outline: 'none',
+                    } as any),
+                  ]}
                 />
 
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
                     !input.trim() &&
-                      styles.sendDisabled,
+                    styles.sendDisabled,
                   ]}
                   disabled={
                     !input.trim() ||

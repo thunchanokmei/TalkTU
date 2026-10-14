@@ -14,7 +14,7 @@ export type DatingInterest =
   | 'beyond_binary';
 
 async function getCurrentUserId():
-Promise<string> {
+  Promise<string> {
   const {
     data: { session },
     error,
@@ -261,7 +261,7 @@ export async function saveSexAtBirth(
 }
 
 export async function getSexAtBirth():
-Promise<SexAtBirth | null> {
+  Promise<SexAtBirth | null> {
   const userId =
     await getCurrentUserId();
 
@@ -318,6 +318,37 @@ export async function saveMode(
   }
 }
 
+export async function getMode():
+  Promise<AppMode | null> {
+  const userId =
+    await getCurrentUserId();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from('profiles')
+      .select('mode')
+      .eq('id', userId)
+      .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  const value = data?.mode;
+
+  if (
+    value === 'date' ||
+    value === 'friends'
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
 /* ============== DATING PREFERENCES ============== */
 
 export async function saveDatingPreferences(
@@ -358,7 +389,7 @@ export async function saveDatingPreferences(
 }
 
 export async function getDatingPreferences():
-Promise<DatingInterest[]> {
+  Promise<DatingInterest[]> {
   const userId =
     await getCurrentUserId();
 
@@ -397,7 +428,7 @@ Promise<DatingInterest[]> {
       item === 'men' ||
       item === 'women' ||
       item ===
-        'beyond_binary'
+      'beyond_binary'
   );
 }
 

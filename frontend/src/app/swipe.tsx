@@ -9,7 +9,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Modal,
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +19,8 @@ import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 import BottomNavigation from '../components/navigation/BottomNavigation';
+import { getMode } from '../features/onboarding/services/onboardingService';
+import MatchModal from '../components/MatchModal';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
@@ -122,7 +123,7 @@ export default function SwipeScreen() {
     Math.min(shortSide * 0.09, 42)
   );
 
-  const [mode, setMode] = useState<SwipeMode>('date');
+  const [mode, setMode] = useState<SwipeMode | null>(null);
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -174,12 +175,13 @@ export default function SwipeScreen() {
   const [heightModal, setHeightModal] = useState(false);
 
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedMatchId, setMatchedMatchId] = useState<string | null>(null);
   const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
   const [hasMore, setHasMore] = useState(true);
 
   const openCandidateProfile = () => {
-    if (!currentCandidate) {
+    if (!currentCandidate || isSwiping.current) {
       return;
     }
 
@@ -192,6 +194,27 @@ export default function SwipeScreen() {
       },
     });
   };
+
+  useEffect(() => {
+    const loadMode = async () => {
+      try {
+        const savedMode = await getMode();
+
+        if (savedMode) {
+          setMode(savedMode);
+        } else {
+          setError('Unable to determine discovery mode.');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Load swipe mode error:', err);
+        setError('Unable to load discovery mode.');
+        setLoading(false);
+      }
+    };
+
+    loadMode();
+  }, []);
 
   const fetchCandidates = useCallback(
     async (selectedMode: SwipeMode, offset: number, append = false) => {
@@ -253,6 +276,10 @@ export default function SwipeScreen() {
   );
 
   useEffect(() => {
+    if (!mode) {
+      return;
+    }
+
     fetchCandidates(mode, 0, false);
   }, [mode, fetchCandidates]);
 
@@ -260,6 +287,7 @@ export default function SwipeScreen() {
     const remaining = candidates.length - currentIndex;
 
     if (
+      mode &&
       remaining <= 3 &&
       candidates.length > 0 &&
       !loadingMore &&
@@ -349,6 +377,7 @@ export default function SwipeScreen() {
 
         if (result?.[0]?.matched) {
           console.log('MATCH!', result[0].match_id);
+          setMatchedMatchId(result[0].match_id);
           setMatchedCandidate(candidate);
           setShowMatchModal(true);
         }
@@ -363,7 +392,7 @@ export default function SwipeScreen() {
         );
       });
   };
-  
+
 
   const swipeCard = (action: SwipeAction) => {
     if (!currentCandidate || isSwiping.current) {
@@ -395,85 +424,85 @@ export default function SwipeScreen() {
 
   /* ปัดการ์ดด้วยนิ้ว */
   const panResponder = PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponder: () => false,
 
-      // Let buttons/tap zones receive a normal tap, but capture the gesture
-      // as soon as the finger actually starts moving horizontally.
-      onMoveShouldSetPanResponder: (_, gesture) => {
-        const horizontal = Math.abs(gesture.dx);
-        const vertical = Math.abs(gesture.dy);
+    // Let buttons/tap zones receive a normal tap, but capture the gesture
+    // as soon as the finger actually starts moving horizontally.
+    onMoveShouldSetPanResponder: (_, gesture) => {
+      const horizontal = Math.abs(gesture.dx);
+      const vertical = Math.abs(gesture.dy);
 
-        return horizontal > 6 && horizontal > vertical;
-      },
+      return horizontal > 6 && horizontal > vertical;
+    },
 
-      onMoveShouldSetPanResponderCapture: (_, gesture) => {
-        const horizontal = Math.abs(gesture.dx);
-        const vertical = Math.abs(gesture.dy);
+    onMoveShouldSetPanResponderCapture: (_, gesture) => {
+      const horizontal = Math.abs(gesture.dx);
+      const vertical = Math.abs(gesture.dy);
 
-        return horizontal > 6 && horizontal > vertical;
-      },
+      return horizontal > 6 && horizontal > vertical;
+    },
 
-      onPanResponderGrant: () => {
-        position.stopAnimation();
-      },
+    onPanResponderGrant: () => {
+      position.stopAnimation();
+    },
 
-      onPanResponderMove: (_, gesture) => {
-        if (isSwiping.current) {
-          return;
-        }
+    onPanResponderMove: (_, gesture) => {
+      if (isSwiping.current) {
+        return;
+      }
 
-        position.setValue({
-          x: gesture.dx,
-          y: gesture.dy * 0.08,
-        });
-      },
-
-      onPanResponderRelease: (_, gesture) => {
-        
-
-        if (isSwiping.current) {
-          return;
-        }
-
-        if (gesture.dx > swipeThreshold) {
-          swipeCard('like');
-          return;
-        }
-
-        if (gesture.dx < -swipeThreshold) {
-          swipeCard('pass');
-          return;
-        }
-
-        Animated.spring(position, {
-          toValue: {
-            x: 0,
-            y: 0,
-          },
-          friction: 7,
-          tension: 80,
-          useNativeDriver: false,
-        }).start();
-      },
-
-      onPanResponderTerminate: (_, gesture) => {
-        if (isSwiping.current) {
-          return;
-        }
-
-        Animated.spring(position, {
-          toValue: {
-            x: 0,
-            y: 0,
-          },
-          friction: 7,
-          tension: 80,
-          useNativeDriver: false,
-        }).start();
-      },
-
-      onPanResponderTerminationRequest: () => false,
+      position.setValue({
+        x: gesture.dx,
+        y: gesture.dy * 0.08,
       });
+    },
+
+    onPanResponderRelease: (_, gesture) => {
+
+
+      if (isSwiping.current) {
+        return;
+      }
+
+      if (gesture.dx > swipeThreshold) {
+        swipeCard('like');
+        return;
+      }
+
+      if (gesture.dx < -swipeThreshold) {
+        swipeCard('pass');
+        return;
+      }
+
+      Animated.spring(position, {
+        toValue: {
+          x: 0,
+          y: 0,
+        },
+        friction: 7,
+        tension: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderTerminate: (_, gesture) => {
+      if (isSwiping.current) {
+        return;
+      }
+
+      Animated.spring(position, {
+        toValue: {
+          x: 0,
+          y: 0,
+        },
+        friction: 7,
+        tension: 80,
+        useNativeDriver: false,
+      }).start();
+    },
+
+    onPanResponderTerminationRequest: () => false,
+  });
 
   const changeMode = (newMode: SwipeMode) => {
     if (newMode === mode) {
@@ -589,9 +618,11 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  fetchCandidates(mode, 0, false)
-                }
+                onPress={() => {
+                  if (mode) {
+                    fetchCandidates(mode, 0, false);
+                  }
+                }}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -625,9 +656,11 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
-                onPress={() =>
-                  fetchCandidates(mode, 0, false)
-                }
+                onPress={() => {
+                  if (mode) {
+                    fetchCandidates(mode, 0, false);
+                  }
+                }}
                 activeOpacity={0.85}
               >
                 <LinearGradient
@@ -844,91 +877,21 @@ export default function SwipeScreen() {
           )}
         </View>
 
-        {/* ================= BOTTOM NAV ================= */}
-
-        <BottomNavigation
-  activeTab="swap"
-  onTabPress={(tab) => {
-    if (tab === 'chat') {
-      router.replace('/chat');
-    }
-  }}
-/>
+        <BottomNavigation activeTab="swap" />
 
       </View>
 
-      {/* Match Modal */}
-      <Modal
+      <MatchModal
         visible={showMatchModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMatchModal(false)}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 24,
-          }}
-        >
-          <View
-            style={{
-              width: '100%',
-              maxWidth: 360,
-              backgroundColor: '#FFFFFF',
-              borderRadius: 24,
-              padding: 28,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 32,
-                fontWeight: '700',
-                color: '#111111',
-                marginBottom: 12,
-              }}
-            >
-              It's a Match! 💕
-            </Text>
-
-            <Text
-              style={{
-                fontSize: 16,
-                color: '#555555',
-                textAlign: 'center',
-                marginBottom: 24,
-              }}
-            >
-              You and {matchedCandidate?.display_name} liked each other!
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => setShowMatchModal(false)}
-              activeOpacity={0.85}
-              style={{
-                width: '100%',
-                backgroundColor: '#FF7B82',
-                paddingVertical: 14,
-                borderRadius: 14,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  color: '#FFFFFF',
-                  fontSize: 16,
-                  fontWeight: '700',
-                }}
-              >
-                Continue
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        displayName={matchedCandidate?.display_name ?? ''}
+        candidatePhotoPath={
+          [...(matchedCandidate?.photos ?? [])]
+            .sort((a, b) => a.position - b.position)[0]
+            ?.storage_path
+        }
+        matchId={matchedMatchId}
+        onContinue={() => setShowMatchModal(false)}
+      />
 
     </SafeAreaView>
   );
@@ -1016,7 +979,7 @@ function getProfilePhotoUrl(storagePath: string) {
 function PhotoFromStorage({
   storagePath,
 }: PhotoFromStorageProps) {
-const imageUrl = getProfilePhotoUrl(storagePath);
+  const imageUrl = getProfilePhotoUrl(storagePath);
 
   return <CandidateImage uri={imageUrl} />;
 }

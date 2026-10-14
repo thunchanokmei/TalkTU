@@ -17,9 +17,15 @@ import {
   useLocalSearchParams,
   useRouter,
 } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '@/lib/supabase';
+import MatchModal from '../../components/MatchModal';
+
+import {
+  GENDER_IDENTITY_MAP,
+  GENDER_IDENTITY_OPTIONS,
+} from '../../constants/genderIdentity';
 
 type SwipeMode = 'date' | 'friends';
 type SwipeAction = 'like' | 'pass';
@@ -36,10 +42,9 @@ type CandidateInterest = {
 };
 
 type GenderIdentity =
-  | 'man'
-  | 'woman'
-  | 'non_binary'
-  | 'prefer_not_to_say';
+  (typeof GENDER_IDENTITY_MAP)[
+  keyof typeof GENDER_IDENTITY_MAP
+  ];
 
 type CandidateLocation = {
   id: string | number;
@@ -64,20 +69,12 @@ type Candidate = {
 
 function getGenderIdentityLabel(
   value: GenderIdentity
-) {
-  switch (value) {
-    case 'man':
-      return 'Man';
-
-    case 'woman':
-      return 'Woman';
-
-    case 'non_binary':
-      return 'Non-binary';
-
-    case 'prefer_not_to_say':
-      return 'Prefer not to say';
-  }
+): string {
+  return (
+    GENDER_IDENTITY_OPTIONS.find(
+      (option) => GENDER_IDENTITY_MAP[option] === value
+    ) ?? ''
+  );
 }
 
 export default function UserProfileScreen() {
@@ -86,10 +83,12 @@ export default function UserProfileScreen() {
   const {
     candidate,
     mode,
+    source,
   } = useLocalSearchParams<{
     userId: string;
     candidate?: string;
     mode?: SwipeMode;
+    source?: 'swipe' | 'like';
   }>();
 
   const { width } = useWindowDimensions();
@@ -102,6 +101,12 @@ export default function UserProfileScreen() {
 
   const [errorMessage, setErrorMessage] =
     useState('');
+
+  const [showMatchModal, setShowMatchModal] =
+    useState(false);
+
+  const [matchedMatchId, setMatchedMatchId] =
+    useState<string | null>(null);
 
   const profile = useMemo<Candidate | null>(
     () => {
@@ -198,26 +203,45 @@ export default function UserProfileScreen() {
           ? 'friends'
           : 'date';
 
-      const { error } =
-        await supabase.rpc(
-          'submit_swipe',
-          {
-            p_target_id:
-              profile.user_id,
+      const {
+        data,
+        error,
+      } = await supabase.rpc(
+        'submit_swipe',
+        {
+          p_target_id:
+            profile.user_id,
 
-            p_mode:
-              selectedMode,
+          p_mode:
+            selectedMode,
 
-            p_action:
-              action,
-          }
-        );
+          p_action:
+            action,
+        }
+      );
 
       if (error) {
         throw error;
       }
 
-      router.replace('/swipe');
+      const matched =
+        data?.[0]?.matched === true;
+
+      if (
+        action === 'like' &&
+        matched
+      ) {
+        setMatchedMatchId(data[0].match_id);
+        setShowMatchModal(true);
+        return;
+      }
+
+      if (source === 'like') {
+        router.replace('/like');
+      } else {
+        router.replace('/swipe');
+      }
+
     } catch (error) {
       console.error(
         'submit_swipe from profile error:',
@@ -456,7 +480,7 @@ export default function UserProfileScreen() {
         {/* LOCATIONS */}
 
         {profile.locations &&
-        profile.locations.length > 0 ? (
+          profile.locations.length > 0 ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
               You'll usually find me at..
@@ -531,6 +555,25 @@ export default function UserProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <MatchModal
+        visible={showMatchModal}
+        displayName={profile.display_name}
+        candidatePhotoPath={
+          [...(profile.photos ?? [])]
+            .sort((a, b) => a.position - b.position)[0]
+            ?.storage_path
+        }
+        matchId={matchedMatchId}
+        onContinue={() => {
+          setShowMatchModal(false);
+
+          if (source === 'like') {
+            router.replace('/like');
+          } else {
+            router.replace('/swipe');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

@@ -136,36 +136,45 @@ export default function ProfileScreen() {
   };
 
   const deleteAccount = async () => {
-  if (deletingAccountRef.current) return;
+    if (deletingAccountRef.current) return;
 
-  deletingAccountRef.current = true;
+    deletingAccountRef.current = true;
 
-  try {
-    const { data, error } = await supabase.functions.invoke(
-      'delete-account',
-      { body: {} },
-    );
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'delete-account',
+        { body: {} },
+      );
 
-    if (error || data?.success !== true) {
-      throw error ?? new Error('Account deletion was not confirmed');
+      if (error || data?.success !== true) {
+        throw error ?? new Error('Account deletion was not confirmed');
+      }
+
+      await supabase.auth.signOut({ scope: 'local' });
+      router.replace('/(auth)/login');
+
+      const message =
+        'Your account deletion request has been received. Your account will be deleted shortly.';
+
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Deletion Requested', message);
+      }
+    } catch (error) {
+      console.error('Unable to delete account:', error);
+
+      const message = 'Unable to delete your account. Please try again.';
+
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Delete Account Failed', message);
+      }
+    } finally {
+      deletingAccountRef.current = false;
     }
-
-    await supabase.auth.signOut({ scope: 'local' });
-    router.replace('/(auth)/login');
-  } catch (error) {
-    console.error('Unable to delete account:', error);
-
-    const message = 'Unable to delete your account. Please try again.';
-
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert('Delete Account Failed', message);
-    }
-  } finally {
-    deletingAccountRef.current = false;
-  }
-};
+  };
 
   const handleDeleteAccount = () => {
     const title = 'Delete your account?';

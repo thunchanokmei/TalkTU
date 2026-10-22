@@ -304,9 +304,9 @@ export default function ProfileScreen() {
           </Text>
 
           {[
-            { label: 'Instagram', value: '@talktu.official' },
-            { label: 'LINE', value: 'talktuOA' },
-            { label: 'Gmail', value: 'talktu@gmail.com' },
+            { label: 'Instagram', value: 'talktu.team' },
+            { label: 'LINE', value: '@927qejxh' },
+            { label: 'Gmail', value: 'talktu.team@gmail.com' },
           ].map((contact) => (
             <View
               key={contact.label}

@@ -1,459 +1,295 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-import type {
-  DimensionValue,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-} from 'react-native';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 
-import { LinearGradient } from 'expo-linear-gradient';
-import { router, useLocalSearchParams } from 'expo-router';
+import {
+  LinearGradient,
+} from 'expo-linear-gradient';
 
-import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
-import { GoogleSans_400Regular } from '@expo-google-fonts/google-sans/400Regular';
-import { GoogleSans_500Medium } from '@expo-google-fonts/google-sans/500Medium';
-import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBold';
+import {
+  router,
+} from 'expo-router';
 
-import { saveBirthDate } from '../../features/onboarding/services/onboardingService';
+import WheelPicker
+  from '../../components/WheelPicker';
 
-type WheelColumnProps = {
-  items: string[];
-  selectedIndex: number;
-  itemHeight: number;
-  width: DimensionValue;
-  onValueChange: (value: string, index: number) => void;
-};
-
-function WheelColumn({
-  items,
-  selectedIndex,
-  itemHeight,
-  width,
-  onValueChange,
-}: WheelColumnProps) {
-  const scrollRef = useRef<ScrollView>(null);
-
-  const currentIndexRef = useRef(selectedIndex);
-  const [visibleIndex, setVisibleIndex] =
-    useState(selectedIndex);
-
-  useEffect(() => {
-    currentIndexRef.current = selectedIndex;
-    setVisibleIndex(selectedIndex);
-
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({
-        y: selectedIndex * itemHeight,
-        animated: false,
-      });
-    }, 30);
-
-    return () => clearTimeout(timer);
-  }, [selectedIndex, itemHeight]);
-
-  const getIndexFromOffset = (
-    offsetY: number
-  ) => {
-    const index = Math.round(
-      offsetY / itemHeight
-    );
-
-    return Math.max(
-      0,
-      Math.min(index, items.length - 1)
-    );
-  };
-
-  const handleScroll = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ) => {
-    const offsetY =
-      event.nativeEvent.contentOffset.y;
-
-    const index =
-      getIndexFromOffset(offsetY);
-
-    if (
-      index !== currentIndexRef.current
-    ) {
-      currentIndexRef.current = index;
-      setVisibleIndex(index);
-    }
-  };
-
-  const handleMomentumScrollEnd = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ) => {
-    const offsetY =
-      event.nativeEvent.contentOffset.y;
-
-    const index =
-      getIndexFromOffset(offsetY);
-
-    const targetY =
-      index * itemHeight;
-
-    scrollRef.current?.scrollTo({
-      y: targetY,
-      animated: false,
-    });
-
-    currentIndexRef.current = index;
-    setVisibleIndex(index);
-
-    onValueChange(
-      items[index],
-      index
-    );
-  };
-
-  const handleScrollEndDrag = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ) => {
-    const offsetY =
-      event.nativeEvent.contentOffset.y;
-
-    const index =
-      getIndexFromOffset(offsetY);
-
-    currentIndexRef.current = index;
-    setVisibleIndex(index);
-  };
-
-  return (
-    <ScrollView
-      ref={scrollRef}
-      style={[
-        styles.wheelColumn,
-        {
-          width,
-          height: itemHeight * 3,
-        },
-      ]}
-      contentContainerStyle={{
-        paddingVertical: itemHeight,
-      }}
-      showsVerticalScrollIndicator={false}
-      snapToInterval={itemHeight}
-      snapToAlignment="start"
-      decelerationRate="fast"
-      bounces={false}
-      alwaysBounceVertical={false}
-      scrollEventThrottle={16}
-      onScroll={handleScroll}
-      onScrollEndDrag={handleScrollEndDrag}
-      onMomentumScrollEnd={
-        handleMomentumScrollEnd
-      }
-    >
-      {items.map((item, index) => {
-        const distance = Math.abs(
-          index - visibleIndex
-        );
-
-        return (
-          <View
-            key={`${item}-${index}`}
-            style={[
-              styles.wheelItem,
-              {
-                height: itemHeight,
-                opacity:
-                  distance === 0
-                    ? 1
-                    : distance === 1
-                      ? 0.45
-                      : 0.12,
-              },
-            ]}
-          >
-            <Text
-              style={[
-                styles.wheelText,
-                distance === 0 &&
-                styles.wheelTextSelected,
-              ]}
-            >
-              {item}
-            </Text>
-          </View>
-        );
-      })}
-    </ScrollView>
-  );
-}
+import {
+  getBirthDate,
+  getDisplayName,
+  saveBirthDate,
+} from '../../features/onboarding/services/onboardingService';
 
 export default function BirthdayScreen() {
-  const { width, height } =
+  const {
+    width,
+    height,
+  } =
     useWindowDimensions();
 
-  const shortSide = Math.min(
-    width,
-    height
-  );
-
-  const { name } =
-    useLocalSearchParams<{
-      name?: string;
-    }>();
-    console.log('BIRTHDAY NAME:', name);
-
-  const [fontsLoaded] = useFonts({
-    GoogleSans:
-      GoogleSans_400Regular,
-
-    GoogleSansMedium:
-      GoogleSans_500Medium,
-
-    GoogleSansSemiBold:
-      GoogleSans_600SemiBold,
-  });
-
-  const defaultDate = useMemo(() => {
-    const today = new Date();
-
-    return new Date(
-      today.getFullYear() - 18,
-      today.getMonth(),
-      today.getDate()
+  const shortSide =
+    Math.min(
+      width,
+      height
     );
-  }, []);
 
-  const days = useMemo(
-    () =>
-      Array.from(
-        { length: 31 },
+  const defaultDate =
+    useMemo(() => {
+      const today =
+        new Date();
+
+      return new Date(
+        today.getFullYear() -
+        18,
+        today.getMonth(),
+        today.getDate()
+      );
+    }, []);
+
+  const days =
+    useMemo(
+      () =>
+        Array.from(
+          {
+            length: 31,
+          },
+          (_, index) =>
+            String(
+              index + 1
+            )
+        ),
+      []
+    );
+
+  const months =
+    useMemo(
+      () => [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ],
+      []
+    );
+
+  const years =
+    useMemo(() => {
+      const currentYear =
+        new Date()
+          .getFullYear();
+
+      return Array.from(
+        {
+          length: 83,
+        },
         (_, index) =>
-          String(index + 1)
-      ),
-    []
-  );
+          String(
+            currentYear -
+            18 -
+            index
+          )
+      );
+    }, []);
 
-  const months = useMemo(
-    () => [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ],
-    []
-  );
+  const [
+    displayName,
+    setDisplayName,
+  ] =
+    useState('');
 
-  const years = useMemo(() => {
-    const currentYear =
-      new Date().getFullYear();
-
-    return Array.from(
-      { length: 83 },
-      (_, index) =>
-        String(
-          currentYear -
-          18 -
-          index
-        )
+  const [
+    day,
+    setDay,
+  ] =
+    useState(
+      String(
+        defaultDate.getDate()
+      )
     );
-  }, []);
 
-  const initialDayIndex =
-    defaultDate.getDate() - 1;
+  const [
+    month,
+    setMonth,
+  ] =
+    useState(
+      months[
+      defaultDate.getMonth()
+      ]
+    );
 
-  const initialMonthIndex =
-    defaultDate.getMonth();
-
-  const initialYearIndex = Math.max(
-    0,
-    years.indexOf(
+  const [
+    year,
+    setYear,
+  ] =
+    useState(
       String(
         defaultDate.getFullYear()
       )
-    )
-  );
-
-  const [day, setDay] = useState(
-    String(
-      defaultDate.getDate()
-    )
-  );
-
-  const [month, setMonth] =
-    useState(
-      months[initialMonthIndex]
     );
 
-  const [year, setYear] = useState(
-    String(
-      defaultDate.getFullYear()
-    )
-  );
-
-  const [dayIndex, setDayIndex] =
-    useState(initialDayIndex);
-
-  const [monthIndex, setMonthIndex] =
-    useState(
-      initialMonthIndex
-    );
-
-  const [yearIndex, setYearIndex] =
-    useState(
-      initialYearIndex
-    );
-
-  const [errorMessage, setErrorMessage] =
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
     useState('');
 
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
   const itemHeight = Math.max(
-    38,
+    54,
     Math.min(
-      height * 0.052,
-      50
+      height * 0.065,
+      60
     )
   );
 
-  const horizontalPadding =
-    Math.max(
-      24,
-      width * 0.1
-    );
+  useEffect(() => {
+    const loadSavedData =
+      async () => {
+        try {
+          const [
+            savedName,
+            savedBirthDate,
+          ] =
+            await Promise.all([
+              getDisplayName(),
+              getBirthDate(),
+            ]);
 
-  const titleSize = Math.max(
-    20,
-    Math.min(
-      shortSide * 0.055,
-      30
-    )
-  );
+          if (savedName) {
+            setDisplayName(
+              savedName
+            );
+          }
 
-  const backButtonWidth =
-    Math.max(
-      42,
-      Math.min(
-        shortSide * 0.12,
-        64
-      )
-    );
+          /*
+           * IMPORTANT:
+           * Split YYYY-MM-DD manually.
+           * Do not do new Date('YYYY-MM-DD'),
+           * because timezone conversion can move
+           * the displayed day.
+           */
+          if (savedBirthDate) {
+            const [
+              y,
+              m,
+              d,
+            ] =
+              savedBirthDate
+                .split('-')
+                .map(Number);
 
-  const backButtonHeight =
+            if (
+              Number.isInteger(y) &&
+              Number.isInteger(m) &&
+              Number.isInteger(d) &&
+              m >= 1 &&
+              m <= 12
+            ) {
+              const yearString =
+                String(y);
+
+              if (
+                years.includes(
+                  yearString
+                )
+              ) {
+                setYear(
+                  yearString
+                );
+              }
+
+              setMonth(
+                months[
+                m - 1
+                ]
+              );
+
+              setDay(
+                String(d)
+              );
+            }
+          }
+        } catch (error) {
+          console.error(
+            'Load birthday data error:',
+            error
+          );
+        }
+      };
+
+    loadSavedData();
+  }, [
+    months,
+    years,
+  ]);
+
+  const monthIndex =
     Math.max(
-      28,
-      Math.min(
-        shortSide * 0.072,
-        38
+      0,
+      months.indexOf(
+        month
       )
     );
 
   const getDaysInMonth = (
     numericYear: number,
-    numericMonthIndex: number
-  ) => {
-    return new Date(
+    numericMonthIndex:
+      number
+  ) =>
+    new Date(
       numericYear,
-      numericMonthIndex + 1,
+      numericMonthIndex +
+      1,
       0
     ).getDate();
-  };
 
-  const handleDayChange = (
-    value: string,
-    index: number
-  ) => {
-    setDay(value);
-    setDayIndex(index);
-    setErrorMessage('');
-  };
-
-  const handleMonthChange = (
-    value: string,
-    index: number
-  ) => {
-    setMonth(value);
-    setMonthIndex(index);
-    setErrorMessage('');
-
-    const numericYear =
-      Number(year);
-
+  /*
+   * If Month/Year changes and the current day
+   * no longer exists (31 -> February),
+   * update both state and wheel.
+   */
+  useEffect(() => {
     const maxDay =
       getDaysInMonth(
-        numericYear,
-        index
-      );
-
-    const numericDay =
-      Number(day);
-
-    if (
-      Number.isInteger(
-        numericDay
-      ) &&
-      numericDay > maxDay
-    ) {
-      setDay(
-        String(maxDay)
-      );
-
-      setDayIndex(
-        maxDay - 1
-      );
-    }
-  };
-
-  const handleYearChange = (
-    value: string,
-    index: number
-  ) => {
-    setYear(value);
-    setYearIndex(index);
-    setErrorMessage('');
-
-    const numericYear =
-      Number(value);
-
-    const maxDay =
-      getDaysInMonth(
-        numericYear,
+        Number(year),
         monthIndex
       );
 
-    const numericDay =
-      Number(day);
-
     if (
-      Number.isInteger(
-        numericDay
-      ) &&
-      numericDay > maxDay
+      Number(day) >
+      maxDay
     ) {
       setDay(
         String(maxDay)
       );
-
-      setDayIndex(
-        maxDay - 1
-      );
     }
-  };
-
-  const handleBack = () => {
-    router.replace('/name');
-  };
+  }, [
+    day,
+    monthIndex,
+    year,
+  ]);
 
   const handleContinue =
     async () => {
@@ -467,33 +303,6 @@ export default function BirthdayScreen() {
 
       const numericYear =
         Number(year);
-
-      if (
-        !Number.isInteger(
-          numericDay
-        ) ||
-        !Number.isInteger(
-          numericMonth
-        ) ||
-        !Number.isInteger(
-          numericYear
-        )
-      ) {
-        setErrorMessage(
-          'Please select your birthday.'
-        );
-        return;
-      }
-
-      if (
-        numericMonth < 1 ||
-        numericMonth > 12
-      ) {
-        setErrorMessage(
-          'Please select a valid month.'
-        );
-        return;
-      }
 
       const maxDay =
         getDaysInMonth(
@@ -518,32 +327,21 @@ export default function BirthdayScreen() {
           numericDay
         );
 
-      if (
-        selectedDate.getFullYear() !==
-        numericYear ||
-        selectedDate.getMonth() !==
-        monthIndex ||
-        selectedDate.getDate() !==
-        numericDay
-      ) {
-        setErrorMessage(
-          'Please select a valid date.'
-        );
-        return;
-      }
-
       const today =
         new Date();
 
       let age =
         today.getFullYear() -
-        selectedDate.getFullYear();
+        selectedDate
+          .getFullYear();
 
       const birthdayThisYear =
         new Date(
           today.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate()
+          selectedDate
+            .getMonth(),
+          selectedDate
+            .getDate()
         );
 
       if (
@@ -560,45 +358,67 @@ export default function BirthdayScreen() {
         return;
       }
 
-      const monthNumber =
-        String(
-          numericMonth
-        ).padStart(2, '0');
-
-      const dayNumber =
-        String(
-          numericDay
-        ).padStart(2, '0');
-
       const birthDate =
-        `${numericYear}-${monthNumber}-${dayNumber}`;
+        `${numericYear}-` +
+        `${String(
+          numericMonth
+        ).padStart(
+          2,
+          '0'
+        )}-` +
+        `${String(
+          numericDay
+        ).padStart(
+          2,
+          '0'
+        )}`;
 
       try {
-        console.log('Saving birthday:', birthDate);
+        setSaving(true);
 
-        await saveBirthDate(birthDate);
+        /*
+         * day/month/year are continuously
+         * synchronized with the highlighted
+         * wheel row, so this is exactly what
+         * the user sees.
+         */
+        await saveBirthDate(
+          birthDate
+        );
 
-        console.log('Birthday saved:', birthDate);
-        console.log('GOING TO STUDY WITH NAME:', name);
-
-        router.push({
-  pathname: '/study',
-  params: { name },
-});
+        router.push(
+          '/study'
+        );
       } catch (error) {
-        console.error('Save birthday error:', error);
+        console.error(
+          'Save birthday error:',
+          error
+        );
 
         setErrorMessage(
           error instanceof Error
             ? error.message
             : 'Unable to save your birthday.'
         );
+      } finally {
+        setSaving(false);
       }
     };
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  const horizontalPadding =
+    Math.max(
+      24,
+      width * 0.1
+    );
+
+  const titleSize =
+    Math.max(
+      26,
+      Math.min(
+        shortSide * 0.065,
+        34
+      )
+    );
 
   return (
     <LinearGradient
@@ -618,57 +438,38 @@ export default function BirthdayScreen() {
         style={[
           styles.backButton,
           {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
+            top:
+              Math.max(
+                20,
+                height * 0.04
+              ),
 
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
+            left:
+              Math.max(
+                20,
+                width * 0.07
+              ),
           },
         ]}
-        onPress={handleBack}
+        onPress={() =>
+          router.replace(
+            '/name'
+          )
+        }
       >
         <LinearGradient
           colors={[
             '#FFE98F',
             '#FFB873',
           ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
           style={
             styles.backGradient
           }
         >
           <Text
-            style={[
-              styles.backText,
-              {
-                fontSize:
-                  Math.max(
-                    12,
-                    Math.min(
-                      shortSide *
-                      0.033,
-                      17
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.backText
+            }
           >
             {'<<'}
           </Text>
@@ -698,14 +499,16 @@ export default function BirthdayScreen() {
                 titleSize,
 
               lineHeight:
-                titleSize * 1.15,
+                titleSize *
+                1.15,
             },
           ]}
         >
-          Hi {name || 'Name'}
+          Hi{' '}
+          {displayName ||
+            'there'}
           {'\n'}
-          When your
-          {'\n'}
+          When your{'\n'}
           Birthday ?
         </Text>
 
@@ -718,12 +521,10 @@ export default function BirthdayScreen() {
             },
           ]}
         >
-          {/* SELECTED WHITE ROW + INNER SHADOW */}
-
           <View
             pointerEvents="none"
             style={[
-              styles.selectedRow,
+              styles.sharedSelectedRow,
               {
                 top:
                   itemHeight,
@@ -732,165 +533,73 @@ export default function BirthdayScreen() {
                   itemHeight,
               },
             ]}
-          >
-            {/* เงาด้านบนอยู่ "ข้างใน" กล่องขาว */}
-            <LinearGradient
-              colors={[
-                'rgba(120, 70, 70, 0.16)',
-                'rgba(120, 70, 70, 0)',
-              ]}
-              start={{
-                x: 0,
-                y: 0,
-              }}
-              end={{
-                x: 0,
-                y: 1,
-              }}
-              style={
-                styles.selectedTopShadow
-              }
-            />
+          />
+          <WheelPicker
+            items={days}
+            value={day}
+            itemHeight={itemHeight}
+            width="28%"
+            showSelectionBackground={false}
+            onValueChange={(value) => {
+              setDay(value);
+              setErrorMessage('');
+            }}
+          />
 
-            {/* เงาด้านล่างอยู่ "ข้างใน" กล่องขาว */}
-            <LinearGradient
-              colors={[
-                'rgba(120, 70, 70, 0)',
-                'rgba(120, 70, 70, 0.16)',
-              ]}
-              start={{
-                x: 0,
-                y: 0,
-              }}
-              end={{
-                x: 0,
-                y: 1,
-              }}
-              style={
-                styles.selectedBottomShadow
-              }
-            />
-          </View>
+          <WheelPicker
+            items={months}
+            value={month}
+            itemHeight={itemHeight}
+            width="42%"
+            showSelectionBackground={false}
+            onValueChange={(value) => {
+              setMonth(value);
+              setErrorMessage('');
+            }}
+          />
 
-          {/* WHEELS */}
-
-          <View
-            pointerEvents="box-none"
-            style={
-              styles.wheelLayer
-            }
-          >
-            <WheelColumn
-              items={days}
-              selectedIndex={
-                dayIndex
-              }
-              itemHeight={
-                itemHeight
-              }
-              width="23%"
-              onValueChange={
-                handleDayChange
-              }
-            />
-
-            <WheelColumn
-              items={months}
-              selectedIndex={
-                monthIndex
-              }
-              itemHeight={
-                itemHeight
-              }
-              width="48%"
-              onValueChange={
-                handleMonthChange
-              }
-            />
-
-            <WheelColumn
-              items={years}
-              selectedIndex={
-                yearIndex
-              }
-              itemHeight={
-                itemHeight
-              }
-              width="29%"
-              onValueChange={
-                handleYearChange
-              }
-            />
-          </View>
+          <WheelPicker
+            items={years}
+            value={year}
+            itemHeight={itemHeight}
+            width="30%"
+            showSelectionBackground={false}
+            onValueChange={(value) => {
+              setYear(value);
+              setErrorMessage('');
+            }}
+          />
         </View>
 
         {errorMessage ? (
           <Text
-            style={[
-              styles.errorText,
-              {
-                fontSize:
-                  Math.max(
-                    11,
-                    Math.min(
-                      shortSide *
-                      0.03,
-                      15
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.errorText
+            }
           >
             {errorMessage}
           </Text>
         ) : null}
 
         <Pressable
+          disabled={saving}
           style={[
             styles.goButton,
-            {
-              minWidth:
-                Math.max(
-                  58,
-                  Math.min(
-                    shortSide *
-                    0.15,
-                    84
-                  )
-                ),
-
-              height:
-                Math.max(
-                  34,
-                  Math.min(
-                    height *
-                    0.045,
-                    44
-                  )
-                ),
-            },
+            saving &&
+            styles.disabled,
           ]}
           onPress={
             handleContinue
           }
         >
           <Text
-            style={[
-              styles.goText,
-              {
-                fontSize:
-                  Math.max(
-                    15,
-                    Math.min(
-                      shortSide *
-                      0.04,
-                      20
-                    )
-                  ),
-              },
-            ]}
+            style={
+              styles.goText
+            }
           >
-            go!
+            {saving
+              ? '...'
+              : 'go!'}
           </Text>
         </Pressable>
       </View>
@@ -898,290 +607,156 @@ export default function BirthdayScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    width: '100%',
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  backButton: {
-    position: 'absolute',
-
-    zIndex: 20,
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-
-    shadowColor: '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
+const styles =
+  StyleSheet.create({
+    screen: {
+      flex: 1,
     },
 
-    shadowOpacity: 0.22,
-
-    shadowRadius: 4,
-
-    elevation: 5,
-  },
-
-  backGradient: {
-    flex: 1,
-
-    width: '100%',
-    height: '100%',
-
-    borderRadius: 999,
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-  },
-
-  backText: {
-    fontFamily:
-      'GoogleSansMedium',
-
-    color: '#222222',
-  },
-
-  title: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
-    fontWeight: '600',
-
-    color: '#FFFFFF',
-
-    marginBottom: 20,
-
-    textShadowColor:
-      'rgba(75, 50, 45, 0.35)',
-
-    textShadowOffset: {
-      width: 1,
-      height: 2,
+    content: {
+      flex: 1,
     },
 
-    textShadowRadius: 2,
-  },
+    backButton: {
+      position: 'absolute',
 
-  pickerCard: {
-    width: '100%',
+      zIndex: 20,
 
-    backgroundColor:
-      '#F8D5D5',
+      width: 50,
+      height: 32,
 
-    borderRadius: 12,
-
-    position: 'relative',
-
-    overflow: 'hidden',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 2,
+      borderRadius: 999,
+      overflow: 'hidden',
     },
 
-    shadowOpacity: 0.18,
+    backGradient: {
+      flex: 1,
 
-    shadowRadius: 3,
-
-    elevation: 3,
-  },
-
-  /*
-   * กล่องขาวตรงกลาง
-   */
-  selectedRow: {
-    position: 'absolute',
-
-    left: 8,
-    right: 8,
-
-    backgroundColor:
-      '#FFFFFF',
-
-    borderRadius: 9,
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 1,
+      alignItems: 'center',
+      justifyContent:
+        'center',
     },
 
-    shadowOpacity: 0.12,
-
-    shadowRadius: 2,
-
-    elevation: 1,
-
-    zIndex: 0,
-
-    overflow: 'hidden',
-  },
-
-  /*
-   * เงาด้านบนของกล่องขาว
-   */
-  selectedTopShadow: {
-    position: 'absolute',
-
-    top: 0,
-    left: 0,
-    right: 0,
-
-    height: '35%',
-  },
-
-  /*
-   * เงาด้านล่างของกล่องขาว
-   */
-  selectedBottomShadow: {
-    position: 'absolute',
-
-    bottom: 0,
-    left: 0,
-    right: 0,
-
-    height: '35%',
-  },
-
-  wheelLayer: {
-    position: 'absolute',
-
-    top: 0,
-    left: 8,
-    right: 8,
-    bottom: 0,
-
-    flexDirection: 'row',
-
-    alignItems: 'center',
-
-    justifyContent:
-      'center',
-
-    zIndex: 2,
-
-    elevation: 2,
-  },
-
-  wheelColumn: {
-    flexGrow: 0,
-
-    flexShrink: 0,
-
-    backgroundColor:
-      'transparent',
-  },
-
-  wheelItem: {
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    backgroundColor:
-      'transparent',
-  },
-
-  wheelText: {
-    fontFamily:
-      'GoogleSans',
-
-    fontSize: 16,
-
-    fontWeight: '500',
-
-    color: '#222222',
-
-    textAlign: 'center',
-
-    includeFontPadding:
-      false,
-  },
-
-  wheelTextSelected: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
-    fontWeight: '600',
-  },
-
-  errorText: {
-    fontFamily:
-      'GoogleSans',
-
-    color: '#C62828',
-
-    marginTop: 7,
-  },
-
-  goButton: {
-    alignSelf:
-      'flex-end',
-
-    paddingHorizontal: 14,
-
-    marginTop: 16,
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#FFF6AE',
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
+    backText: {
+      color: '#222222',
+      fontWeight: '500',
     },
 
-    shadowOpacity: 0.28,
+    title: {
+      marginBottom: 30,
 
-    shadowRadius: 5,
+      color: '#FFFFFF',
 
-    elevation: 6,
-  },
+      fontWeight: '700',
 
-  goText: {
-    fontFamily:
-      'GoogleSansSemiBold',
+      textShadowColor:
+        'rgba(75,50,45,0.35)',
 
-    fontWeight: '600',
+      textShadowOffset: {
+        width: 2,
+        height: 3,
+      },
 
-    color: '#111111',
-
-    textShadowColor:
-      'rgba(0, 0, 0, 0.15)',
-
-    textShadowOffset: {
-      width: 0,
-      height: 1,
+      textShadowRadius: 2,
     },
 
-    textShadowRadius: 1,
-  },
-});
+    pickerCard: {
+      width: '100%',
+
+      position: 'relative',
+
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      overflow: 'hidden',
+
+      borderRadius: 18,
+
+      backgroundColor: '#F7D9D8',
+
+      shadowColor: '#000000',
+
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+
+      shadowOpacity: 0.22,
+
+      shadowRadius: 5,
+
+      elevation: 5,
+    },
+    sharedSelectedRow: {
+      position: 'absolute',
+
+      left: 14,
+      right: 14,
+
+      zIndex: 0,
+
+      borderRadius: 15,
+
+      backgroundColor: '#FFFFFF',
+
+      shadowColor: '#000000',
+
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+
+      shadowOpacity: 0.22,
+
+      shadowRadius: 4,
+
+      elevation: 4,
+    },
+
+    errorText: {
+      marginTop: 10,
+
+      color: '#C62828',
+    },
+
+    goButton: {
+      alignSelf: 'flex-end',
+
+      marginTop: 30,
+
+      minWidth: 112,
+      height: 48,
+
+      borderRadius: 16,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+
+      backgroundColor: '#FFF6AE',
+
+      shadowColor: '#000000',
+
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+
+      shadowOpacity: 0.25,
+
+      shadowRadius: 5,
+
+      elevation: 5,
+    },
+
+    goText: {
+      fontSize: 25,
+      fontWeight: '700',
+
+      color: '#111111',
+    },
+
+    disabled: {
+      opacity: 0.6,
+    },
+  });

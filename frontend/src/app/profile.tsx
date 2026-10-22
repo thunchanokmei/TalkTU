@@ -135,10 +135,13 @@ export default function ProfileScreen() {
     }
   };
 
+
   const deleteAccount = async () => {
     if (deletingAccountRef.current) return;
 
     deletingAccountRef.current = true;
+
+    let requestAccepted = false;
 
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -146,33 +149,48 @@ export default function ProfileScreen() {
         { body: {} },
       );
 
-      if (error || data?.success !== true) {
+      if (error || data?.success !== true || data?.status !== 'pending') {
         throw error ?? new Error('Account deletion was not confirmed');
       }
 
-      await supabase.auth.signOut({ scope: 'local' });
-      router.replace('/(auth)/login');
-
-      const message =
-        'Your account deletion request has been received. Your account will be deleted shortly.';
-
-      if (Platform.OS === 'web') {
-        window.alert(message);
-      } else {
-        Alert.alert('Deletion Requested', message);
-      }
+      requestAccepted = true;
     } catch (error) {
-      console.error('Unable to delete account:', error);
+      console.error('Unable to request account deletion:', error);
 
-      const message = 'Unable to delete your account. Please try again.';
+      const message = 'Unable to request account deletion. Please try again.';
 
       if (Platform.OS === 'web') {
         window.alert(message);
       } else {
         Alert.alert('Delete Account Failed', message);
       }
+
+      return;
     } finally {
-      deletingAccountRef.current = false;
+      if (!requestAccepted) {
+        deletingAccountRef.current = false;
+      }
+    }
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+
+      if (error) {
+        console.error('Unable to clear local session:', error);
+      }
+    } catch (error) {
+      console.error('Unable to clear local session:', error);
+    }
+
+    router.replace('/(auth)/login');
+
+    const message =
+      'Your account deletion request has been received. Your account will be deleted shortly.';
+
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      Alert.alert('Deletion Requested', message);
     }
   };
 

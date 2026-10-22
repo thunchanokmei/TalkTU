@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   completeOnboarding,
@@ -6,6 +6,8 @@ import {
 
 import {
   ActivityIndicator,
+  Animated,
+  FlatList,
   Alert,
   Image,
   KeyboardAvoidingView,
@@ -23,8 +25,9 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import OnboardingBackButton from '../components/navigation/OnboardingBackButton';
+import OnboardingGoButton from '../components/navigation/OnboardingGoButton';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import WheelPicker from '../components/WheelPicker';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -45,6 +48,10 @@ type PhotoBoxProps = {
   onRemove: () => void;
   style?: object;
 };
+
+// ขนาดจริงของ OnboardingBackButton (ดูจาก component: marginTop 50 + height 55)
+const BACK_BUTTON_OFFSET_TOP = 50;
+const BACK_BUTTON_HEIGHT = 55;
 
 export default function Bio1Screen() {
   const router = useRouter();
@@ -76,6 +83,7 @@ export default function Bio1Screen() {
 
   const [genderModal, setGenderModal] = useState(false);
   const [heightModal, setHeightModal] = useState(false);
+  const heightListRef = useRef<FlatList<string>>(null);
 
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -84,6 +92,14 @@ export default function Bio1Screen() {
     14,
     Math.min(width * 0.045, 24)
   );
+
+  // ตำแหน่งปุ่ม Back (ใช้สูตรเดียวกับหน้าอื่น)
+  const backTop = Math.max(20, screenHeight * 0.04);
+  const backLeft = Math.max(20, width * 0.07);
+
+  // ความสูงที่ปุ่ม Back กินพื้นที่ ใช้เว้นที่ให้ title ไม่ทับปุ่ม
+  const backButtonSpace =
+    backTop + BACK_BUTTON_OFFSET_TOP + BACK_BUTTON_HEIGHT - 30;
 
   const largePhotoHeight = Math.max(
     240,
@@ -448,6 +464,16 @@ export default function Bio1Screen() {
       return [...current, place];
     });
   };
+  useEffect(() => {
+    if (!heightModal) return;
+    requestAnimationFrame(() => {
+      heightListRef.current?.scrollToOffset({
+        offset: heightCm * 44,
+        animated: false,
+      });
+    });
+  }, [heightModal]);
+
   const handleStart = async () => {
     if (saving) {
       return;
@@ -795,6 +821,13 @@ export default function Bio1Screen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* ปุ่ม Back: อยู่กับที่ วางระดับเดียวกับหน้าอื่น (ไม่อยู่ใน ScrollView) */}
+      <OnboardingBackButton
+        top={backTop}
+        left={backLeft}
+        onPress={() => router.back()}
+      />
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={
@@ -814,48 +847,14 @@ export default function Bio1Screen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Back */}
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={[
-                '#FF7C82',
-                '#FFD17E',
-              ]}
-              start={{
-                x: 0,
-                y: 0.5,
-              }}
-              end={{
-                x: 1,
-                y: 0.5,
-              }}
-              style={styles.backGradient}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color="#111111"
-              />
-
-              <Ionicons
-                name="chevron-back"
-                size={20}
-                color="#111111"
-                style={styles.secondArrow}
-              />
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* Spacer เว้นที่ให้ปุ่ม Back เพื่อให้ title ไม่ทับปุ่ม */}
+          <View style={{ height: backButtonSpace }} />
 
           {/* Title */}
           <View style={styles.titleContainer}>
             <Text style={styles.title}>
-              Oh you’re {displayName || '...'}{'\n'}
-              Let them know{'\n'}
-              Who you are
+              Looking good, {displayName || '...'}{'\n'}
+              Let them get {'\n'}to know you. 😉 {'\n'}
             </Text>
           </View>
 
@@ -970,9 +969,9 @@ export default function Bio1Screen() {
           {/* One continuous Bio/Profile card */}
           <LinearGradient
             colors={[
-              '#FF8081',
-              '#FFAE70',
-              '#FFE0A1',
+              '#fdf1c8',
+              '#FFF5EA',
+              '#f8dfdf',
             ]}
             start={{
               x: 0,
@@ -984,8 +983,18 @@ export default function Bio1Screen() {
             }}
             style={styles.detailsCard}
           >
+            <View style={styles.detailsHeader}>
+              <View style={styles.detailsHeaderIcon}>
+                <Ionicons name="heart" size={18} color="#C75D70" />
+              </View>
+              <View style={styles.detailsHeaderCopy}>
+                <Text style={styles.detailsHeading}>A little about you</Text>
+                <Text style={styles.detailsSubheading}>Let your personality shine.</Text>
+              </View>
+            </View>
+
             <Text style={styles.label}>
-              Bio
+              About me
             </Text>
 
             <TextInput
@@ -1117,50 +1126,13 @@ export default function Bio1Screen() {
             </Text>
           ) : null}
 
-          {/* Start Now */}
-          <TouchableOpacity
-            activeOpacity={0.85}
+          {/* Shared onboarding go button */}
+          <OnboardingGoButton
+            label={saving ? 'Saving...' : 'Start Now!'}
+            loading={saving}
             disabled={saving}
             onPress={handleStart}
-            style={[
-              styles.startButtonContainer,
-              saving &&
-              styles.disabledButton,
-            ]}
-          >
-            <LinearGradient
-              colors={[
-                '#FF7B82',
-                '#FFAA70',
-                '#FFD37B',
-              ]}
-              start={{
-                x: 0,
-                y: 0.5,
-              }}
-              end={{
-                x: 1,
-                y: 0.5,
-              }}
-              style={
-                styles.startButton
-              }
-            >
-              {saving ? (
-                <ActivityIndicator
-                  color="#111111"
-                />
-              ) : (
-                <Text
-                  style={
-                    styles.startText
-                  }
-                >
-                  Start Now!
-                </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1191,41 +1163,45 @@ export default function Bio1Screen() {
               Gender identity
             </Text>
 
-            {genderOptions.map(
-              (option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={
-                    styles.modalOption
-                  }
-                  onPress={() => {
-                    setGenderIdentity(
-                      option
-                    );
-                    setGenderModal(
-                      false
-                    );
-                  }}
-                >
-                  <Text
-                    style={
-                      styles.modalOptionText
-                    }
+            <ScrollView
+              style={styles.genderOptionsScroll}
+              contentContainerStyle={styles.genderOptionsContent}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+            >
+              {genderOptions.map((option) => {
+                const selected = genderIdentity === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[
+                      styles.modalOption,
+                      selected && styles.modalOptionSelected,
+                    ]}
+                    onPress={() => {
+                      setGenderIdentity(option);
+                      setGenderModal(false);
+                    }}
+                    activeOpacity={0.75}
                   >
-                    {option}
-                  </Text>
-
-                  {genderIdentity ===
-                    option && (
-                      <Ionicons
-                        name="checkmark"
-                        size={20}
-                        color="#FF7B82"
-                      />
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        selected && styles.modalOptionTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                    {selected ? (
+                      <Ionicons name="checkmark-circle" size={21} color="#D95F77" />
+                    ) : (
+                      <View style={styles.unselectedRadio} />
                     )}
-                </TouchableOpacity>
-              )
-            )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -1259,20 +1235,66 @@ export default function Bio1Screen() {
               Height
             </Text>
 
-            <WheelPicker
-              items={heightOptions}
-              value={String(
-                heightCm
-              )}
-              itemHeight={44}
-              onValueChange={(
-                value
-              ) => {
-                setHeightCm(
-                  Number(value)
-                );
-              }}
-            />
+            <Text style={styles.modalSubtitle}>เลื่อนเพื่อเลือกส่วนสูงของคุณ</Text>
+            <View style={styles.heightPickerFrame}>
+              <View pointerEvents="none" style={styles.heightSelectionHighlight} />
+              <FlatList
+                ref={heightListRef}
+                data={heightOptions}
+                keyExtractor={(item) => item}
+                getItemLayout={(_, index) => ({
+                  length: 44,
+                  offset: 44 * index,
+                  index,
+                })}
+                style={styles.heightList}
+                contentContainerStyle={styles.heightListContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+                snapToInterval={44}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                bounces={false}
+                onMomentumScrollEnd={(event) => {
+                  const nextIndex = Math.round(event.nativeEvent.contentOffset.y / 44);
+                  setHeightCm(Math.max(0, Math.min(250, nextIndex)));
+                }}
+                onScrollToIndexFailed={(info) => {
+                  requestAnimationFrame(() => {
+                    // Recover gracefully if the list has not measured yet.
+                    heightListRef.current?.scrollToOffset({
+                      offset: info.index * 44,
+                      animated: false,
+                    });
+                  });
+                }}
+                renderItem={({ item }) => {
+                  const selected = Number(item) === heightCm;
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      style={styles.heightItem}
+                      onPress={() => {
+                        const nextHeight = Number(item);
+                        setHeightCm(nextHeight);
+                        heightListRef.current?.scrollToOffset({
+                          offset: nextHeight * 44,
+                          animated: true,
+                        });
+                      }}
+                    >
+                      <Text style={[
+                        styles.heightItemText,
+                        selected && styles.heightItemTextSelected,
+                      ]}>
+                        {item}
+                      </Text>
+                      {selected ? <Text style={styles.heightUnit}>cm</Text> : null}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
 
             <TouchableOpacity
               style={
@@ -1304,51 +1326,69 @@ function PhotoBox({
   onRemove,
   style,
 }: PhotoBoxProps) {
-  if (image !== null) {
-    return (
-      <View
-        style={[
-          styles.photoBox,
-          style,
-        ]}
-      >
-        <Image
-          source={{ uri: image }}
-          style={styles.image}
-        />
+  const scale = useRef(new Animated.Value(1)).current;
 
-        <TouchableOpacity
-          style={
-            styles.removeButton
-          }
-          onPress={onRemove}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name="close"
-            size={17}
-            color="#111111"
-          />
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const pressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      speed: 35,
+      bounciness: 4,
+    }).start();
+  };
+
+  const pressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 28,
+      bounciness: 6,
+    }).start();
+  };
 
   return (
-    <TouchableOpacity
-      style={[
-        styles.photoBox,
-        style,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.8}
-    >
-      <Ionicons
-        name="add"
-        size={32}
-        color="#111111"
-      />
-    </TouchableOpacity>
+    <Animated.View style={[style, styles.photoAnimated, { transform: [{ scale }] }]}>
+      {image !== null ? (
+        <View style={[styles.photoBox, styles.photoFilled]}>
+          <Image source={{ uri: image }} style={styles.image} />
+          <View style={styles.photoOverlay}>
+            <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+          </View>
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={onRemove}
+            activeOpacity={0.7}
+            accessibilityLabel="Remove photo"
+          >
+            <Ionicons name="close" size={16} color="#50333A" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.changePhotoTap}
+            onPress={onPress}
+            activeOpacity={0.75}
+            onPressIn={pressIn}
+            onPressOut={pressOut}
+            accessibilityLabel="Change photo"
+          >
+            <Ionicons name="camera" size={17} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[styles.photoBox, styles.photoEmpty]}
+          onPress={onPress}
+          activeOpacity={0.82}
+          onPressIn={pressIn}
+          onPressOut={pressOut}
+          accessibilityLabel="Add photo"
+        >
+          <View style={styles.addPhotoIcon}>
+            <Ionicons name="add" size={24} color="#C85C73" />
+          </View>
+          <Text style={styles.addPhotoText}>Add photo</Text>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
   );
 }
 
@@ -1363,7 +1403,7 @@ const styles = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingTop: 12,
+    paddingTop: 0,
     paddingBottom: 42,
   },
 
@@ -1398,34 +1438,34 @@ const styles = StyleSheet.create({
   },
 
   titleContainer: {
-    marginTop: 13,
-    marginBottom: 12,
+    marginLeft:15,
   },
 
   title: {
-    fontSize: 25,
+    fontSize: 30,
     lineHeight: 28,
-
     fontWeight: '700',
-
-    color: '#080808',
+    color: '#560000',
+    shadowColor: '#edd05a',
+    shadowOffset: {
+      width: 0.5,
+      height: 3,
+    },
+    shadowOpacity: 0.4,
+    shadowRadius: 4
   },
 
   photoContainer: {
     width: '100%',
-
-    borderRadius: 18,
-
-    padding: 9,
-
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.16,
-    shadowRadius: 4,
-    elevation: 4,
+    borderRadius: 22,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.8)',
+    shadowColor: '#C45C6D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 7,
   },
 
   topPhotoRow: {
@@ -1460,18 +1500,86 @@ const styles = StyleSheet.create({
     marginRight: 0,
   },
 
+  photoAnimated: {
+    minWidth: 0,
+  },
+
   photoBox: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#FFFFFF',
-
-    borderRadius: 13,
-
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-
     overflow: 'hidden',
-
     borderWidth: 1,
-    borderColor: '#E9E9E9',
+    borderColor: 'rgba(255,255,255,0.95)',
+  },
+
+  photoEmpty: {
+    backgroundColor: 'rgba(255,255,255,0.94)',
+    borderColor: 'rgba(198,92,115,0.18)',
+    borderStyle: 'dashed',
+    padding: 5,
+  },
+
+  photoFilled: {
+    borderColor: '#FFFFFF',
+    shadowColor: '#9D455B',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 7,
+    elevation: 3,
+  },
+
+  addPhotoIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF0F2',
+    marginBottom: 5,
+  },
+
+  addPhotoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#75414D',
+    textAlign: 'center',
+  },
+
+  addPhotoHint: {
+    marginTop: 2,
+    fontSize: 9,
+    color: '#A77B83',
+    textAlign: 'center',
+  },
+
+  photoOverlay: {
+    position: 'absolute',
+    left: 8,
+    bottom: 8,
+    width: 27,
+    height: 27,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45,35,39,0.42)',
+  },
+
+  changePhotoTap: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    width: 31,
+    height: 31,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(45,35,39,0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
   },
 
   image: {
@@ -1500,80 +1608,110 @@ const styles = StyleSheet.create({
   },
 
   detailsCard: {
-    marginTop: 12,
+    marginTop: 18,
+    borderRadius: 24,
+    paddingHorizontal: 17,
+    paddingTop: 17,
+    paddingBottom: 20,
+    borderWidth: 1,
+    borderColor: '#fefdfa',
+    shadowColor: '#C45C6D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 5,
+  },
 
-    borderRadius: 17,
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 19,
+  },
 
-    paddingHorizontal: 10,
-    paddingTop: 12,
-    paddingBottom: 16,
+  detailsHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    marginRight: 11,
+    shadowColor: '#C45C6D',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 7,
+    elevation: 2,
+  },
 
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.13,
-    shadowRadius: 4,
-    elevation: 3,
+  detailsHeaderCopy: {
+    flex: 1,
+  },
+
+  detailsHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#482C35',
+  },
+
+  detailsSubheading: {
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#98737D',
   },
 
   label: {
-    marginBottom: 6,
-
-    fontSize: 14,
-    fontWeight: '700',
-
-    color: '#111111',
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    color: '#583642',
   },
 
   bioInput: {
-    minHeight: 100,
-
-    borderRadius: 11,
-
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-
+    minHeight: 112,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     backgroundColor: '#FFFFFF',
-
+    borderWidth: 1,
+    borderColor: '#F4DDE2',
     fontSize: 14,
-    color: '#111111',
+    lineHeight: 21,
+    color: '#442D35',
   },
 
   counter: {
-    marginTop: 4,
-    marginBottom: 13,
-
+    marginTop: 6,
+    marginBottom: 19,
     textAlign: 'right',
-
-    fontSize: 10,
-
-    color: '#555555',
+    fontSize: 11,
+    color: '#A17D86',
   },
 
   dropdown: {
-    minHeight: 39,
-
-    borderRadius: 11,
-
+    minHeight: 50,
+    borderRadius: 15,
     flexDirection: 'row',
     alignItems: 'center',
-
-    paddingLeft: 11,
-    paddingRight: 5,
-
-    marginBottom: 13,
-
+    paddingLeft: 14,
+    paddingRight: 9,
+    marginBottom: 18,
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F4DDE2',
+    shadowColor: '#A64D61',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
   },
 
   dropdownText: {
     flex: 1,
-
-    fontSize: 13,
-
-    color: '#111111',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#50343D',
   },
 
   placeholderText: {
@@ -1581,25 +1719,20 @@ const styles = StyleSheet.create({
   },
 
   dropdownIcon: {
-    width: 27,
-    height: 27,
-
-    borderRadius: 999,
-
+    width: 31,
+    height: 31,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-
-    backgroundColor: '#E4E4E4',
+    backgroundColor: '#FFF0F2',
   },
 
   placesTitle: {
-    marginTop: 1,
-    marginBottom: 8,
-
+    marginTop: 2,
+    marginBottom: 11,
     fontSize: 13,
-    fontWeight: '700',
-
-    color: '#111111',
+    fontWeight: '800',
+    color: '#583642',
   },
 
   chipsContainer: {
@@ -1610,27 +1743,31 @@ const styles = StyleSheet.create({
   },
 
   chip: {
-    minHeight: 27,
-
+    minHeight: 34,
     borderRadius: 999,
-
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     alignItems: 'center',
     justifyContent: 'center',
-
     backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1DDE1',
   },
 
   chipSelected: {
-    backgroundColor: '#2F2F2F',
+    backgroundColor: '#623D4A',
+    borderColor: '#623D4A',
+    shadowColor: '#A64D61',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
+    elevation: 2,
   },
 
   chipText: {
-    fontSize: 10,
-
-    color: '#666666',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#846873',
   },
 
   chipTextSelected: {
@@ -1648,20 +1785,14 @@ const styles = StyleSheet.create({
   },
 
   startButtonContainer: {
-    alignSelf: 'flex-end',
-
-    marginTop: 13,
-
+    alignSelf: 'stretch',
+    marginTop: 18,
     borderRadius: 999,
-
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.14,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowColor: '#C85D73',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    elevation: 6,
   },
 
   disabledButton: {
@@ -1670,21 +1801,19 @@ const styles = StyleSheet.create({
 
   startButton: {
     minWidth: 98,
-    height: 38,
-
+    height: 54,
     borderRadius: 999,
-
-    paddingHorizontal: 17,
-
+    paddingHorizontal: 22,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 9,
   },
 
   startText: {
-    fontSize: 12,
-    fontWeight: '700',
-
-    color: '#111111',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#44232D',
   },
 
   modalOverlay: {
@@ -1701,46 +1830,140 @@ const styles = StyleSheet.create({
 
   modalBox: {
     width: '100%',
-    maxWidth: 350,
+    maxWidth: 360,
+    maxHeight: '78%',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
+    backgroundColor: '#FFFDFD',
+    borderWidth: 1,
+    borderColor: '#F7E1E5',
+    shadowColor: '#633342',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
+  },
 
-    borderRadius: 18,
+  genderOptionsScroll: {
+    flexGrow: 0,
+    maxHeight: 390,
+  },
 
-    padding: 18,
+  genderOptionsContent: {
+    paddingBottom: 6,
+  },
 
-    backgroundColor: '#FFFFFF',
+  modalSubtitle: {
+    marginTop: -2,
+    marginBottom: 12,
+    fontSize: 12,
+    color: '#9B7882',
+    textAlign: 'center',
+  },
+
+  heightPickerFrame: {
+    height: 220,
+    overflow: 'hidden',
+    borderRadius: 20,
+    backgroundColor: '#FFF5F6',
+    borderWidth: 1,
+    borderColor: '#F5DDE2',
+    position: 'relative',
+    marginTop: 3,
+  },
+
+  heightList: {
+    flex: 1,
+    zIndex: 1,
+  },
+
+  heightListContent: {
+    paddingVertical: 88,
+  },
+
+  heightSelectionHighlight: {
+    position: 'absolute',
+    zIndex: 0,
+    top: 88,
+    left: 12,
+    right: 12,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: '#FFE1E6',
+    borderWidth: 1,
+    borderColor: '#F7B8C6',
+  },
+
+  heightItem: {
+    height: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+
+  heightItemText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#B49AA1',
+  },
+
+  heightItemTextSelected: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#743D4D',
+  },
+
+  heightUnit: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B84F68',
+  },
+
+  modalOptionSelected: {
+    backgroundColor: '#FFF0F3',
+    borderRadius: 12,
+    borderBottomColor: 'transparent',
+    paddingHorizontal: 10,
+  },
+
+  modalOptionTextSelected: {
+    fontWeight: '700',
+    color: '#A8445D',
+  },
+
+  unselectedRadio: {
+    width: 19,
+    height: 19,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E7C9D0',
   },
 
   modalTitle: {
-    marginBottom: 8,
-
-    fontSize: 18,
-    fontWeight: '700',
-
-    color: '#111111',
+    marginBottom: 14,
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#50313D',
+    textAlign: 'center',
   },
 
   heightWheelModalBox: {
     width: '100%',
     maxWidth: 350,
-
-    borderRadius: 18,
-
-    padding: 18,
-
-    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: '#FFFDFD',
+    borderWidth: 1,
+    borderColor: '#F7E1E5',
+    shadowColor: '#633342',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
   },
-
-
-
-
-
-
-
-
-
-
-
-
 
   heightDoneButton: {
     alignSelf: 'flex-end',
@@ -1763,21 +1986,18 @@ const styles = StyleSheet.create({
   },
 
   modalOption: {
-    minHeight: 43,
-
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-
-    borderBottomWidth:
-      StyleSheet.hairlineWidth,
-
-    borderBottomColor: '#E5E5E5',
+    paddingHorizontal: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F0E2E5',
   },
 
   modalOptionText: {
+    flex: 1,
     fontSize: 14,
-
-    color: '#111111',
+    color: '#634A53',
   },
 });

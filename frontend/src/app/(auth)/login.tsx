@@ -153,7 +153,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="TU Username"
-              placeholderTextColor="#B8B8B8"
+              placeholderTextColor="#f7d3d3"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -165,7 +165,7 @@ export default function LoginScreen() {
             <TextInput
               style={[styles.input, styles.passwordInput]}
               placeholder="TU password"
-              placeholderTextColor="#B8B8B8"
+              placeholderTextColor="#f7d3d3"
               value={password}
               onChangeText={setPassword}
               autoCapitalize="none"
@@ -248,19 +248,19 @@ const styles = StyleSheet.create({
     height: 44,
 
     backgroundColor: '#FFFFFF',
-    borderRadius: 11,
+    borderRadius: 15,
 
     paddingHorizontal: 14,
 
     fontSize: 14,
-    color: '#333333',
+    color: '#FFA1A1',
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
 
     elevation: 4,
@@ -271,10 +271,10 @@ const styles = StyleSheet.create({
   },
 
   loginButton: {
-    width: '77%',
+    width: '100%',
     height: 44,
-    borderRadius: 11,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    backgroundColor: '#FFFABF',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -297,9 +297,9 @@ const styles = StyleSheet.create({
   },
 
   loginButtonText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: '#FFA1A1',
   },
 
   errorText: {

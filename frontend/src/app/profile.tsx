@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Platform,
   ScrollView,
   SafeAreaView,
   StyleSheet,
@@ -17,6 +19,7 @@ import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const deletingAccountRef = useRef(false);
   const [copiedValue, setCopiedValue] = useState<string | null>(null);
 
   const handleCopy = async (value: string) => {
@@ -132,6 +135,95 @@ export default function ProfileScreen() {
     }
   };
 
+
+  const deleteAccount = async () => {
+    if (deletingAccountRef.current) return;
+
+    deletingAccountRef.current = true;
+
+    let requestAccepted = false;
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'delete-account',
+        { body: {} },
+      );
+
+      if (error || data?.success !== true || data?.status !== 'pending') {
+        throw error ?? new Error('Account deletion was not confirmed');
+      }
+
+      requestAccepted = true;
+    } catch (error) {
+      console.error('Unable to request account deletion:', error);
+
+      const message = 'Unable to request account deletion. Please try again.';
+
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Delete Account Failed', message);
+      }
+
+      return;
+    } finally {
+      if (!requestAccepted) {
+        deletingAccountRef.current = false;
+      }
+    }
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+
+      if (error) {
+        console.error('Unable to clear local session:', error);
+      }
+    } catch (error) {
+      console.error('Unable to clear local session:', error);
+    }
+
+    router.replace('/(auth)/login');
+
+    const message =
+      'Your account deletion request has been received. Your account will be deleted shortly.';
+
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      Alert.alert('Deletion Requested', message);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    const title = 'Delete your account?';
+    const message =
+      'This will permanently delete your account and associated data. This action cannot be undone.';
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+
+      if (confirmed) {
+        void deleteAccount();
+      }
+
+      return;
+    }
+
+    Alert.alert(title, message, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete Account',
+        style: 'destructive',
+        onPress: () => {
+          void deleteAccount();
+        },
+      },
+    ]);
+  };
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -194,9 +286,7 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() =>
-              console.log('Delete Account')
-            }
+            onPress={handleDeleteAccount}
           >
             <Text style={styles.deleteText}>
               Delete Account

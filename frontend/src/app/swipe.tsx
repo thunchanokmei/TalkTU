@@ -383,12 +383,21 @@ export default function SwipeScreen() {
         }
       })
       .catch((err) => {
+        if (
+          err?.code === 'P0001' &&
+          err?.message === 'Target profile is not available'
+        ) {
+          // Candidate was deleted or became unavailable.
+          // The card has already moved forward.
+          return;
+        }
+
         console.error('save swipe error:', err);
 
         setError(
           err instanceof Error
             ? err.message
-            : 'Unable to save your swipe.'
+            : err?.message ?? 'Unable to save your swipe.'
         );
       });
   };

@@ -27,6 +27,7 @@ import {
   getChatList,
   getProfilePhotoUrl,
   subscribeToMatches,
+  unsubscribeFromChannel,
 } from '../../features/chat/services/chatService';
 
 import type {
@@ -80,7 +81,7 @@ export default function ChatPage() {
     });
 
     return () => {
-      void channel.unsubscribe();
+      void unsubscribeFromChannel(channel);
     };
   }, [loadChats]);
 

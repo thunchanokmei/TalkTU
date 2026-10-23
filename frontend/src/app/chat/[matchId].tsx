@@ -39,6 +39,7 @@ import {
   reportChat,
   sendMessage,
   subscribeToMessages,
+  unsubscribeFromChannel,
   type ChatReportReason,
 } from '../../features/chat/services/chatService';
 
@@ -221,7 +222,7 @@ export default function ChatRoom() {
       );
 
     return () => {
-      void channel.unsubscribe();
+      void unsubscribeFromChannel(channel);
     };
   }, [matchId]);
 
@@ -433,25 +434,57 @@ export default function ChatRoom() {
   };
 
   const confirmBlock = async () => {
-    if (safetyBusy) return;
+    if (safetyBusy) {
+      return;
+    }
 
     setSafetyBusy(true);
 
     try {
-      const targetId = await getOtherUserId();
+      const targetId =
+        await getOtherUserId();
 
-      const { error } = await supabase.rpc('block_user', {
-        p_blocked_id: targetId,
-      });
+      const {
+        error,
+      } =
+        await supabase.rpc(
+          'block_user',
+          {
+            p_blocked_id:
+              targetId,
+          }
+        );
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setSafetySuccessMessage(`${name} has been blocked.`);
-      setSafetyView('success');
+      /*
+       * Block succeeded.
+       *
+       * Do not leave the blocked
+       * conversation visible.
+       */
+      setMessages([]);
+
+      setShowSafety(false);
+      setSafetyView('menu');
+
+      setReportReason('');
+      setReportDetails('');
+
+      router.replace('/chat');
     } catch (error) {
+      console.error(
+        '[confirmBlock] failed:',
+        error
+      );
+
       Alert.alert(
         'Block failed',
-        error instanceof Error ? error.message : 'Please try again.'
+        error instanceof Error
+          ? error.message
+          : 'Please try again.'
       );
     } finally {
       setSafetyBusy(false);
@@ -803,7 +836,7 @@ export default function ChatRoom() {
                       : width - 40,
                 },
               ]}
-              onPress={(event) => {event.stopPropagation();}}
+              onPress={(event) => { event.stopPropagation(); }}
             >
               {/* MODAL HEADER */}
 
@@ -819,7 +852,7 @@ export default function ChatRoom() {
                   disabled={safetyBusy}
                 >
                   <Text style={styles.modalCloseText}>
-                    {safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt'? '×' : '‹'}
+                    {safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt' ? '×' : '‹'}
                   </Text>
                 </TouchableOpacity>
 

@@ -166,31 +166,33 @@ export function subscribeToMessages(
     message: ChatMessage
   ) => void
 ) {
-  const channel = supabase
-    .channel(`chat:${matchId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `match_id=eq.${matchId}`,
-      },
-      (payload) => {
-        onMessage(
-          payload.new as ChatMessage
-        );
-      }
-    )
-    .subscribe();
+  const channel =
+    supabase.channel(
+      `chat:${matchId}`
+    );
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter:
+        `match_id=eq.${matchId}`,
+    },
+    (payload) => {
+      onMessage(
+        payload.new as ChatMessage
+      );
+    }
+  );
+
+  channel.subscribe();
 
   return channel;
 }
 
-/**
- * Remove realtime subscription.
- */
-export async function unsubscribeFromMessages(
+export async function unsubscribeFromChannel(
   channel: ReturnType<
     typeof supabase.channel
   >
@@ -200,28 +202,27 @@ export async function unsubscribeFromMessages(
   );
 }
 
-/**
- * Subscribe to newly-created matches.
- *
- * Used by Chat List to refresh.
- */
 export function subscribeToMatches(
-  onMatchCreated: () => void
+  onMatchChanged: () => void
 ) {
-  const channel = supabase
-    .channel('chat-matches')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'matches',
-      },
-      () => {
-        onMatchCreated();
-      }
-    )
-    .subscribe();
+  const channel =
+    supabase.channel(
+      `chat-matches-${Date.now()}`
+    );
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'matches',
+    },
+    () => {
+      onMatchChanged();
+    }
+  );
+
+  channel.subscribe();
 
   return channel;
 }

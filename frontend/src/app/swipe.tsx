@@ -1,13 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Image,
   ActivityIndicator,
+  Alert,
   Animated,
-  useWindowDimensions,
+  Image,
+  Modal,
   PanResponder,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -21,6 +26,13 @@ import { supabase } from '@/lib/supabase';
 import BottomNavigation from '../components/navigation/BottomNavigation';
 import { getMode } from '../features/onboarding/services/onboardingService';
 import MatchModal from '../components/MatchModal';
+
+import {
+  blockProfile,
+  PROFILE_REPORT_REASONS,
+  reportProfile,
+  type ProfileReportReason,
+} from '../features/safety/services/profileSafetyService';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
@@ -179,6 +191,206 @@ export default function SwipeScreen() {
   const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
 
   const [hasMore, setHasMore] = useState(true);
+
+  const [
+    showSafety,
+    setShowSafety,
+  ] =
+    useState(false);
+
+  const [
+    safetyView,
+    setSafetyView,
+  ] =
+    useState<
+      | 'menu'
+      | 'blockConfirm'
+      | 'reportForm'
+      | 'reportBlockPrompt'
+    >('menu');
+
+  const [
+    reportReason,
+    setReportReason,
+  ] =
+    useState<
+      ProfileReportReason | ''
+    >('');
+
+  const [
+    reportDetails,
+    setReportDetails,
+  ] =
+    useState('');
+
+  const [
+    safetyBusy,
+    setSafetyBusy,
+  ] =
+    useState(false);
+
+  const openSafety = () => {
+    if (
+      !currentCandidate ||
+      isSwiping.current
+    ) {
+      return;
+    }
+
+    setSafetyView('menu');
+    setReportReason('');
+    setReportDetails('');
+    setShowSafety(true);
+  };
+
+  const closeSafety = () => {
+    if (safetyBusy) {
+      return;
+    }
+
+    setShowSafety(false);
+    setSafetyView('menu');
+    setReportReason('');
+    setReportDetails('');
+  };
+
+  const removeCandidateFromDeck = (
+    userId: string
+  ) => {
+    setCandidates(
+      (previous) =>
+        previous.filter(
+          (candidate) =>
+            candidate.user_id !==
+            userId
+        )
+    );
+
+    setPhotoIndex(0);
+
+    position.setValue({
+      x: 0,
+      y: 0,
+    });
+
+    isSwiping.current =
+      false;
+  };
+
+  const confirmBlockCandidate =
+    async () => {
+      if (
+        !currentCandidate ||
+        safetyBusy
+      ) {
+        return;
+      }
+
+      const candidate =
+        currentCandidate;
+
+      setSafetyBusy(true);
+
+      try {
+        const result =
+          await blockProfile(
+            candidate.user_id
+          );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        /*
+         * Block succeeded.
+         *
+         * Remove the person from
+         * the current Swipe deck
+         * immediately.
+         */
+        setShowSafety(false);
+        setSafetyView('menu');
+        setReportReason('');
+        setReportDetails('');
+
+        removeCandidateFromDeck(
+          candidate.user_id
+        );
+      } catch (error) {
+        console.error(
+          'Block candidate error:',
+          error
+        );
+
+        Alert.alert(
+          'Block failed',
+          error instanceof Error
+            ? error.message
+            : 'Please try again.'
+        );
+      } finally {
+        setSafetyBusy(false);
+      }
+    };
+
+  const submitProfileReport =
+    async () => {
+      if (
+        !currentCandidate ||
+        safetyBusy
+      ) {
+        return;
+      }
+
+      if (!reportReason) {
+        Alert.alert(
+          'Select a reason',
+          'Please choose a report reason.'
+        );
+
+        return;
+      }
+
+      setSafetyBusy(true);
+
+      try {
+        const result =
+          await reportProfile(
+            currentCandidate.user_id,
+            reportReason,
+            reportDetails
+          );
+
+        if (result.error) {
+          throw result.error;
+        }
+
+        /*
+         * Report and Block are
+         * separate operations.
+         *
+         * Report is already saved
+         * before we ask about Block.
+         */
+        setSafetyView(
+          'reportBlockPrompt'
+        );
+      } catch (error) {
+        console.error(
+          'Report profile error:',
+          error
+        );
+
+        Alert.alert(
+          'Report failed',
+          error instanceof Error
+            ? error.message
+            : 'Please try again.'
+        );
+      } finally {
+        setSafetyBusy(false);
+      }
+    };
 
   const openCandidateProfile = () => {
     if (!currentCandidate || isSwiping.current) {
@@ -749,6 +961,22 @@ export default function SwipeScreen() {
                   </Text>
                 </View>
               ) : null}
+
+              {/* ================= SAFETY MENU ================= */}
+
+              <TouchableOpacity
+                style={
+                  styles.safetyMenuButton
+                }
+                activeOpacity={0.8}
+                onPress={openSafety}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={23}
+                  color="#222222"
+                />
+              </TouchableOpacity>
               {/* ================= PHOTO TAP ZONES ================= */}
 
               <TouchableOpacity
@@ -899,6 +1127,484 @@ export default function SwipeScreen() {
         matchId={matchedMatchId}
         onContinue={() => setShowMatchModal(false)}
       />
+      <Modal
+        visible={showSafety}
+        transparent
+        animationType="fade"
+        onRequestClose={
+          closeSafety
+        }
+      >
+        <Pressable
+          style={
+            styles.safetyOverlay
+          }
+          onPress={
+            closeSafety
+          }
+        >
+          <Pressable
+            style={[
+              styles.safetyModal,
+              {
+                width:
+                  screenWidth >= 768
+                    ? 420
+                    : screenWidth - 40,
+              },
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            {/* HEADER */}
+
+            <View
+              style={
+                styles.safetyHeader
+              }
+            >
+              <TouchableOpacity
+                style={
+                  styles.safetyClose
+                }
+                disabled={
+                  safetyBusy
+                }
+                onPress={
+                  safetyView === 'menu' ||
+                    safetyView ===
+                    'reportBlockPrompt'
+                    ? closeSafety
+                    : () =>
+                      setSafetyView(
+                        'menu'
+                      )
+                }
+              >
+                <Text
+                  style={
+                    styles.safetyCloseText
+                  }
+                >
+                  {safetyView ===
+                    'menu' ||
+                    safetyView ===
+                    'reportBlockPrompt'
+                    ? '×'
+                    : '‹'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text
+                style={
+                  styles.safetyTitle
+                }
+              >
+                {safetyView ===
+                  'menu' &&
+                  'Safety Tools'}
+
+                {safetyView ===
+                  'blockConfirm' &&
+                  'Block User'}
+
+                {safetyView ===
+                  'reportForm' &&
+                  'Report User'}
+
+                {safetyView ===
+                  'reportBlockPrompt' &&
+                  'Report Submitted'}
+              </Text>
+
+              <View
+                style={
+                  styles.safetyHeaderSpacer
+                }
+              />
+            </View>
+
+            {/* MENU */}
+
+            {safetyView ===
+              'menu' &&
+              currentCandidate && (
+                <>
+                  <TouchableOpacity
+                    style={
+                      styles.safetyOption
+                    }
+                    onPress={() =>
+                      setSafetyView(
+                        'blockConfirm'
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="ban-outline"
+                      size={18}
+                      color="#333333"
+                    />
+
+                    <Text
+                      style={
+                        styles.safetyOptionText
+                      }
+                    >
+                      Block{' '}
+                      {
+                        currentCandidate.display_name
+                      }
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={
+                      styles.safetyOption
+                    }
+                    onPress={() => {
+                      setReportReason(
+                        ''
+                      );
+
+                      setReportDetails(
+                        ''
+                      );
+
+                      setSafetyView(
+                        'reportForm'
+                      );
+                    }}
+                  >
+                    <Ionicons
+                      name="flag-outline"
+                      size={18}
+                      color="#333333"
+                    />
+
+                    <Text
+                      style={
+                        styles.safetyOptionText
+                      }
+                    >
+                      Report{' '}
+                      {
+                        currentCandidate.display_name
+                      }
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+            {/* BLOCK CONFIRM */}
+
+            {safetyView ===
+              'blockConfirm' &&
+              currentCandidate && (
+                <>
+                  <Text
+                    style={
+                      styles.safetyBody
+                    }
+                  >
+                    Are you sure you
+                    want to block{' '}
+                    {
+                      currentCandidate.display_name
+                    }
+                    ?
+                    {'\n\n'}
+                    You will no longer
+                    be able to discover
+                    or interact with
+                    each other.
+                  </Text>
+
+                  <View
+                    style={
+                      styles.safetyActions
+                    }
+                  >
+                    <TouchableOpacity
+                      style={
+                        styles.safetyCancel
+                      }
+                      disabled={
+                        safetyBusy
+                      }
+                      onPress={() =>
+                        setSafetyView(
+                          'menu'
+                        )
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyCancelText
+                        }
+                      >
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={
+                        styles.safetyConfirm
+                      }
+                      disabled={
+                        safetyBusy
+                      }
+                      onPress={
+                        confirmBlockCandidate
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyConfirmText
+                        }
+                      >
+                        {safetyBusy
+                          ? 'Blocking...'
+                          : 'Block'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+            {/* REPORT */}
+
+            {safetyView ===
+              'reportForm' &&
+              currentCandidate && (
+                <>
+                  <Text
+                    style={
+                      styles.safetyBody
+                    }
+                  >
+                    Why are you
+                    reporting{' '}
+                    {
+                      currentCandidate.display_name
+                    }
+                    ?
+                  </Text>
+
+                  <ScrollView
+                    style={
+                      styles.reportScroll
+                    }
+                    showsVerticalScrollIndicator={
+                      false
+                    }
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {PROFILE_REPORT_REASONS.map(
+                      (reason) => (
+                        <TouchableOpacity
+                          key={
+                            reason.value
+                          }
+                          style={[
+                            styles.reportReason,
+                            reportReason ===
+                            reason.value &&
+                            styles.reportReasonSelected,
+                          ]}
+                          onPress={() =>
+                            setReportReason(
+                              reason.value
+                            )
+                          }
+                        >
+                          <Ionicons
+                            name={
+                              reportReason ===
+                                reason.value
+                                ? 'radio-button-on'
+                                : 'radio-button-off'
+                            }
+                            size={17}
+                            color={
+                              reportReason ===
+                                reason.value
+                                ? '#E88A43'
+                                : '#666666'
+                            }
+                          />
+
+                          <Text
+                            style={
+                              styles.safetyOptionText
+                            }
+                          >
+                            {
+                              reason.label
+                            }
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    )}
+
+                    <TextInput
+                      style={
+                        styles.reportDetails
+                      }
+                      placeholder="Additional details (optional)"
+                      placeholderTextColor="#888888"
+                      multiline
+                      maxLength={1000}
+                      value={
+                        reportDetails
+                      }
+                      onChangeText={
+                        setReportDetails
+                      }
+                      textAlignVertical="top"
+                    />
+                  </ScrollView>
+
+                  <View
+                    style={
+                      styles.safetyActions
+                    }
+                  >
+                    <TouchableOpacity
+                      style={
+                        styles.safetyCancel
+                      }
+                      disabled={
+                        safetyBusy
+                      }
+                      onPress={() =>
+                        setSafetyView(
+                          'menu'
+                        )
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyCancelText
+                        }
+                      >
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={
+                        styles.safetyConfirm
+                      }
+                      disabled={
+                        safetyBusy ||
+                        !reportReason
+                      }
+                      onPress={
+                        submitProfileReport
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyConfirmText
+                        }
+                      >
+                        {safetyBusy
+                          ? 'Submitting...'
+                          : 'Submit Report'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+            {/* REPORT SUCCESS / ASK BLOCK */}
+
+            {safetyView ===
+              'reportBlockPrompt' &&
+              currentCandidate && (
+                <>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={46}
+                    color="#E88A43"
+                    style={{
+                      alignSelf:
+                        'center',
+                      marginVertical:
+                        12,
+                    }}
+                  />
+
+                  <Text
+                    style={
+                      styles.safetyBody
+                    }
+                  >
+                    Your report has
+                    been submitted.
+                    {'\n\n'}
+                    Would you also
+                    like to block{' '}
+                    {
+                      currentCandidate.display_name
+                    }
+                    ?
+                  </Text>
+
+                  <View
+                    style={
+                      styles.safetyActions
+                    }
+                  >
+                    <TouchableOpacity
+                      style={
+                        styles.safetyCancel
+                      }
+                      disabled={
+                        safetyBusy
+                      }
+                      onPress={
+                        closeSafety
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyCancelText
+                        }
+                      >
+                        Not now
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={
+                        styles.safetyConfirm
+                      }
+                      disabled={
+                        safetyBusy
+                      }
+                      onPress={
+                        confirmBlockCandidate
+                      }
+                    >
+                      <Text
+                        style={
+                          styles.safetyConfirmText
+                        }
+                      >
+                        {safetyBusy
+                          ? 'Blocking...'
+                          : `Block ${currentCandidate.display_name}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -1133,7 +1839,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
 
     top: 10,
-    right: 10,
+    left: 10,
 
     minWidth: 38,
     height: 24,
@@ -1398,5 +2104,250 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 13,
     color: '#777777',
+  },
+  safetyMenuButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+
+    width: 38,
+    height: 38,
+
+    borderRadius: 19,
+
+    backgroundColor:
+      'rgba(255,255,255,0.94)',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    zIndex: 30,
+
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  safetyOverlay: {
+    flex: 1,
+
+    backgroundColor:
+      'rgba(0,0,0,0.35)',
+
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+
+    paddingBottom: 28,
+  },
+
+  safetyModal: {
+    maxHeight: '88%',
+
+    backgroundColor: '#FFFFFF',
+
+    borderRadius: 22,
+
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 14,
+
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+
+  safetyHeader: {
+    height: 48,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent:
+      'space-between',
+
+    marginBottom: 6,
+  },
+
+  safetyClose: {
+    width: 34,
+    height: 34,
+
+    borderRadius: 17,
+
+    backgroundColor:
+      '#FFB56F',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  safetyCloseText: {
+    color: '#FFFFFF',
+
+    fontSize: 27,
+    lineHeight: 29,
+    fontWeight: '300',
+  },
+
+  safetyTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222222',
+  },
+
+  safetyHeaderSpacer: {
+    width: 34,
+  },
+
+  safetyOption: {
+    minHeight: 42,
+
+    borderRadius: 13,
+
+    backgroundColor:
+      '#EEEEEE',
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    paddingHorizontal: 16,
+
+    marginTop: 8,
+  },
+
+  safetyOptionText: {
+    marginLeft: 9,
+
+    color: '#222222',
+
+    fontSize: 12,
+    fontWeight: '600',
+
+    flexShrink: 1,
+  },
+
+  safetyBody: {
+    color: '#333333',
+
+    fontSize: 14,
+    lineHeight: 21,
+
+    textAlign: 'center',
+
+    marginTop: 10,
+    marginBottom: 14,
+
+    paddingHorizontal: 6,
+  },
+
+  safetyActions: {
+    flexDirection: 'row',
+
+    gap: 10,
+
+    marginTop: 14,
+  },
+
+  safetyCancel: {
+    flex: 1,
+
+    minHeight: 42,
+
+    borderRadius: 13,
+
+    backgroundColor:
+      '#EEEEEE',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  safetyCancelText: {
+    color: '#333333',
+
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  safetyConfirm: {
+    flex: 1,
+
+    minHeight: 42,
+
+    borderRadius: 13,
+
+    backgroundColor:
+      '#E88A43',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    paddingHorizontal: 10,
+  },
+
+  safetyConfirmText: {
+    color: '#FFFFFF',
+
+    fontSize: 13,
+    fontWeight: '600',
+
+    textAlign: 'center',
+  },
+
+  reportScroll: {
+    maxHeight: 430,
+  },
+
+  reportReason: {
+    minHeight: 39,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    borderRadius: 10,
+
+    paddingHorizontal: 10,
+
+    marginTop: 5,
+
+    backgroundColor:
+      '#F3F3F3',
+  },
+
+  reportReasonSelected: {
+    backgroundColor:
+      '#FFF0E3',
+
+    borderWidth: 1,
+
+    borderColor:
+      '#E88A43',
+  },
+
+  reportDetails: {
+    minHeight: 80,
+    maxHeight: 120,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      '#F3F3F3',
+
+    padding: 10,
+
+    marginTop: 10,
+
+    color: '#222222',
+
+    fontSize: 13,
   },
 });

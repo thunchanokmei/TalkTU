@@ -31,18 +31,18 @@ import {
   useLocalSearchParams,
 } from 'expo-router';
 
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../lib/supabase';
 
 import {
   getChatList,
   getMessages,
   sendMessage,
   subscribeToMessages,
-} from '../../features/chat/services/chatService';
+} from '../../../features/chat/services/chatService';
 
 import type {
   ChatMessage,
-} from '../../features/chat/types';
+} from '../../../features/chat/types';
 
 export default function ChatRoom() {
   const params =

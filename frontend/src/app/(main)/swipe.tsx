@@ -5,6 +5,7 @@ import {
   Animated,
   useWindowDimensions,
   PanResponder,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,12 +19,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
-import BottomNavigation from '../components/navigation/BottomNavigation';
-import { getMode } from '../features/onboarding/services/onboardingService';
-import MatchModal from '../components/MatchModal';
+// ✅ 1. ลบ import BottomNavigation ออกแล้ว (bar อยู่ใน (main)/_layout.tsx)
+import { getMode } from '../../features/onboarding/services/onboardingService';
+import MatchModal from '../../components/MatchModal';
 
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
+
+/* ธีมเดียวกับ BottomNavigation */
+const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
+
+/* พื้นที่ด้านล่างการ์ดที่เว้นไว้ไม่ให้โซนแตะทับชื่อ/ปุ่ม */
+const BOTTOM_RESERVED = 105;
 
 type SwipeMode = 'date' | 'friends';
 
@@ -75,23 +82,19 @@ export default function SwipeScreen() {
     screenWidth,
     screenHeight
   );
-
+  // ระยะขอบข้างการ์ดตาม Figma (~8.6% ของความกว้างจอ)
   const horizontalPadding = Math.max(
-    20,
-    screenWidth * 0.06
+    2,
+    screenWidth * 0.07
   );
-
   const cardWidth =
     screenWidth - horizontalPadding * 2;
-
-  // Keep the card tall, but reserve visible breathing room above the bottom nav.
+  // สัดส่วนการ์ดตาม Figma (สูง ≈ 1.76 เท่าของกว้าง)
   const cardHeight = Math.min(
-    screenHeight * 0.74,
-    cardWidth * 1.82
+    screenHeight * 0.8,
+    cardWidth * 1.80
   );
   const swipeThreshold = screenWidth * 0.18;
-
-  // Responsive sizing tuned to keep the header and swipe actions visually balanced
   const logoWidth = Math.max(
     180,
     Math.min(shortSide * 0.52, 280)
@@ -113,14 +116,17 @@ export default function SwipeScreen() {
     Math.min(shortSide * 0.23, 112)
   );
 
-  // Floating like button on the card
+  // ปุ่ม like ลอยมุมขวาล่างของการ์ด
   const actionButtonSize = Math.max(
-    60,
-    Math.min(shortSide * 0.17, 74)
+    64,
+    Math.min(cardWidth * 0.19, 82)
   );
-  const actionIconSize = Math.max(
-    32,
-    Math.min(shortSide * 0.09, 42)
+  const actionIconSize = Math.round(actionButtonSize * 0.5);
+
+  // ไอคอนปุ่มดู bio ข้างชื่อ
+  const bioIconSize = Math.max(
+    26,
+    Math.min(cardWidth * 0.07, 32)
   );
 
   const [mode, setMode] = useState<SwipeMode | null>(null);
@@ -540,7 +546,8 @@ export default function SwipeScreen() {
     currentCandidate?.photos?.[photoIndex];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    // ✅ 2. เพิ่ม edges={['top']} เพราะ inset ด้านล่างย้ายไปอยู่ที่ layout แล้ว
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
 
         {/* ================= HEADER ================= */}
@@ -555,12 +562,16 @@ export default function SwipeScreen() {
           ]}
         >
           <Image
-            source={require('../../assets/images/talktu-logo2.png')}
+            // ✅ 3. เพิ่ม ../ อีกชั้น เพราะไฟล์ย้ายเข้า (main)
+            source={require('../../../assets/images/talktu-logo2.png')}
             style={[
               styles.logo,
               {
                 width: logoWidth,
                 height: logoHeight,
+                marginLeft:-15,
+                marginTop:-20,
+                marginBottom:-15,
               },
             ]}
             resizeMode="contain"
@@ -594,7 +605,7 @@ export default function SwipeScreen() {
             <View style={styles.statusState}>
               <ActivityIndicator
                 size="large"
-                color="#FF7F87"
+                color="#FF8D88"
               />
 
               <Text style={styles.loadingText}>
@@ -618,6 +629,7 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
+                style={styles.retryShadow}
                 onPress={() => {
                   if (mode) {
                     fetchCandidates(mode, 0, false);
@@ -626,11 +638,9 @@ export default function SwipeScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[
-                    '#FF7B82',
-                    '#FFAA70',
-                    '#FFD37B',
-                  ]}
+                  colors={THEME_GRADIENT}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
                   style={styles.retryButton}
                 >
                   <Text style={styles.retryText}>
@@ -656,6 +666,7 @@ export default function SwipeScreen() {
               </Text>
 
               <TouchableOpacity
+                style={styles.retryShadow}
                 onPress={() => {
                   if (mode) {
                     fetchCandidates(mode, 0, false);
@@ -664,11 +675,9 @@ export default function SwipeScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={[
-                    '#FF7B82',
-                    '#FFAA70',
-                    '#FFD37B',
-                  ]}
+                  colors={THEME_GRADIENT}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
                   style={styles.retryButton}
                 >
                   <Text style={styles.retryText}>
@@ -825,19 +834,44 @@ export default function SwipeScreen() {
               {/* ================= PROFILE INFO ================= */}
 
               <View
-                style={
-                  styles.profileInfo
-                }
+                pointerEvents="box-none"
+                style={[
+                  styles.profileInfo,
+                  { right: 14 + actionButtonSize + 10 },
+                ]}
               >
-                <Text
-                  style={styles.nameText}
-                  numberOfLines={1}
-                >
-                  {
-                    currentCandidate.display_name
-                  }{' '}
-                  {currentCandidate.age}
-                </Text>
+                <View style={styles.nameRow}>
+                  <Text
+                    style={styles.nameText}
+                    numberOfLines={1}
+                  >
+                    {
+                      currentCandidate.display_name
+                    }{' '}
+                    {currentCandidate.age}
+                  </Text>
+
+                  {/* ปุ่มดู bio (ข้างชื่อ) */}
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="View bio"
+                    style={styles.bioButton}
+                    activeOpacity={0.7}
+                    hitSlop={{
+                      top: 10,
+                      bottom: 10,
+                      left: 10,
+                      right: 10,
+                    }}
+                    onPress={openCandidateProfile}
+                  >
+                    <Ionicons
+                      name="arrow-up-circle-outline"
+                      size={bioIconSize}
+                      color="#FFFFFF"
+                    />
+                  </TouchableOpacity>
+                </View>
 
                 <Text
                   style={
@@ -870,14 +904,14 @@ export default function SwipeScreen() {
                 <Ionicons
                   name="heart"
                   size={actionIconSize}
-                  color="#FF5964"
+                  color="#FF8D88"
                 />
               </TouchableOpacity>
             </Animated.View>
           )}
         </View>
 
-        <BottomNavigation activeTab="swap" />
+        {/* ✅ 4. ลบ <BottomNavigation activeTab="swap" /> ออกแล้ว */}
 
       </View>
 
@@ -1084,25 +1118,24 @@ const styles = StyleSheet.create({
   card: {
     position: 'relative',
 
-    borderRadius: 24,
+    borderRadius: 30,
 
     overflow: 'hidden',
 
     backgroundColor:
       '#EEEEEE',
 
-    shadowColor: '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-
-    shadowOpacity: 0.13,
-
-    shadowRadius: 6,
-
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.14,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
 
   photo: {
@@ -1124,39 +1157,28 @@ const styles = StyleSheet.create({
 
   photoCounter: {
     position: 'absolute',
-
     top: 10,
     right: 10,
-
-    minWidth: 38,
-    height: 24,
-
-    paddingHorizontal: 8,
-
+    minWidth: 44,
+    height: 28,
+    paddingHorizontal: 10,
     borderRadius: 999,
-
     backgroundColor:
       '#FFFFFF',
-
     justifyContent: 'center',
     alignItems: 'center',
-
     zIndex: 10,
   },
-
   photoCounterText: {
     color: '#111111',
-
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
 
   profileOpenZone: {
     position: 'absolute',
-
     top: 0,
-    bottom: 105,
-
+    bottom: BOTTOM_RESERVED,
     zIndex: 4,
   },
 
@@ -1174,7 +1196,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
 
     top: 0,
-    bottom: 105,
+    bottom: BOTTOM_RESERVED,
     left: 0,
 
     width: '18%',
@@ -1186,7 +1208,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
 
     top: 0,
-    bottom: 105,
+    bottom: BOTTOM_RESERVED,
     right: 0,
 
     width: '18%',
@@ -1208,20 +1230,26 @@ const styles = StyleSheet.create({
   profileInfo: {
     position: 'absolute',
 
-    left: 13,
-    right: 70,
-    bottom: 27,
+    left: 18,
+    bottom: 26,
 
-    zIndex: 6,
+    zIndex: 13,
+  },
+
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   nameText: {
+    flexShrink: 1,
+
     color: '#FFFFFF',
 
     fontSize: 32,
-    lineHeight: 36,
+    lineHeight: 38,
 
-    fontWeight: '600',
+    fontWeight: '700',
 
     letterSpacing: -0.7,
 
@@ -1236,10 +1264,26 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
 
+  bioButton: {
+    marginLeft: 10,
+
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOpacity: 0.35,
+        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 1 },
+      },
+    }),
+  },
+
   detailText: {
     color: '#FFFFFF',
 
-    fontSize: 11,
+    fontSize: 12,
 
     marginTop: 2,
 
@@ -1262,7 +1306,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
 
     right: 14,
-    bottom: 18,
+    bottom: 16,
 
     backgroundColor:
       '#FFFFFF',
@@ -1341,20 +1385,38 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  retryButton: {
+  retryShadow: {
     marginTop: 18,
 
-    borderRadius: 18,
+    borderRadius: 999,
+    backgroundColor: '#FFAF79',
 
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF6B5E',
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: {
+        elevation: 6,
+        shadowColor: '#FF6B5E',
+      },
+    }),
+  },
+
+  retryButton: {
+    borderRadius: 999,
+
+    paddingHorizontal: 26,
+    paddingVertical: 12,
   },
 
   retryText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
 
-    color: '#111111',
+    color: '#FFFFFF',
   },
 
   /* ================= MODE SWITCH ================= */

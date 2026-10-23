@@ -4,15 +4,17 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
-import BottomNavigation from '../components/navigation/BottomNavigation';
-import { supabase } from '../lib/supabase';
+// ✅ 1. เปลี่ยน SafeAreaView มาใช้ตัวจาก safe-area-context (รองรับ edges)
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+// ✅ 2. ลบ import BottomNavigation ออก (bar อยู่ใน (main)/_layout.tsx)
+import { supabase } from '../../lib/supabase'; // ✅ 3. เพิ่ม ../ อีกชั้น
 import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileScreen() {
@@ -145,14 +147,15 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <ActivityIndicator size="large" />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    // ✅ 4. เพิ่ม edges={['top']}
+    <SafeAreaView style={styles.container} edges={['top']}>
       <Text style={styles.header}>Profile</Text>
 
       <ScrollView
@@ -260,8 +263,8 @@ export default function ProfileScreen() {
         </View>
       </ScrollView>
 
-      <BottomNavigation activeTab="profile" />
-    </SafeAreaView >
+      {/* ✅ 2. ลบ <BottomNavigation activeTab="profile" /> ออกแล้ว */}
+    </SafeAreaView>
   );
 }
 

@@ -17,14 +17,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 
-import BottomNavigation from '../components/navigation/BottomNavigation';
+// ✅ 1. ลบ import BottomNavigation ออก (bar อยู่ใน (main)/_layout.tsx)
 
 import {
   getMode,
-} from '../features/onboarding/services/onboardingService';
+} from '../../features/onboarding/services/onboardingService'; // ✅ 2. เพิ่ม ../
 
 type SwipeMode = 'date' | 'friends';
 
@@ -69,6 +70,7 @@ const FETCH_LIMIT = 20;
 
 export default function LikeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets(); // ✅ 3. ใช้แทน paddingTop: 58 ที่ fix ไว้
 
   const {
     width,
@@ -189,7 +191,13 @@ export default function LikeScreen() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      {/* ✅ 3. paddingTop ใช้ insets.top + 8 แทนค่า 58 เดิม */}
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8 },
+        ]}
+      >
         <Text style={styles.title}>
           Like
         </Text>
@@ -267,7 +275,8 @@ export default function LikeScreen() {
               horizontalPadding,
 
             paddingTop: 18,
-            paddingBottom: 110,
+            // ✅ 4. ลดจาก 110 เพราะ bar ไม่ได้ลอยทับแล้ว (อยู่ใน layout)
+            paddingBottom: 24,
           }}
           showsVerticalScrollIndicator={
             false
@@ -325,7 +334,7 @@ export default function LikeScreen() {
         />
       )}
 
-      <BottomNavigation activeTab="like"/>
+      {/* ✅ 1. ลบ <BottomNavigation activeTab="like"/> ออกแล้ว */}
     </View>
   );
 }
@@ -360,7 +369,7 @@ const styles =
     },
 
     header: {
-      paddingTop: 58,
+      // paddingTop ถูกกำหนดแบบ dynamic ตอน render แล้ว
       paddingBottom: 15,
 
       flexDirection: 'row',

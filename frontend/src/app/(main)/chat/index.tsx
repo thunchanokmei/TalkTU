@@ -17,21 +17,20 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 
-import BottomNavigation from '../../components/navigation/BottomNavigation';
+// ✅ 1. ลบ import BottomNavigation และ LinearGradient (ไม่ได้ใช้) ออก
 
 import {
   getChatList,
   getProfilePhotoUrl,
   subscribeToMatches,
-} from '../../features/chat/services/chatService';
+} from '../../../features/chat/services/chatService';
 
 import type {
   ChatListItem,
-} from '../../features/chat/types';
+} from '../../../features/chat/types';
 
 export default function ChatPage() {
   const { width } = useWindowDimensions();
@@ -100,7 +99,7 @@ export default function ChatPage() {
 
   const openChat = (item: ChatListItem) => {
     router.push({
-      pathname: '/chat/[matchId]',
+      pathname: '/(main)/chat/[matchId]',
       params: {
         matchId: item.match_id,
         name: item.other_display_name ?? 'Unknown',
@@ -144,7 +143,8 @@ export default function ChatPage() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    // ✅ 2. เพิ่ม edges={['top']}
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
 
         {/* ================= HEADER ================= */}
@@ -156,7 +156,8 @@ export default function ChatPage() {
           ]}
         >
           <Image
-            source={require('../../../assets/images/chat-header.png')}
+            // ✅ 3. เพิ่ม ../ อีกชั้น (ถ้าไฟล์ย้ายเข้า (main)/chat แล้วหา assets ไม่เจอ)
+            source={require('../../../../assets/images/chat-header.png')}
             style={styles.chatLogo}
             resizeMode="contain"
           />
@@ -309,7 +310,7 @@ export default function ChatPage() {
           )}
         </View>
 
-        <BottomNavigation activeTab="chat"/>
+        {/* ✅ 1. ลบ <BottomNavigation activeTab="chat"/> ออกแล้ว */}
 
       </View>
     </SafeAreaView>

@@ -135,14 +135,10 @@ export default function BottomNavigation({
               const routes = {
                 swap: '/swipe',
                 like: '/like',
+                board: '/feed',
                 chat: '/chat',
                 profile: '/profile',
               } as const;
-
-              if (item.key === 'board') {
-                return;
-              }
-
               router.replace(routes[item.key]);
             }}
           >

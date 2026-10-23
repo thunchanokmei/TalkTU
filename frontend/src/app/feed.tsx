@@ -1918,34 +1918,7 @@ export default function FeedScreen() {
             BOTTOM NAV
         ================================================= */}
 
-        <BottomNavigation
-          activeTab="board"
-          onTabPress={(
-            tab
-          ) => {
-            if (
-              tab ===
-              'swap'
-            ) {
-              router.replace(
-                '/swipe'
-              );
-
-              return;
-            }
-
-            if (
-              tab ===
-              'chat'
-            ) {
-              router.replace(
-                '/chat'
-              );
-
-              return;
-            }
-          }}
-        />
+        <BottomNavigation activeTab="board" />
       </View>
 
 

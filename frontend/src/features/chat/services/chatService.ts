@@ -7,12 +7,6 @@ import type {
 
 const PAGE_SIZE = 30;
 
-/**
- * Get all active chats for current user.
- *
- * Backend:
- * public.get_my_chat_list()
- */
 export async function getChatList(): Promise<{
   data: ChatListItem[] | null;
   error: Error | null;
@@ -56,12 +50,6 @@ export function getProfilePhotoUrl(
   return data.publicUrl;
 }
 
-/**
- * Get latest messages.
- *
- * Initial page:
- * latest 30 messages
- */
 export async function getMessages(
   matchId: string,
   page = 0
@@ -236,4 +224,67 @@ export function subscribeToMatches(
     .subscribe();
 
   return channel;
+}
+
+export type ChatReportReason =
+  | 'harassment'
+  | 'violence_or_hate'
+  | 'self_harm'
+  | 'sexual_content'
+  | 'scam'
+  | 'impersonation'
+  | 'spam_or_false_information'
+  | 'illegal_goods'
+  | 'intellectual_property'
+  | 'other';
+
+export async function reportChat(
+  matchId: string,
+  reason: ChatReportReason,
+  details = ''
+): Promise<{
+  data: {
+    ok?: boolean;
+    reportId?: string;
+    alreadyReported?: boolean;
+    emailSent?: boolean;
+    emailError?: string;
+  } | null;
+  error: Error | null;
+}> {
+  const {
+    data,
+    error,
+  } = await supabase.functions.invoke(
+    'submit-chat-report',
+    {
+      body: {
+        matchId,
+        reason,
+        details: details.trim(),
+      },
+    }
+  );
+
+  if (error) {
+    return {
+      data: null,
+      error,
+    };
+  }
+
+  if (!data?.ok) {
+    return {
+      data: null,
+      error: new Error(
+        data?.error ??
+        'Unable to report this chat.'
+      ),
+    };
+  }
+
+  return {
+    data,
+    error: null,
+  };
 }

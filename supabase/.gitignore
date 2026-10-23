@@ -10,3 +10,6 @@
 # Local test scripts (contain secrets / temporary)
 set-test-password.mjs
 test-send-message.mjs
+test-unmatch.mjs
+test-read-messages-after-unmatch.mjs
+test-send-after-unmatch.mjs

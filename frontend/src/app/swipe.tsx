@@ -387,8 +387,6 @@ export default function SwipeScreen() {
           err?.code === 'P0001' &&
           err?.message === 'Target profile is not available'
         ) {
-          // Candidate was deleted or became unavailable.
-          // The card has already moved forward.
           return;
         }
 
@@ -885,8 +883,6 @@ export default function SwipeScreen() {
             </Animated.View>
           )}
         </View>
-
-        {/* ================= BOTTOM NAV ================= */}
 
         <BottomNavigation activeTab="swap" />
 

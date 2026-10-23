@@ -220,7 +220,6 @@ const REPORT_REASONS:
     },
   ];
 
-
 /* =========================================================
    MAIN SCREEN
 ========================================================= */
@@ -422,6 +421,7 @@ export default function FeedScreen() {
   ] =
     useState(false);
 
+  const [reportView, setReportView] = useState<'form' | 'submitting' | 'success'>('form');
 
   /* =======================================================
      POST OPTIONS STATE
@@ -1192,12 +1192,46 @@ export default function FeedScreen() {
       setReportDetails(
         ''
       );
+      
+      setReportView(
+        'form'
+      );
 
       setReportVisible(
         true
       );
     };
 
+  const closeReportModal =
+    () => {
+      if (
+        reportSending ||
+        reportView ===
+        'submitting'
+      ) {
+        return;
+      }
+
+      setReportVisible(
+        false
+      );
+
+      setReportTarget(
+        null
+      );
+
+      setSelectedReportReason(
+        null
+      );
+
+      setReportDetails(
+        ''
+      );
+
+      setReportView(
+        'form'
+      );
+    };
 
   const handleDeleteOption =
     () => {
@@ -1428,7 +1462,6 @@ export default function FeedScreen() {
         return;
       }
 
-
       if (
         !selectedReportReason
       ) {
@@ -1440,12 +1473,14 @@ export default function FeedScreen() {
         return;
       }
 
-
       try {
         setReportSending(
           true
         );
 
+        setReportView(
+          'submitting'
+        );
 
         const {
           data,
@@ -1470,50 +1505,16 @@ export default function FeedScreen() {
               }
             );
 
-
         if (error) {
           throw error;
         }
 
-
-        if (
-          !data?.ok
-        ) {
+        if (!data?.ok) {
           throw new Error(
             data?.error ??
             'Unable to report this post.'
           );
         }
-
-
-        setReportVisible(
-          false
-        );
-
-        setReportTarget(
-          null
-        );
-
-        setSelectedReportReason(
-          null
-        );
-
-        setReportDetails(
-          ''
-        );
-
-
-        if (
-          data.alreadyReported
-        ) {
-          Alert.alert(
-            'รายงานแล้ว',
-            'คุณได้รายงานโพสต์นี้ไว้แล้ว'
-          );
-
-          return;
-        }
-
 
         if (
           data.emailSent ===
@@ -1523,19 +1524,10 @@ export default function FeedScreen() {
             'Report saved but email was not sent:',
             data.emailError
           );
-
-          Alert.alert(
-            'รายงานถูกบันทึกแล้ว',
-            'ระบบบันทึกรายงานสำเร็จ แต่ยังส่งอีเมลแจ้งทีมงานไม่สำเร็จ'
-          );
-
-          return;
         }
 
-
-        Alert.alert(
-          'Reported',
-          'ขอบคุณที่ช่วยดูแลชุมชน TalkTU'
+        setReportView(
+          'success'
         );
       } catch (error) {
         console.error(
@@ -1543,8 +1535,12 @@ export default function FeedScreen() {
           error
         );
 
+        setReportView(
+          'form'
+        );
+
         Alert.alert(
-          'Error',
+          'Report failed',
           error instanceof Error
             ? error.message
             : 'Unable to report this post.'
@@ -1555,8 +1551,6 @@ export default function FeedScreen() {
         );
       }
     };
-
-
 
   const detailPost =
     selectedPost;
@@ -2960,10 +2954,8 @@ export default function FeedScreen() {
         }
         transparent
         animationType="slide"
-        onRequestClose={() =>
-          setReportVisible(
-            false
-          )
+        onRequestClose={
+          closeReportModal
         }
       >
         <KeyboardAvoidingView
@@ -2992,10 +2984,12 @@ export default function FeedScreen() {
               }
             >
               <TouchableOpacity
-                onPress={() =>
-                  setReportVisible(
-                    false
-                  )
+                onPress={
+                  closeReportModal
+                }
+                disabled={
+                  reportView ===
+                  'submitting'
                 }
               >
                 <Ionicons
@@ -3020,161 +3014,271 @@ export default function FeedScreen() {
               />
             </View>
 
-
-            <Text
-              style={
-                styles.reportHeading
-              }
-            >
-              Why are you reporting this post?
-            </Text>
-
-
-            <FlatList
-              data={
-                REPORT_REASONS
-              }
-
-              keyExtractor={(
-                item
-              ) =>
-                item.value
-              }
-
-              style={
-                styles.reportReasonList
-              }
-
-              renderItem={({
-                item,
-              }) => {
-                const selected =
-                  selectedReportReason ===
-                  item.value;
-
-                return (
-                  <TouchableOpacity
-                    activeOpacity={
-                      0.8
-                    }
-                    style={[
-                      styles.reportReason,
-
-                      selected &&
-                      styles.reportReasonSelected,
-                    ]}
-                    onPress={() =>
-                      setSelectedReportReason(
-                        item.value
-                      )
-                    }
-                  >
-                    <View
-                      style={
-                        styles.reportReasonLeft
-                      }
-                    >
-                      <Ionicons
-                        name={
-                          item.icon
-                        }
-                        size={21}
-                        color={
-                          selected
-                            ? '#FF817B'
-                            : '#555555'
-                        }
-                      />
-
-                      <Text
-                        style={[
-                          styles.reportReasonText,
-
-                          selected &&
-                          styles.reportReasonTextSelected,
-                        ]}
-                      >
-                        {
-                          item.label
-                        }
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name={
-                        selected
-                          ? 'radio-button-on'
-                          : 'radio-button-off'
-                      }
-                      size={20}
-                      color={
-                        selected
-                          ? '#FF817B'
-                          : '#BBBBBB'
-                      }
-                    />
-                  </TouchableOpacity>
-                );
-              }}
-            />
-
-
-            <TextInput
-              value={
-                reportDetails
-              }
-
-              onChangeText={
-                setReportDetails
-              }
-
-              multiline
-
-              maxLength={
-                1000
-              }
-
-              textAlignVertical="top"
-
-              placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ)"
-
-              placeholderTextColor="#AAAAAA"
-
-              style={[
-                styles.reportDetailsInput,
-                webNoOutline,
-              ]}
-            />
-
-
-            <TouchableOpacity
-              disabled={
-                reportSending
-              }
-              activeOpacity={
-                0.85
-              }
-              style={
-                styles.reportSubmitButton
-              }
-              onPress={
-                submitReport
-              }
-            >
-              {reportSending ? (
-                <ActivityIndicator
-                  color="#FFFFFF"
-                />
-              ) : (
+            {reportView === 'form' && (
+              <>
                 <Text
                   style={
-                    styles.reportSubmitText
+                    styles.reportHeading
                   }
                 >
-                  Submit report
+                  Why are you reporting this post?
                 </Text>
+
+                <FlatList
+                  data={
+                    REPORT_REASONS
+                  }
+
+                  keyExtractor={(
+                    item
+                  ) =>
+                    item.value
+                  }
+
+                  style={
+                    styles.reportReasonList
+                  }
+
+                  renderItem={({
+                    item,
+                  }) => {
+                    const selected =
+                      selectedReportReason ===
+                      item.value;
+
+                    return (
+                      <TouchableOpacity
+                        activeOpacity={
+                          0.8
+                        }
+                        style={[
+                          styles.reportReason,
+
+                          selected &&
+                          styles.reportReasonSelected,
+                        ]}
+                        onPress={() =>
+                          setSelectedReportReason(
+                            item.value
+                          )
+                        }
+                      >
+                        <View
+                          style={
+                            styles.reportReasonLeft
+                          }
+                        >
+                          <Ionicons
+                            name={
+                              item.icon
+                            }
+                            size={21}
+                            color={
+                              selected
+                                ? '#FF817B'
+                                : '#555555'
+                            }
+                          />
+
+                          <Text
+                            style={[
+                              styles.reportReasonText,
+
+                              selected &&
+                              styles.reportReasonTextSelected,
+                            ]}
+                          >
+                            {
+                              item.label
+                            }
+                          </Text>
+                        </View>
+
+                        <Ionicons
+                          name={
+                            selected
+                              ? 'radio-button-on'
+                              : 'radio-button-off'
+                          }
+                          size={20}
+                          color={
+                            selected
+                              ? '#FF817B'
+                              : '#BBBBBB'
+                          }
+                        />
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+
+
+                <TextInput
+                  value={
+                    reportDetails
+                  }
+
+                  onChangeText={
+                    setReportDetails
+                  }
+
+                  multiline
+
+                  maxLength={
+                    1000
+                  }
+
+                  textAlignVertical="top"
+
+                  placeholder="รายละเอียดเพิ่มเติม (ไม่บังคับ)"
+
+                  placeholderTextColor="#AAAAAA"
+
+                  style={[
+                    styles.reportDetailsInput,
+                    webNoOutline,
+                  ]}
+                />
+
+
+                <TouchableOpacity
+                  disabled={
+                    reportSending
+                  }
+                  activeOpacity={
+                    0.85
+                  }
+                  style={
+                    styles.reportSubmitButton
+                  }
+                  onPress={
+                    submitReport
+                  }
+                >
+                  {reportSending ? (
+                    <ActivityIndicator
+                      color="#FFFFFF"
+                    />
+                  ) : (
+                    <Text
+                      style={
+                        styles.reportSubmitText
+                      }
+                    >
+                      Submit report
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+            {reportView ===
+              'submitting' && (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 24,
+                  }}
+                >
+                  <ActivityIndicator
+                    size="large"
+                    color="#FF817B"
+                  />
+
+                  <Text
+                    style={{
+                      marginTop: 18,
+                      fontSize: 17,
+                      fontWeight: '700',
+                      color: '#222222',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Submitting your report...
+                  </Text>
+
+                  <Text
+                    style={{
+                      marginTop: 8,
+                      fontSize: 13,
+                      lineHeight: 19,
+                      color: '#888888',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Please wait while we send
+                    your report to the TalkTU
+                    Safety team.
+                  </Text>
+                </View>
               )}
-            </TouchableOpacity>
+            {reportView ===
+              'success' && (
+                <View
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 24,
+                  }}
+                >
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={58}
+                    color="#E88A43"
+                  />
+
+                  <Text
+                    style={{
+                      marginTop: 14,
+                      fontSize: 19,
+                      fontWeight: '700',
+                      color: '#222222',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Report submitted
+                  </Text>
+
+                  <Text
+                    style={{
+                      marginTop: 8,
+                      fontSize: 13,
+                      lineHeight: 19,
+                      color: '#777777',
+                      textAlign: 'center',
+                    }}
+                  >
+                    Your report has been
+                    submitted successfully.
+                    {'\n'}
+                    The TalkTU Safety team
+                    will review it.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.reportSubmitButton,
+                      {
+                        width: '100%',
+                        marginTop: 24,
+                      },
+                    ]}
+                    onPress={
+                      closeReportModal
+                    }
+                  >
+                    <Text
+                      style={
+                        styles.reportSubmitText
+                      }
+                    >
+                      Close
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
           </View>
         </KeyboardAvoidingView>
       </Modal>

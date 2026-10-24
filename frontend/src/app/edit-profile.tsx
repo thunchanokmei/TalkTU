@@ -531,10 +531,6 @@ export default function EditProfileScreen() {
                 </TouchableOpacity>
 
                 <Text style={styles.title}>Edit Profile</Text>
-
-                <TouchableOpacity onPress={() => router.push('/settings')}>
-                    <Text style={styles.headerButton}>⚙</Text>
-                </TouchableOpacity>
             </View>
 
             <ScrollView

@@ -1,10 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
-  Alert,
   Image,
-  Platform,
   ScrollView,
   SafeAreaView,
   StyleSheet,
@@ -15,21 +13,9 @@ import {
 
 import BottomNavigation from '../components/navigation/BottomNavigation';
 import { supabase } from '../lib/supabase';
-import * as Clipboard from 'expo-clipboard';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const deletingAccountRef = useRef(false);
-  const [copiedValue, setCopiedValue] = useState<string | null>(null);
-
-  const handleCopy = async (value: string) => {
-    try {
-      await Clipboard.setStringAsync(value);
-      setCopiedValue(value);
-    } catch (error) {
-      console.error('Unable to copy contact:', error);
-    }
-  };
 
   const [displayName, setDisplayName] = useState('');
   const [age, setAge] = useState<number | null>(null);
@@ -135,106 +121,6 @@ export default function ProfileScreen() {
     }
   };
 
-
-  const deleteAccount = async () => {
-    if (deletingAccountRef.current) return;
-
-    deletingAccountRef.current = true;
-
-    let requestAccepted = false;
-
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        'delete-account',
-        { body: {} },
-      );
-
-      if (error || data?.success !== true || data?.status !== 'pending') {
-        throw error ?? new Error('Account deletion was not confirmed');
-      }
-
-      requestAccepted = true;
-    } catch (error) {
-      console.error('Unable to request account deletion:', error);
-
-      const message = 'Unable to request account deletion. Please try again.';
-
-      if (Platform.OS === 'web') {
-        window.alert(message);
-      } else {
-        Alert.alert('Delete Account Failed', message);
-      }
-
-      return;
-    } finally {
-      if (!requestAccepted) {
-        deletingAccountRef.current = false;
-      }
-    }
-
-    try {
-      const { error } = await supabase.auth.signOut({ scope: 'local' });
-
-      if (error) {
-        console.error('Unable to clear local session:', error);
-      }
-    } catch (error) {
-      console.error('Unable to clear local session:', error);
-    }
-
-    router.replace('/(auth)/login');
-
-    const message =
-      'Your account deletion request has been received. Your account will be deleted shortly.';
-
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert('Deletion Requested', message);
-    }
-  };
-
-  const handleDeleteAccount = () => {
-    const title = 'Delete your account?';
-    const message =
-      'This will permanently delete your account and associated data. This action cannot be undone.';
-
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`${title}\n\n${message}`);
-
-      if (confirmed) {
-        void deleteAccount();
-      }
-
-      return;
-    }
-
-    Alert.alert(title, message, [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Delete Account',
-        style: 'destructive',
-        onPress: () => {
-          void deleteAccount();
-        },
-      },
-    ]);
-  };
-
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-
-    if (error) {
-      console.error('Unable to log out:', error);
-      return;
-    }
-
-    router.replace('/(auth)/login');
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
@@ -244,8 +130,21 @@ export default function ProfileScreen() {
   }
 
   return (
+
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Profile</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.header}>Profile</Text>
+
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => router.push('/account-settings')}
+          accessibilityRole="button"
+          accessibilityLabel="Account Settings"
+        >
+          <Text style={styles.settingsButtonText}>⚙</Text>
+        </TouchableOpacity>
+      </View>
+
 
       <ScrollView
         style={{ flex: 1 }}
@@ -276,77 +175,6 @@ export default function ProfileScreen() {
               Edit Profile
             </Text>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.accountSection}>
-          <TouchableOpacity onPress={handleLogout}>
-            <Text style={styles.accountText}>
-              Log out
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleDeleteAccount}
-          >
-            <Text style={styles.deleteText}>
-              Delete Account
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ paddingHorizontal: 24, marginTop: 24 }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 6 }}>
-            Contact Developer
-          </Text>
-
-          <Text style={{ color: '#777777', marginBottom: 16 }}>
-            Questions, feedback, or support? Reach out to us!
-          </Text>
-
-          {[
-            { label: 'Instagram', value: 'talktu.team' },
-            { label: 'LINE', value: '@927qejxh' },
-            { label: 'Gmail', value: 'talktu.team@gmail.com' },
-          ].map((contact) => (
-            <View
-              key={contact.label}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 16,
-              }}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: '600' }}>
-                  {contact.label}
-                </Text>
-                <Text style={{ color: '#777777', marginTop: 3 }}>
-                  {contact.value}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => handleCopy(contact.value)}
-                style={{
-                  borderWidth: 1,
-                  borderColor: '#DDDDDD',
-                  borderRadius: 10,
-                  paddingHorizontal: 14,
-                  paddingVertical: 8,
-                }}
-              >
-                <Text
-                  style={{
-                    fontWeight: '600',
-                    color: copiedValue === contact.value ? '#16A34A' : '#222222',
-                  }}
-                >
-                  {copiedValue === contact.value ? '✓ Copied!' : 'Copy'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))}
         </View>
       </ScrollView>
 
@@ -413,18 +241,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  accountSection: {
+  headerRow: {
+    minHeight: 56,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 60,
-    gap: 18,
+    justifyContent: 'center',
   },
 
-  accountText: {
-    fontSize: 16,
+  settingsButton: {
+    position: 'absolute',
+    right: 24,
+    top: 8,
+    padding: 8,
   },
 
-  deleteText: {
-    fontSize: 16,
-    color: '#d33',
+  settingsButtonText: {
+    fontSize: 24,
+    color: '#222',
   },
 });

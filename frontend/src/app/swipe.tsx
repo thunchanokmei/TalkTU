@@ -795,7 +795,7 @@ export default function SwipeScreen() {
             ]}
             activeOpacity={0.7}
             onPress={() => {
-              router.push('/settings');
+              router.push('/filter');
             }}
           >
             <Ionicons

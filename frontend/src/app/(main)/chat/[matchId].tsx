@@ -36,8 +36,14 @@ import { supabase } from '../../../lib/supabase';
 import {
   getChatList,
   getMessages,
+  reportChat,
   sendMessage,
   subscribeToMessages,
+  unsubscribeFromChannel,
+} from '../../../features/chat/services/chatService';
+
+import type {
+  ChatReportReason,
 } from '../../../features/chat/services/chatService';
 
 import type {
@@ -99,8 +105,23 @@ export default function ChatRoom() {
   const [error, setError] =
     useState<string | null>(null);
 
-  const [showSafety, setShowSafety] =
-    useState(false);
+
+  const [showSafety, setShowSafety] = useState(false);
+
+  const [safetyView, setSafetyView] = useState<
+    | 'menu'
+    | 'unmatchConfirm'
+    | 'blockConfirm'
+    | 'reportForm'
+    | 'reportBlockPrompt'
+    | 'success'
+  >('menu');
+
+  const [reportReason, setReportReason] = useState<ChatReportReason | ''>('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [safetyBusy, setSafetyBusy] = useState(false);
+  const [safetySuccessMessage, setSafetySuccessMessage] = useState('');
+
 
   const scrollRef =
     useRef<ScrollView>(null);
@@ -204,7 +225,7 @@ export default function ChatRoom() {
       );
 
     return () => {
-      void channel.unsubscribe();
+      void unsubscribeFromChannel(channel);
     };
   }, [matchId]);
 
@@ -342,33 +363,197 @@ export default function ChatRoom() {
     }
   };
 
+
   /* ================= SAFETY ================= */
 
-  const unmatch = () => {
-    setShowSafety(false);
+  const closeSafety = () => {
+    if (safetyBusy) return;
 
-    Alert.alert(
-      'Unmatch',
-      `Unmatch ${name}?`
+    setShowSafety(false);
+    setSafetyView('menu');
+    setReportReason('');
+    setReportDetails('');
+  };
+
+  const openSafety = () => {
+    setSafetyView('menu');
+    setShowSafety(true);
+  };
+
+  const getOtherUserId = async (): Promise<string> => {
+    if (!matchId) throw new Error('ไม่พบ Match ID');
+
+    const result = await getChatList();
+
+    if (result.error) throw result.error;
+
+    const chat = result.data?.find(
+      item => item.match_id === matchId
     );
+
+    if (!chat?.other_user_id) {
+      throw new Error('ไม่พบข้อมูลผู้ใช้ที่ต้องการดำเนินการ');
+    }
+
+    return chat.other_user_id;
+  };
+
+  const unmatch = () => {
+    setSafetyView('unmatchConfirm');
   };
 
   const block = () => {
-    setShowSafety(false);
-
-    Alert.alert(
-      'Block',
-      `Block ${name}?`
-    );
+    setSafetyView('blockConfirm');
   };
 
   const report = () => {
-    setShowSafety(false);
+    setReportReason('');
+    setReportDetails('');
+    setSafetyView('reportForm');
+  };
 
-    Alert.alert(
-      'Report',
-      `Report ${name}?`
-    );
+  const confirmUnmatch = async () => {
+    if (!matchId || safetyBusy) return;
+
+    setSafetyBusy(true);
+
+    try {
+      const { error } = await supabase.rpc('unmatch_match', {
+        p_match_id: matchId,
+      });
+
+      if (error) throw error;
+
+      setSafetySuccessMessage(`Unmatched ${name} successfully.`);
+      setSafetyView('success');
+    } catch (error) {
+      Alert.alert(
+        'Unmatch failed',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+    } finally {
+      setSafetyBusy(false);
+    }
+  };
+
+  const confirmBlock = async () => {
+    if (safetyBusy) {
+      return;
+    }
+
+    setSafetyBusy(true);
+
+    try {
+      const targetId =
+        await getOtherUserId();
+
+      const {
+        error,
+      } =
+        await supabase.rpc(
+          'block_user',
+          {
+            p_blocked_id:
+              targetId,
+          }
+        );
+
+      if (error) {
+        throw error;
+      }
+
+      /*
+       * Block succeeded.
+       *
+       * Do not leave the blocked
+       * conversation visible.
+       */
+      setMessages([]);
+
+      setShowSafety(false);
+      setSafetyView('menu');
+
+      setReportReason('');
+      setReportDetails('');
+
+      router.replace('/chat');
+    } catch (error) {
+      console.error(
+        '[confirmBlock] failed:',
+        error
+      );
+
+      Alert.alert(
+        'Block failed',
+        error instanceof Error
+          ? error.message
+          : 'Please try again.'
+      );
+    } finally {
+      setSafetyBusy(false);
+    }
+  };
+
+  const submitReport = async () => {
+    if (!reportReason || safetyBusy) {
+      Alert.alert(
+        'Select a reason',
+        'Please choose a report reason.'
+      );
+
+      return;
+    }
+
+    if (!matchId) {
+      Alert.alert(
+        'Report failed',
+        'Invalid chat.'
+      );
+
+      return;
+    }
+
+    setSafetyBusy(true);
+
+    try {
+      const result =
+        await reportChat(
+          matchId,
+          reportReason,
+          reportDetails
+        );
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (
+        result.data?.emailSent === false
+      ) {
+        console.error(
+          '[submitReport] report saved but email notification failed:',
+          result.data.emailError
+        );
+      }
+
+      setSafetyView(
+        'reportBlockPrompt'
+      );
+    } catch (error) {
+      console.error(
+        '[submitReport] failed:',
+        error
+      );
+
+      Alert.alert(
+        'Report failed',
+        error instanceof Error
+          ? error.message
+          : 'Please try again.'
+      );
+    } finally {
+      setSafetyBusy(false);
+    }
   };
 
   /* ================= UI ================= */
@@ -638,15 +823,11 @@ export default function ChatRoom() {
           visible={showSafety}
           transparent
           animationType="fade"
-          onRequestClose={() =>
-            setShowSafety(false)
-          }
+          onRequestClose={closeSafety}
         >
           <Pressable
             style={styles.overlay}
-            onPress={() =>
-              setShowSafety(false)
-            }
+            onPress={closeSafety}
           >
             <Pressable
               style={[
@@ -658,117 +839,267 @@ export default function ChatRoom() {
                       : width - 40,
                 },
               ]}
-              onPress={(event) =>
-                event.stopPropagation()
-              }
+              onPress={(event) => { event.stopPropagation(); }}
             >
               {/* MODAL HEADER */}
 
-              <View
-                style={
-                  styles.modalHeader
-                }
-              >
+
+              <View style={styles.modalHeader}>
                 <TouchableOpacity
-                  style={
-                    styles.modalClose
+                  style={styles.modalClose}
+                  onPress={
+                    safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt'
+                      ? closeSafety
+                      : () => setSafetyView('menu')
                   }
-                  onPress={() =>
-                    setShowSafety(false)
-                  }
+                  disabled={safetyBusy}
                 >
-                  <Text
-                    style={
-                      styles.modalCloseText
-                    }
-                  >
-                    ×
+                  <Text style={styles.modalCloseText}>
+                    {safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt' ? '×' : '‹'}
                   </Text>
                 </TouchableOpacity>
 
-                <Text
-                  style={
-                    styles.modalTitle
-                  }
-                >
-                  Safety Tools
+                <Text style={styles.modalTitle}>
+                  {safetyView === 'menu' && 'Safety Tools'}
+                  {safetyView === 'unmatchConfirm' && 'Unmatch'}
+                  {safetyView === 'blockConfirm' && 'Block User'}
+                  {safetyView === 'reportForm' && 'Report User'}
+                  {safetyView === 'reportBlockPrompt' && 'Report Submitted'}
+                  {safetyView === 'success' && 'Success'}
                 </Text>
 
-                <View
-                  style={
-                    styles.headerSpacer
-                  }
-                />
+                <View style={styles.headerSpacer} />
               </View>
 
-              {/* UNMATCH */}
+              {safetyView === 'menu' && (
+                <>
+                  <TouchableOpacity style={styles.safetyOption} onPress={unmatch}>
+                    <Ionicons name="heart-dislike-outline" size={17} color="#333333" />
+                    <Text style={styles.safetyText}>Unmatch {name}</Text>
+                  </TouchableOpacity>
 
-              <TouchableOpacity
-                style={
-                  styles.safetyOption
-                }
-                onPress={unmatch}
-              >
-                <Ionicons
-                  name="heart-dislike-outline"
-                  size={17}
-                  color="#333333"
-                />
+                  <TouchableOpacity style={styles.safetyOption} onPress={block}>
+                    <Ionicons name="ban-outline" size={17} color="#333333" />
+                    <Text style={styles.safetyText}>Block {name}</Text>
+                  </TouchableOpacity>
 
-                <Text
-                  style={
-                    styles.safetyText
-                  }
-                >
-                  Unmatch {name}
-                </Text>
-              </TouchableOpacity>
+                  <TouchableOpacity style={styles.safetyOption} onPress={report}>
+                    <Ionicons name="flag-outline" size={17} color="#333333" />
+                    <Text style={styles.safetyText}>Report {name}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
 
-              {/* BLOCK */}
+              {(safetyView === 'unmatchConfirm' || safetyView === 'blockConfirm') && (
+                <>
+                  <Text style={styles.safetyBody}>
+                    {safetyView === 'unmatchConfirm'
+                      ? `Are you sure you want to unmatch ${name}?`
+                      : `Are you sure you want to block ${name}?`}
+                  </Text>
 
-              <TouchableOpacity
-                style={
-                  styles.safetyOption
-                }
-                onPress={block}
-              >
-                <Ionicons
-                  name="ban-outline"
-                  size={17}
-                  color="#333333"
-                />
+                  <View style={styles.safetyActions}>
+                    <TouchableOpacity
+                      style={styles.safetyCancel}
+                      onPress={() => setSafetyView('menu')}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyCancelText}>Cancel</Text>
+                    </TouchableOpacity>
 
-                <Text
-                  style={
-                    styles.safetyText
-                  }
-                >
-                  Block {name}
-                </Text>
-              </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.safetyConfirm}
+                      onPress={safetyView === 'unmatchConfirm' ? confirmUnmatch : confirmBlock}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyConfirmText}>
+                        {safetyBusy ? 'Please wait...' : 'Confirm'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
 
-              {/* REPORT */}
+              {safetyView === 'reportForm' && (
+                <>
+                  <Text style={styles.safetyBody}>Why are you reporting {name}?</Text>
 
-              <TouchableOpacity
-                style={
-                  styles.safetyOption
-                }
-                onPress={report}
-              >
-                <Ionicons
-                  name="flag-outline"
-                  size={17}
-                  color="#333333"
-                />
+                  {([
+                    {
+                      label:
+                        'Harassment or unwanted contact',
+                      value:
+                        'harassment',
+                    },
+                    {
+                      label:
+                        'Violence, hate, or exploitation',
+                      value:
+                        'violence_or_hate',
+                    },
+                    {
+                      label:
+                        'Self-harm or risky behavior',
+                      value:
+                        'self_harm',
+                    },
+                    {
+                      label:
+                        'Sexual content',
+                      value:
+                        'sexual_content',
+                    },
+                    {
+                      label:
+                        'Fraud or scam',
+                      value:
+                        'scam',
+                    },
+                    {
+                      label:
+                        'Impersonation',
+                      value:
+                        'impersonation',
+                    },
+                    {
+                      label:
+                        'False information or spam',
+                      value:
+                        'spam_or_false_information',
+                    },
+                    {
+                      label:
+                        'Prohibited sales or promotion',
+                      value:
+                        'illegal_goods',
+                    },
+                    {
+                      label:
+                        'Intellectual property',
+                      value:
+                        'intellectual_property',
+                    },
+                    {
+                      label:
+                        'Other',
+                      value:
+                        'other',
+                    },
+                  ] as const).map((reason) => (
+                    <TouchableOpacity
+                      key={reason.value}
+                      style={[
+                        styles.reportReason,
+                        reportReason === reason.value && styles.reportReasonSelected,
+                      ]}
+                      onPress={() => setReportReason(reason.value)}
+                    >
+                      <Ionicons
+                        name={reportReason === reason.value ? 'radio-button-on' : 'radio-button-off'}
+                        size={17}
+                        color={reportReason === reason.value ? '#E88A43' : '#666666'}
+                      />
+                      <Text style={styles.safetyText}>{reason.label}</Text>
+                    </TouchableOpacity>
+                  ))}
 
-                <Text
-                  style={
-                    styles.safetyText
-                  }
-                >
-                  Report {name}
-                </Text>
-              </TouchableOpacity>
+                  <TextInput
+                    style={styles.reportDetails}
+                    placeholder="Additional details (optional)"
+                    placeholderTextColor="#888888"
+                    multiline
+                    maxLength={1000}
+                    value={reportDetails}
+                    onChangeText={setReportDetails}
+                    textAlignVertical="top"
+                  />
+
+                  <View style={styles.safetyActions}>
+                    <TouchableOpacity
+                      style={styles.safetyCancel}
+                      onPress={() => setSafetyView('menu')}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.safetyConfirm}
+                      onPress={submitReport}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyConfirmText}>
+                        {safetyBusy ? 'Submitting...' : 'Submit Report'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {safetyView === 'reportBlockPrompt' && (
+                <>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={42}
+                    color="#E88A43"
+                    style={{
+                      alignSelf: 'center',
+                      marginVertical: 12,
+                    }}
+                  />
+
+                  <Text style={styles.safetyBody}>
+                    Your report has been submitted.
+                    {'\n\n'}
+                    Would you also like to block {name}?
+                  </Text>
+
+                  <View style={styles.safetyActions}>
+                    <TouchableOpacity
+                      style={styles.safetyCancel}
+                      onPress={closeSafety}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyCancelText}>
+                        Not now
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.safetyConfirm}
+                      onPress={confirmBlock}
+                      disabled={safetyBusy}
+                    >
+                      <Text style={styles.safetyConfirmText}>
+                        {safetyBusy
+                          ? 'Blocking...'
+                          : `Block ${name}`}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {safetyView === 'success' && (
+                <>
+                  <Ionicons
+                    name="checkmark-circle-outline"
+                    size={42}
+                    color="#E88A43"
+                    style={{ alignSelf: 'center', marginVertical: 12 }}
+                  />
+
+                  <Text style={styles.safetyBody}>{safetySuccessMessage}</Text>
+
+                  <TouchableOpacity
+                    style={styles.safetyConfirm}
+                    onPress={closeSafety}
+                  >
+                    <Text style={styles.safetyConfirmText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
             </Pressable>
           </Pressable>
         </Modal>
@@ -1258,4 +1589,72 @@ const styles = StyleSheet.create({
 
     fontWeight: '600',
   },
+
+  safetyBody: {
+    color: '#333333',
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 14,
+    paddingHorizontal: 6,
+  },
+  safetyActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  safetyCancel: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 13,
+    backgroundColor: '#EEEEEE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  safetyCancelText: {
+    color: '#333333',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  safetyConfirm: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 13,
+    backgroundColor: '#E88A43',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 8,
+  },
+  safetyConfirmText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  reportReason: {
+    minHeight: 37,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    marginTop: 5,
+    backgroundColor: '#F3F3F3',
+  },
+  reportReasonSelected: {
+    backgroundColor: '#FFF0E3',
+    borderWidth: 1,
+    borderColor: '#E88A43',
+  },
+  reportDetails: {
+    minHeight: 75,
+    maxHeight: 120,
+    borderRadius: 12,
+    backgroundColor: '#F3F3F3',
+    padding: 10,
+    marginTop: 10,
+    color: '#222222',
+    fontSize: 13,
+  },
+
 });

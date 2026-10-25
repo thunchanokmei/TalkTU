@@ -42,6 +42,7 @@ const NAV_ITEMS: {
 const ROUTES = {
   swap: '/swipe',
   like: '/like',
+  board: '/feed',
   chat: '/chat',
   profile: '/profile',
 } as const;
@@ -111,11 +112,10 @@ export default function BottomNavigation({ style }: BottomNavigationProps) {
   }, [activeIndex, slotWidth, itemSize]);
 
   const goTo = (index: number) => {
-    const item = NAV_ITEMS[index];
-    if (!item || item.key === latest.current.activeTab) return;
-    if (item.key === 'board') return;
-    router.navigate(ROUTES[item.key]);
-  };
+  const item = NAV_ITEMS[index];
+  if (!item || item.key === latest.current.activeTab) return;
+  router.navigate(ROUTES[item.key]);
+};
 
   const panResponder = useMemo(
     () =>
@@ -262,7 +262,27 @@ export default function BottomNavigation({ style }: BottomNavigationProps) {
         >
           <Ionicons name={item.icon} size={iconSize} color="#f7f3f3" />
 
+
           <Text style={styles.navLabel}>{item.label}</Text>
+        </TouchableOpacity>
+      ))}
+
+    {NAV_ITEMS.map((item, index) => (
+        <TouchableOpacity
+          key={item.key}
+          activeOpacity={0.75}
+          style={[styles.navItem, { height: itemSize }]}
+          onPress={() => goTo(index)}
+        >
+          <Ionicons
+            name={item.icon}
+            size={iconSize}
+            color="#f7f3f3"
+          />
+
+          <Text style={styles.navLabel}>
+            {item.label}
+          </Text>
         </TouchableOpacity>
       ))}
     </View>

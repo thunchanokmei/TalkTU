@@ -1,0 +1,5 @@
+REVOKE ALL PRIVILEGES ON TABLE public.reports FROM anon;
+
+REVOKE DELETE, UPDATE, TRUNCATE, REFERENCES, TRIGGER
+ON TABLE public.reports
+FROM authenticated;

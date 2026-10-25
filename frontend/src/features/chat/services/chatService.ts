@@ -7,12 +7,6 @@ import type {
 
 const PAGE_SIZE = 30;
 
-/**
- * Get all active chats for current user.
- *
- * Backend:
- * public.get_my_chat_list()
- */
 export async function getChatList(): Promise<{
   data: ChatListItem[] | null;
   error: Error | null;
@@ -56,12 +50,6 @@ export function getProfilePhotoUrl(
   return data.publicUrl;
 }
 
-/**
- * Get latest messages.
- *
- * Initial page:
- * latest 30 messages
- */
 export async function getMessages(
   matchId: string,
   page = 0
@@ -178,31 +166,33 @@ export function subscribeToMessages(
     message: ChatMessage
   ) => void
 ) {
-  const channel = supabase
-    .channel(`chat:${matchId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `match_id=eq.${matchId}`,
-      },
-      (payload) => {
-        onMessage(
-          payload.new as ChatMessage
-        );
-      }
-    )
-    .subscribe();
+  const channel =
+    supabase.channel(
+      `chat:${matchId}`
+    );
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter:
+        `match_id=eq.${matchId}`,
+    },
+    (payload) => {
+      onMessage(
+        payload.new as ChatMessage
+      );
+    }
+  );
+
+  channel.subscribe();
 
   return channel;
 }
 
-/**
- * Remove realtime subscription.
- */
-export async function unsubscribeFromMessages(
+export async function unsubscribeFromChannel(
   channel: ReturnType<
     typeof supabase.channel
   >
@@ -212,28 +202,90 @@ export async function unsubscribeFromMessages(
   );
 }
 
-/**
- * Subscribe to newly-created matches.
- *
- * Used by Chat List to refresh.
- */
 export function subscribeToMatches(
-  onMatchCreated: () => void
+  onMatchChanged: () => void
 ) {
-  const channel = supabase
-    .channel('chat-matches')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'matches',
-      },
-      () => {
-        onMatchCreated();
-      }
-    )
-    .subscribe();
+  const channel =
+    supabase.channel(
+      `chat-matches-${Date.now()}`
+    );
+
+  channel.on(
+    'postgres_changes',
+    {
+      event: '*',
+      schema: 'public',
+      table: 'matches',
+    },
+    () => {
+      onMatchChanged();
+    }
+  );
+
+  channel.subscribe();
 
   return channel;
+}
+
+export type ChatReportReason =
+  | 'harassment'
+  | 'violence_or_hate'
+  | 'self_harm'
+  | 'sexual_content'
+  | 'scam'
+  | 'impersonation'
+  | 'spam_or_false_information'
+  | 'illegal_goods'
+  | 'intellectual_property'
+  | 'other';
+
+export async function reportChat(
+  matchId: string,
+  reason: ChatReportReason,
+  details = ''
+): Promise<{
+  data: {
+    ok?: boolean;
+    reportId?: string;
+    alreadyReported?: boolean;
+    emailSent?: boolean;
+    emailError?: string;
+  } | null;
+  error: Error | null;
+}> {
+  const {
+    data,
+    error,
+  } = await supabase.functions.invoke(
+    'submit-chat-report',
+    {
+      body: {
+        matchId,
+        reason,
+        details: details.trim(),
+      },
+    }
+  );
+
+  if (error) {
+    return {
+      data: null,
+      error,
+    };
+  }
+
+  if (!data?.ok) {
+    return {
+      data: null,
+      error: new Error(
+        data?.error ??
+        'Unable to report this chat.'
+      ),
+    };
+  }
+
+  return {
+    data,
+    error: null,
+  };
 }

@@ -124,7 +124,7 @@ export default function ChatRoom() {
 
 
   const scrollRef =
-    useRef<ScrollView>(null);
+    useRef<React.ElementRef<typeof ScrollView>>(null);
 
   const pageRef =
     useRef(0);

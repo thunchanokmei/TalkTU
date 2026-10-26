@@ -160,7 +160,7 @@ export default function SettingsSheet({
               <Text style={styles.closeText}>×</Text>
             </TouchableOpacity>
 
-            <Text style={styles.title}>Settings</Text>
+            <Text style={styles.title}>Discovery Preference </Text>
 
             <TouchableOpacity
               style={styles.checkButton}

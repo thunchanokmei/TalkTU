@@ -129,7 +129,7 @@ export default function Bio1Screen() {
     'ยิม 7',
     'หอใน',
     'เชียงราก 2',
-    'SC BUS',
+    'SC1',
     'โรงอาหาร JC',
     'สวนป๋วย 100 ปี',
     'ศกร.',

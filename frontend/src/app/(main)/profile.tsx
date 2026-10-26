@@ -1,203 +1,102 @@
-
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Clipboard from 'expo-clipboard';
 
 import { supabase } from '../../lib/supabase';
-import * as Clipboard from 'expo-clipboard';
-import {
-  GENDER_IDENTITY_MAP,
-  GENDER_IDENTITY_OPTIONS,
-} from '../../constants/genderIdentity';
 
-type Photo = {
-  id: string;
-  storage_path: string;
-  position: number;
-};
+/* ไล่สีการ์ดโปรไฟล์ตาม mockup (ชมพูส้ม → พีช → ครีม) */
+const CARD_GRADIENT = ['#F08A8E', '#F4AA82', '#FAE6CB'] as const;
 
-// ...ต่อด้วย type Interest, CampusLocation, GenderIdentity,
-// gradientColors, calculateAge, getGenderLabel, ProfilePhoto, InfoRow
-// ตามฝั่งเพื่อนทุกบรรทัดโดยไม่ต้องแก้
-
-type Interest = {
-  id: number;
-  name: string;
-};
-
-type CampusLocation = {
-  id: number;
-  name: string;
-};
-
-type GenderIdentity =
-  (typeof GENDER_IDENTITY_MAP)[keyof typeof GENDER_IDENTITY_MAP];
-
-const gradientColors = ['#FF9586', '#FFB77F', '#FFD3A2'] as const;
+const CONTACTS = [
+  { label: 'Instagram', value: 'talktu.team' },
+  { label: 'LINE', value: '@927qejxh' },
+  { label: 'Gmail', value: 'talktu.team@gmail.com' },
+];
 
 function calculateAge(birthDate: string) {
   const today = new Date();
   const birthday = new Date(birthDate);
 
-  let age = today.getFullYear() - birthday.getFullYear();
+  let calculatedAge = today.getFullYear() - birthday.getFullYear();
+
+  const monthDifference = today.getMonth() - birthday.getMonth();
 
   if (
-    today.getMonth() < birthday.getMonth() ||
-    (today.getMonth() === birthday.getMonth() &&
-      today.getDate() < birthday.getDate())
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthday.getDate())
   ) {
-    age--;
+    calculatedAge--;
   }
 
-  return age;
+  return calculatedAge;
 }
 
-function getGenderLabel(value: GenderIdentity) {
-  return (
-    GENDER_IDENTITY_OPTIONS.find(
-      (option) => GENDER_IDENTITY_MAP[option] === value
-    ) ?? ''
-  );
-}
-
-function ProfilePhoto({ storagePath }: { storagePath: string }) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadImage() {
-      try {
-        if (
-          storagePath.startsWith('http://') ||
-          storagePath.startsWith('https://')
-        ) {
-          if (!cancelled) setImageUrl(storagePath);
-          return;
-        }
-
-        const { data, error } = await supabase.storage
-          .from('profile-photos')
-          .createSignedUrl(storagePath, 60 * 60);
-
-        if (error) throw error;
-
-        if (!cancelled) setImageUrl(data.signedUrl);
-      } catch (error) {
-        console.error('Profile photo error:', error);
-        if (!cancelled) setFailed(true);
-      }
-    }
-
-    loadImage();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [storagePath]);
-
-  if (failed) {
-    return (
-      <View style={styles.noPhoto}>
-        <Ionicons name="image-outline" size={64} color="#999999" />
-        <Text style={styles.noPhotoText}>Photo unavailable</Text>
-      </View>
-    );
-  }
-
-  if (!imageUrl) {
-    return (
-      <View style={styles.noPhoto}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={{ uri: imageUrl }}
-      style={styles.photo}
-      resizeMode="cover"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-function InfoRow({
-  icon,
-  text,
-  last = false,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  text: string;
-  last?: boolean;
-}) {
-  return (
-    <View style={[styles.infoRow, last && styles.infoRowLast]}>
-      <Ionicons name={icon} size={16} color="#222222" />
-      <Text style={styles.infoText}>{text}</Text>
-    </View>
-  );
-}
 export default function ProfileScreen() {
   const router = useRouter();
+  const deletingAccountRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
-  const [displayName, setDisplayName] = useState('User');
+  const [copiedValue, setCopiedValue] = useState<string | null>(null);
+
+  const [displayName, setDisplayName] = useState('');
   const [age, setAge] = useState<number | null>(null);
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [bio, setBio] = useState('');
-  const [height, setHeight] = useState<number | null>(null);
-  const [gender, setGender] = useState<GenderIdentity | null>(null);
-  const [generation, setGeneration] = useState<number | null>(null);
-  const [faculty, setFaculty] = useState('');
-  const [department, setDepartment] = useState('');
-  const [interests, setInterests] = useState<Interest[]>([]);
-  const [locations, setLocations] = useState<CampusLocation[]>([]);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+
+  const handleCopy = async (value: string) => {
+    try {
+      await Clipboard.setStringAsync(value);
+      setCopiedValue(value);
+    } catch (error) {
+      console.error('Unable to copy contact:', error);
+    }
+  };
 
   const loadProfile = useCallback(async () => {
     try {
-      setLoading(true);
-      setErrorMessage('');
+      // โหลดครั้งแรกค่อยโชว์ spinner (กลับมาจากหน้า edit จะรีเฟรชเงียบ ๆ)
+      if (!hasLoadedRef.current) {
+        setLoading(true);
+      }
 
+      // 1. ดูว่าใครกำลัง login อยู่
       const {
         data: { user },
         error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError) throw userError;
+      if (userError) {
+        throw userError;
+      }
 
       if (!user) {
         router.replace('/(auth)/login');
         return;
       }
 
+      // Load profile data in parallel
       const [
-        profileResult,
-        privateResult,
-        photosResult,
-        studentResult,
-        interestsResult,
-        locationsResult,
+        { data: profile, error: profileError },
+        { data: privateData, error: privateError },
+        { data: photo, error: photoError },
       ] = await Promise.all([
         supabase
           .from('profiles')
-          .select('display_name, bio, height_cm, tu_generation, gender_identity')
+          .select('display_name')
           .eq('id', user.id)
           .maybeSingle(),
 
@@ -209,113 +108,147 @@ export default function ProfileScreen() {
 
         supabase
           .from('profile_photos')
-          .select('id, storage_path, position')
+          .select('storage_path')
           .eq('user_id', user.id)
-          .order('position', { ascending: true }),
-
-        supabase
-          .from('student_accounts')
-          .select('faculty, department')
-          .eq('user_id', user.id)
-          .eq('is_current_student', true)
+          .order('position', { ascending: true })
+          .limit(1)
           .maybeSingle(),
-
-        supabase
-          .from('user_interests')
-          .select('interest_id')
-          .eq('user_id', user.id),
-
-        supabase
-          .from('user_locations')
-          .select('location_id')
-          .eq('user_id', user.id),
       ]);
 
-      if (profileResult.error) throw profileResult.error;
-      if (privateResult.error) throw privateResult.error;
-      if (photosResult.error) throw photosResult.error;
-      if (studentResult.error) throw studentResult.error;
-      if (interestsResult.error) throw interestsResult.error;
-      if (locationsResult.error) throw locationsResult.error;
-
-      const profile = profileResult.data;
-      const privateData = privateResult.data;
-      const student = studentResult.data;
+      if (profileError) throw profileError;
+      if (privateError) throw privateError;
+      if (photoError) throw photoError;
 
       setDisplayName(profile?.display_name ?? 'User');
+
       setAge(
         privateData?.birth_date
           ? calculateAge(privateData.birth_date)
           : null
       );
-      setBio(profile?.bio ?? '');
-      setHeight(profile?.height_cm ?? null);
-      setGender(
-        (profile?.gender_identity as GenderIdentity | null) ?? null
-      );
-      setGeneration(profile?.tu_generation ?? null);
-      setFaculty(student?.faculty ?? '');
-      setDepartment(student?.department ?? '');
 
-      const orderedPhotos = photosResult.data ?? [];
-      setPhotos(orderedPhotos);
-      setPhotoIndex(0);
+      if (photo?.storage_path) {
+        const { data } = supabase.storage
+          .from('profile-photos')
+          .getPublicUrl(photo.storage_path);
 
-      const interestIds = (interestsResult.data ?? [])
-        .map((item) => item.interest_id)
-        .filter((id): id is number => id !== null);
+        setProfilePhoto(data.publicUrl);
+      } else {
+        setProfilePhoto(null);
+      }
 
-      const locationIds = (locationsResult.data ?? [])
-        .map((item) => item.location_id)
-        .filter((id): id is number => id !== null);
-
-      const [interestData, locationData] = await Promise.all([
-        interestIds.length
-          ? supabase
-              .from('interests')
-              .select('id, name')
-              .in('id', interestIds)
-              .eq('is_active', true)
-          : Promise.resolve({ data: [], error: null }),
-
-        locationIds.length
-          ? supabase
-              .from('campus_locations')
-              .select('id, name')
-              .in('id', locationIds)
-              .eq('is_active', true)
-          : Promise.resolve({ data: [], error: null }),
-      ]);
-
-      if (interestData.error) throw interestData.error;
-      if (locationData.error) throw locationData.error;
-
-      setInterests((interestData.data ?? []) as Interest[]);
-      setLocations((locationData.data ?? []) as CampusLocation[]);
+      hasLoadedRef.current = true;
     } catch (error) {
       console.error('Unable to load profile:', error);
-      setErrorMessage('Unable to load your profile. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [router]);
 
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  // รีเฟรชทุกครั้งที่กลับมาหน้านี้ (เช่นหลังแก้โปรไฟล์)
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
-  const previousPhoto = () => {
-    if (photos.length <= 1) return;
-    setPhotoIndex((current) =>
-      current > 0 ? current - 1 : photos.length - 1
-    );
+  const deleteAccount = async () => {
+    if (deletingAccountRef.current) return;
+
+    deletingAccountRef.current = true;
+
+    let requestAccepted = false;
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'delete-account',
+        { body: {} },
+      );
+
+      if (error || data?.success !== true || data?.status !== 'pending') {
+        throw error ?? new Error('Account deletion was not confirmed');
+      }
+
+      requestAccepted = true;
+    } catch (error) {
+      console.error('Unable to request account deletion:', error);
+
+      const message = 'Unable to request account deletion. Please try again.';
+
+      if (Platform.OS === 'web') {
+        window.alert(message);
+      } else {
+        Alert.alert('Delete Account Failed', message);
+      }
+
+      return;
+    } finally {
+      if (!requestAccepted) {
+        deletingAccountRef.current = false;
+      }
+    }
+
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' });
+
+      if (error) {
+        console.error('Unable to clear local session:', error);
+      }
+    } catch (error) {
+      console.error('Unable to clear local session:', error);
+    }
+
+    router.replace('/(auth)/login');
+
+    const message =
+      'Your account deletion request has been received. Your account will be deleted shortly.';
+
+    if (Platform.OS === 'web') {
+      window.alert(message);
+    } else {
+      Alert.alert('Deletion Requested', message);
+    }
   };
 
-  const nextPhoto = () => {
-    if (photos.length <= 1) return;
-    setPhotoIndex((current) =>
-      current < photos.length - 1 ? current + 1 : 0
-    );
+  const handleDeleteAccount = () => {
+    const title = 'Delete your account?';
+    const message =
+      'This will permanently delete your account and associated data. This action cannot be undone.';
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+
+      if (confirmed) {
+        void deleteAccount();
+      }
+
+      return;
+    }
+
+    Alert.alert(title, message, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete Account',
+        style: 'destructive',
+        onPress: () => {
+          void deleteAccount();
+        },
+      },
+    ]);
+  };
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      console.error('Unable to log out:', error);
+      return;
+    }
+
+    router.replace('/(auth)/login');
   };
 
   if (loading) {
@@ -326,410 +259,320 @@ export default function ProfileScreen() {
     );
   }
 
-  const currentPhoto = photos[photoIndex];
-
   return (
-    // ✅ 4. เพิ่ม edges={['top']}
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Text style={styles.header}>Profile</Text>
-      <View style={styles.headerRow}>
-
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => router.push('/account-settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Account Settings"
-        >
-          <Text style={styles.settingsButtonText}>⚙</Text>
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* PHOTOS */}
-        <View style={styles.photoCard}>
-          {currentPhoto?.storage_path ? (
-            <ProfilePhoto storagePath={currentPhoto.storage_path} />
-          ) : (
-            <View style={styles.noPhoto}>
-              <Ionicons name="person-outline" size={76} color="#AAAAAA" />
-              <Text style={styles.noPhotoText}>No photos yet</Text>
-            </View>
-          )}
+        {/* ================= HEADER ================= */}
 
-          {photos.length > 0 && (
-            <View style={styles.photoCounter}>
-              <Text style={styles.photoCounterText}>
-                {photoIndex + 1}/{photos.length}
-              </Text>
-            </View>
-          )}
-
-          {photos.length > 1 && (
-            <>
-              <TouchableOpacity
-                style={styles.photoLeftZone}
-                onPress={previousPhoto}
-                accessibilityRole="button"
-                accessibilityLabel="Previous photo"
-              />
-              <TouchableOpacity
-                style={styles.photoRightZone}
-                onPress={nextPhoto}
-                accessibilityRole="button"
-                accessibilityLabel="Next photo"
-              />
-            </>
-          )}
-
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.62)']}
-            style={styles.photoGradient}
-            pointerEvents="none"
+        <View style={styles.headerCard}>
+          <Image
+            source={require('../../../assets/images/profile.png')}
+            style={styles.headerImage}
+            resizeMode="contain"
           />
+        </View>
+
+        {/* ================= PROFILE CARD ================= */}
+
+        <View style={styles.profileCardShadow}>
+          <LinearGradient
+            colors={CARD_GRADIENT}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={styles.profileCard}
+          >
+            <View style={styles.profileRow}>
+              {profilePhoto ? (
+                <Image
+                  source={{ uri: profilePhoto }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder} />
+              )}
+
+              <View style={styles.profileText}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {displayName}
+                  {age !== null ? ` ${age}` : ''}
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => router.push('/preview-profile')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.previewLink}>
+                    Preview Profile
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push('/edit-profile')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.editButtonText}>
+                Edit Profile
+              </Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+
+        {/* ================= CONTACT DEVELOPER ================= */}
+
+        <View style={styles.contactSection}>
+          <Text style={styles.contactTitle}>
+            Contact Us
+          </Text>
+
+          <Text style={styles.contactSubtitle}>
+            Questions, feedback, or support? Reach out to us!
+          </Text>
+
+          {CONTACTS.map((contact) => (
+            <View key={contact.label} style={styles.contactRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.contactLabel}>
+                  {contact.label}
+                </Text>
+                <Text style={styles.contactValue}>
+                  {contact.value}
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => handleCopy(contact.value)}
+                style={styles.copyButton}
+              >
+                <Text
+                  style={[
+                    styles.copyText,
+                    copiedValue === contact.value && {
+                      color: '#16A34A',
+                    },
+                  ]}
+                >
+                  {copiedValue === contact.value ? '✓ Copied!' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        {/* ================= ACCOUNT ================= */}
+
+        <View style={styles.accountSection}>
+          <TouchableOpacity
+            style={styles.accountButton}
+            onPress={handleLogout}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.accountText}>Log out</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.editIconButton}
-            onPress={() => router.push('/edit-profile')}
-            accessibilityRole="button"
-            accessibilityLabel="Edit Profile"
+            style={styles.accountButton}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.85}
           >
-            <Ionicons name="pencil" size={21} color="#FF8D88" />
+            <Text style={styles.accountText}>Delete Account</Text>
           </TouchableOpacity>
-          <View style={styles.heroInfo} pointerEvents="none">
-            <Text style={styles.heroName}>
-              {displayName}{age !== null ? `, ${age}` : ''}
-            </Text>
-            {(department || faculty) ? (
-              <Text style={styles.heroDetail}>
-                {[department, faculty].filter(Boolean).join(', ')}
-              </Text>
-            ) : null}
-          </View>
         </View>
-
-
-        {/* BIO */}
-        {bio.trim() ? (
-          <LinearGradient
-            colors={[...gradientColors]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.infoCard}
-          >
-            <Text style={styles.cardTitle}>Bio</Text>
-            <Text style={styles.bioText}>{bio.trim()}</Text>
-          </LinearGradient>
-        ) : null}
-
-        {/* ABOUT ME */}
-        <LinearGradient
-          colors={[...gradientColors]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.infoCard}
-        >
-          <Text style={styles.cardTitle}>About me</Text>
-
-          {height ? (
-            <InfoRow icon="resize-outline" text={`${height} cm`} />
-          ) : null}
-
-          {gender ? (
-            <InfoRow icon="male-female-outline" text={getGenderLabel(gender)} />
-          ) : null}
-
-          {(department || faculty) ? (
-            <InfoRow
-              icon="school-outline"
-              text={[department, faculty].filter(Boolean).join(', ')}
-            />
-          ) : null}
-
-          {generation !== null ? (
-            <InfoRow
-              icon="calendar-outline"
-              text={`TU${generation}`}
-              last
-            />
-          ) : null}
-
-          {!height && !gender && !faculty && !department && generation === null ? (
-            <Text style={styles.emptyText}>No additional information yet.</Text>
-          ) : null}
-        </LinearGradient>
-
-        {/* INTERESTS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interests</Text>
-          {interests.length ? (
-            <View style={styles.chipWrap}>
-              {interests.map((interest) => (
-                <View key={interest.id} style={styles.chip}>
-                  <Text style={styles.chipText}>{interest.name}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>No interests added yet.</Text>
-          )}
-        </View>
-
-        {/* CAMPUS LOCATIONS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            You'll usually find me at..
-          </Text>
-          {locations.length ? (
-            <View style={styles.chipWrap}>
-              {locations.map((location) => (
-                <View key={location.id} style={styles.chip}>
-                  <Text style={styles.chipText}>{location.name}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.emptyText}>No campus locations added yet.</Text>
-          )}
-        </View>
-
-        {errorMessage ? (
-          <Text style={styles.errorText}>{errorMessage}</Text>
-        ) : null}
       </ScrollView>
-
     </SafeAreaView>
   );
 }
+
+const softShadow = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+  },
+  android: {
+    elevation: 6,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+
   loadingContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerRow: {
-    minHeight: 56,
-    paddingHorizontal: 24,
+
+  scrollContent: {
+    paddingBottom: 32,
+  },
+
+  /* ================= HEADER ================= */
+
+  headerCard: {
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginBottom: 22,
+    ...softShadow,
+  },
+
+  headerImage: {
+    width: 240,
+    height: 80,
+  },
+
+  /* ================= PROFILE CARD ================= */
+
+  profileCardShadow: {
+    marginHorizontal: 22,
+    borderRadius: 44,
+    backgroundColor: '#F4AA82',
+    ...softShadow,
+  },
+
+  profileCard: {
+    borderRadius: 44,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 30,
+  },
+
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  header: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 16,
+
+  avatar: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
   },
-  settingsButton: {
-    position: 'absolute',
-    right: 24,
-    top: 8,
-    padding: 8,
-  },
-  settingsButtonText: {
-    fontSize: 24,
-    color: '#222222',
-  },
-  scrollContent: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 34,
-  },
-  photoCard: {
-    width: '100%',
-    aspectRatio: 0.68,
-    position: 'relative',
-    overflow: 'hidden',
-    borderRadius: 22,
-    backgroundColor: '#E9E9E9',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-  },
-  noPhoto: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  avatarPlaceholder: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
     backgroundColor: '#E8E8E8',
   },
-  noPhotoText: {
-    marginTop: 7,
-    fontSize: 12,
-    color: '#777777',
+
+  profileText: {
+    flex: 1,
+    marginLeft: 16,
   },
-  photoCounter: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    minWidth: 38,
-    height: 25,
-    zIndex: 20,
-    borderRadius: 999,
-    paddingHorizontal: 8,
+
+  name: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#111111',
+  },
+
+  previewLink: {
+    marginTop: 2,
+    fontSize: 20,
+    color: '#FFFFFF',
+    textDecorationLine: 'underline',
+  },
+
+  editButton: {
+    marginTop: 26,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    ...softShadow,
   },
-  photoCounterText: {
+
+  editButtonText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111111',
+  },
+
+  /* ================= CONTACT ================= */
+
+  contactSection: {
+    paddingHorizontal: 28,
+    marginTop: 34,
+  },
+
+  contactTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111111',
+  },
+
+  contactSubtitle: {
+    marginTop: 3,
+    marginBottom: 14,
+    fontSize: 11,
+    color: '#777777',
+  },
+
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  contactLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: '#111111',
   },
-  photoLeftZone: {
-    position: 'absolute',
-    top: 55,
-    bottom: 90,
-    left: 0,
-    width: '22%',
-    zIndex: 10,
-  },
-  photoRightZone: {
-    position: 'absolute',
-    top: 55,
-    bottom: 90,
-    right: 0,
-    width: '22%',
-    zIndex: 10,
-  },
-  photoGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  heroInfo: {
-    position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 17,
-    zIndex: 12,
-  },
-  heroName: {
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  heroDetail: {
+
+  contactValue: {
     marginTop: 2,
-    fontSize: 11,
-    color: '#FFFFFF',
-    opacity: 0.96,
-    textShadowColor: 'rgba(0,0,0,0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  editIconButton: {
-    position: 'absolute',
-    right: 14,
-    bottom: 14,
-    zIndex: 30,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    elevation: 5,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
-  },
-  infoCard: {
-    marginTop: 13,
-    borderRadius: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 14,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardTitle: {
-    marginBottom: 8,
     fontSize: 12,
-    fontWeight: '700',
-    color: '#171717',
+    color: '#777777',
   },
-  bioText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#222222',
-  },
-  infoRow: {
-    minHeight: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.72)',
-  },
-  infoRowLast: {
-    borderBottomWidth: 0,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#222222',
-  },
-  section: {
-    marginTop: 16,
-    paddingHorizontal: 4,
-  },
-  sectionTitle: {
-    marginBottom: 8,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#222222',
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-  },
-  chip: {
-    minHeight: 28,
-    borderRadius: 999,
+
+  copyButton: {
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#F3F3F3',
+  },
+
+  copyText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#222222',
+  },
+
+  /* ================= ACCOUNT ================= */
+
+  accountSection: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginTop: 40,
+    gap: 2,
   },
-  chipText: {
-    fontSize: 11,
-    color: '#555555',
+
+  accountButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
   },
-  emptyText: {
-    fontSize: 12,
-    color: '#666666',
-  },
-  errorText: {
-    marginTop: 15,
-    paddingHorizontal: 5,
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#C62828',
+
+  accountText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#9A9A9A',
   },
 });

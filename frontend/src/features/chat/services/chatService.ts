@@ -15,6 +15,12 @@ export async function getChatList(): Promise<{
     'get_my_chat_list'
   );
 
+  console.log('CHAT RPC ERROR:', error);
+  console.log(
+    'CHAT RPC RAW DATA:',
+    JSON.stringify(data, null, 2)
+  );
+
   if (error) {
     return {
       data: null,

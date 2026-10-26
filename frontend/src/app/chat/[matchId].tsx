@@ -756,6 +756,7 @@ export default function ChatRoom() {
                           key={message.id}
                           message={message}
                           isMe={isMe}
+                          avatarUrl={image}
                         />
                       );
                     }
@@ -1090,7 +1091,10 @@ export default function ChatRoom() {
 
                   <TouchableOpacity
                     style={styles.safetyConfirm}
-                    onPress={closeSafety}
+                    onPress={() => {
+                    closeSafety();
+                    router.replace('/chat');
+      }}
                   >
                     <Text style={styles.safetyConfirmText}>Close</Text>
                   </TouchableOpacity>
@@ -1113,9 +1117,11 @@ export default function ChatRoom() {
 function MessageBubble({
   message,
   isMe,
+  avatarUrl,
 }: {
   message: ChatMessage;
   isMe: boolean;
+  avatarUrl: string;
 }) {
   return (
     <View
@@ -1127,14 +1133,25 @@ function MessageBubble({
       ]}
     >
       {!isMe && (
-        <View style={styles.messageAvatar}>
-          <Ionicons
-            name="person"
-            size={13}
-            color="#888888"
-          />
-        </View>
-      )}
+  <View style={styles.messageAvatar}>
+    {avatarUrl ? (
+      <Image
+        source={{ uri: avatarUrl }}
+        style={{
+          width: 27,
+          height: 27,
+          borderRadius: 15,
+        }}
+      />
+    ) : (
+      <Ionicons
+        name="person"
+        size={13}
+        color="#888888"
+      />
+    )}
+  </View>
+)}
 
       <View
         style={[

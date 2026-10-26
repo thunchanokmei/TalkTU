@@ -65,8 +65,13 @@ export default function ChatPage() {
         );
         setChats([]);
       } else {
-        setChats(result.data ?? []);
-      }
+  console.log(
+    'CHAT LIST DATA:',
+    JSON.stringify(result.data, null, 2)
+  );
+
+  setChats(result.data ?? []);
+}
 
       setLoading(false);
     },

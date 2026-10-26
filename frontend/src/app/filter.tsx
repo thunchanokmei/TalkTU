@@ -18,7 +18,7 @@ import {
     saveMode,
 } from '../features/onboarding/services/onboardingService';
 
-export default function SettingsScreen() {
+export default function FilterScreen() {
     const router = useRouter();
 
     const [mode, setMode] =
@@ -40,10 +40,10 @@ export default function SettingsScreen() {
         useState('');
 
     useEffect(() => {
-        loadSettings();
+        loadFilterSettings();
     }, []);
 
-    const loadSettings = async () => {
+    const loadFilterSettings = async () => {
         try {
             setLoading(true);
 
@@ -59,7 +59,7 @@ export default function SettingsScreen() {
             setInterest(savedInterests[0] ?? null);
         } catch (error) {
             console.error(
-                'Load settings error:',
+                'Load filter settings error:',
                 error
             );
         } finally {
@@ -99,7 +99,7 @@ export default function SettingsScreen() {
             setSaveSuccess(true);
         } catch (error) {
             console.error(
-                'Save settings error:',
+                'Save filter settings error:',
                 error
             );
 
@@ -131,7 +131,7 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
 
                 <Text style={styles.title}>
-                    Settings
+                    Filter
                 </Text>
 
                 <View style={styles.headerSpace} />
@@ -248,7 +248,7 @@ export default function SettingsScreen() {
 
             {saveSuccess ? (
                 <Text style={styles.successText}>
-                    Settings saved successfully!
+                    Filter saved successfully!
                 </Text>
             ) : null}
 

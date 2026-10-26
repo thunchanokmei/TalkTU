@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
 import {
@@ -21,10 +21,36 @@ import { loginWithTu } from '../../features/auth/services/authService';
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
 
+  const { toast } = useLocalSearchParams<{ toast?: string }>();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState('');
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (toast !== 'account-deletion-requested') return;
+
+    setToastMessage(
+      'Your account deletion request has been received. Your account will be deleted shortly.',
+    );
+
+    toastTimer.current = setTimeout(() => {
+      setToastMessage('');
+      toastTimer.current = null;
+    }, 4000);
+
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+    };
+  }, [toast]);
 
   const handleContinue = async () => {
     const cleanUsername = username.trim();
@@ -120,6 +146,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.page}>
+      {toastMessage !== '' && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
       <LinearGradient
         colors={['#FF7F87', '#FFA577', '#FFE8C8']}
         locations={[0, 0.45, 1]}
@@ -307,5 +338,22 @@ const styles = StyleSheet.create({
     color: '#C62828',
     fontSize: 12,
     marginTop: 8,
+  },
+
+  toastContainer: {
+    position: 'absolute',
+    bottom: 165,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(40, 40, 40, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    zIndex: 20,
+  },
+
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

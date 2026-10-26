@@ -27,6 +27,7 @@ import { supabase } from '@/lib/supabase';
 // ✅ 1. ลบ import BottomNavigation ออกแล้ว (bar อยู่ใน (main)/_layout.tsx)
 import { getMode } from '../../features/onboarding/services/onboardingService';
 import MatchModal from '../../components/MatchModal';
+import SettingsSheet from '../../components/SettingsSheet';
 
 import {
   blockProfile,
@@ -195,6 +196,9 @@ export default function SwipeScreen() {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchedMatchId, setMatchedMatchId] = useState<string | null>(null);
   const [matchedCandidate, setMatchedCandidate] = useState<Candidate | null>(null);
+
+  // Settings bottom sheet
+  const [showSettings, setShowSettings] = useState(false);
 
   const [hasMore, setHasMore] = useState(true);
 
@@ -805,9 +809,7 @@ export default function SwipeScreen() {
               },
             ]}
             activeOpacity={0.7}
-            onPress={() => {
-              router.push('/settings');
-            }}
+            onPress={() => setShowSettings(true)}
           >
             <Ionicons
               name="options-outline"
@@ -948,26 +950,25 @@ export default function SwipeScreen() {
                 </View>
               )}
 
-              {/* ================= PHOTO COUNTER ================= */}
+              {/* ================= PHOTO DASHES ================= */}
 
-              {currentCandidate.photos
-                ?.length > 0 ? (
+              {currentCandidate.photos?.length > 1 ? (
                 <View
-                  style={
-                    styles.photoCounter
-                  }
+                  pointerEvents="none"
+                  style={styles.photoDashes}
                 >
-                  <Text
-                    style={
-                      styles.photoCounterText
-                    }
-                  >
-                    {photoIndex + 1}/
-                    {
-                      currentCandidate
-                        .photos.length
-                    }
-                  </Text>
+                  {currentCandidate.photos.map(
+                    (photo, index) => (
+                      <View
+                        key={photo.id}
+                        style={[
+                          styles.photoDash,
+                          index === photoIndex &&
+                            styles.photoDashActive,
+                        ]}
+                      />
+                    )
+                  )}
                 </View>
               ) : null}
 
@@ -1640,6 +1641,24 @@ export default function SwipeScreen() {
         </Pressable>
       </Modal>
 
+      {/* ================= SETTINGS BOTTOM SHEET ================= */}
+
+      <SettingsSheet
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+        onSaved={(newMode) => {
+          setHasMore(true);
+
+          if (newMode === mode) {
+            // โหมดเดิมแต่ตัวเลือกอาจเปลี่ยน (เช่น Men → Women) ให้โหลดการ์ดใหม่
+            fetchCandidates(newMode, 0, false);
+          } else {
+            // effect ของ mode จะ fetch ให้เอง
+            changeMode(newMode);
+          }
+        }}
+      />
+
     </SafeAreaView>
   );
 }
@@ -1866,26 +1885,27 @@ const styles = StyleSheet.create({
       '#E7E7E7',
   },
 
-  /* ================= PHOTO COUNTER ================= */
+  /* ================= PHOTO DASHES ================= */
 
-  photoCounter: {
+  photoDashes: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    minWidth: 44,
-    height: 28,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor:
-      '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    top: 18,
+    left: 60, // เว้นที่ให้ปุ่ม safety ทางขวาไม่ทับ และให้ขีดอยู่กึ่งกลางการ์ด
+    right: 60,
+    flexDirection: 'row',
+    gap: 4,
     zIndex: 10,
   },
-  photoCounterText: {
-    color: '#111111',
-    fontSize: 14,
-    fontWeight: '700',
+
+  photoDash: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.45)',
+  },
+
+  photoDashActive: {
+    backgroundColor: '#FFFFFF',
   },
 
   profileOpenZone: {

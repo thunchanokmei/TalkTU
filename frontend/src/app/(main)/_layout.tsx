@@ -23,6 +23,7 @@ export default function MainLayout() {
     >
       <Tabs.Screen name="swipe" />
       <Tabs.Screen name="like" />
+      <Tabs.Screen name="feed" />
       <Tabs.Screen name="profile" />
       <Tabs.Screen name="chat" />
     </Tabs>

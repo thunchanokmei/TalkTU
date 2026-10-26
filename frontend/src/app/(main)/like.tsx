@@ -1,8 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   ActivityIndicator,
@@ -21,19 +17,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 
-// ✅ 1. ลบ import BottomNavigation ออก (bar อยู่ใน (main)/_layout.tsx)
+import { getMode } from '../../features/onboarding/services/onboardingService';
 
-import {
-  getMode,
-} from '../../features/onboarding/services/onboardingService'; // ✅ 2. เพิ่ม ../
+// 🖼️ ใส่ path รูปโลโก้ "Like" ที่นี่ (ไฟล์นี้อยู่ใน app/(main)/ → ../../ คือ root ของโปรเจกต์)
+// วางไฟล์รูปไว้ที่ assets/images/like-logo.png หรือเปลี่ยน path ตามที่ต้องการ
+const LIKE_LOGO = require('../../../assets/images/like2.png');
 
 type SwipeMode = 'date' | 'friends';
 
-type GenderIdentity =
-  | 'man'
-  | 'woman'
-  | 'non_binary'
-  | 'prefer_not_to_say';
+type GenderIdentity = 'man' | 'woman' | 'non_binary' | 'prefer_not_to_say';
 
 type CandidatePhoto = {
   id: string;
@@ -70,103 +62,62 @@ const FETCH_LIMIT = 20;
 
 export default function LikeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets(); // ✅ 3. ใช้แทน paddingTop: 58 ที่ fix ไว้
+  const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
-  const {
-    width,
-  } = useWindowDimensions();
+  const [mode, setMode] = useState<SwipeMode | null>(null);
+  const [likes, setLikes] = useState<IncomingLike[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [mode, setMode] =
-    useState<SwipeMode | null>(null);
+  const loadLikes = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const [likes, setLikes] =
-    useState<IncomingLike[]>([]);
+      const savedMode = await getMode();
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const loadLikes = useCallback(
-    async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const savedMode =
-          await getMode();
-
-        if (!savedMode) {
-          throw new Error(
-            'Unable to determine current mode.'
-          );
-        }
-
-        setMode(savedMode);
-
-        const {
-          data,
-          error: rpcError,
-        } = await supabase.rpc(
-          'get_incoming_likes',
-          {
-            p_mode: savedMode,
-            p_limit: FETCH_LIMIT,
-            p_offset: 0,
-          }
-        );
-
-        if (rpcError) {
-          throw rpcError;
-        }
-
-        setLikes(
-          (data ?? []) as IncomingLike[]
-        );
-      } catch (err) {
-        console.error(
-          'get_incoming_likes error:',
-          err
-        );
-
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load likes.'
-        );
-      } finally {
-        setLoading(false);
+      if (!savedMode) {
+        throw new Error('Unable to determine current mode.');
       }
-    },
-    []
-  );
+
+      setMode(savedMode);
+
+      const { data, error: rpcError } = await supabase.rpc(
+        'get_incoming_likes',
+        {
+          p_mode: savedMode,
+          p_limit: FETCH_LIMIT,
+          p_offset: 0,
+        }
+      );
+
+      if (rpcError) {
+        throw rpcError;
+      }
+
+      setLikes((data ?? []) as IncomingLike[]);
+    } catch (err) {
+      console.error('get_incoming_likes error:', err);
+
+      setError(err instanceof Error ? err.message : 'Unable to load likes.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadLikes();
   }, [loadLikes]);
 
-  const horizontalPadding =
-    Math.max(
-      20,
-      width * 0.06
-    );
+  // ขนาดการ์ดให้ใกล้เคียงรูปตัวอย่าง (กว้าง ~140, สูง ~200)
+  const horizontalPadding = Math.max(24, width * 0.08);
+  const gap = Math.max(14, width * 0.04);
+  const cardWidth = (width - horizontalPadding * 2 - gap) / 2;
+  const cardHeight = cardWidth * 1.42;
 
-  const gap = Math.max(
-    12,
-    width * 0.035
-  );
-
-  const cardWidth =
-    (
-      width -
-      horizontalPadding * 2 -
-      gap
-    ) / 2;
-
-  const openProfile = (
-    candidate: IncomingLike
-  ) => {
+  // กดการ์ด → ไปหน้าโปรไฟล์ (หน้าเดียวกับที่ใช้ในหน้า swipe)
+  const openProfile = (candidate: IncomingLike) => {
     if (!mode) {
       return;
     }
@@ -174,16 +125,9 @@ export default function LikeScreen() {
     router.push({
       pathname: '/user/[userId]',
       params: {
-        userId:
-          candidate.user_id,
-
-        candidate:
-          JSON.stringify(
-            candidate
-          ),
-
+        userId: candidate.user_id,
+        candidate: JSON.stringify(candidate),
         mode,
-
         source: 'like',
       },
     });
@@ -191,280 +135,196 @@ export default function LikeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* ✅ 3. paddingTop ใช้ insets.top + 8 แทนค่า 58 เดิม */}
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + 8 },
-        ]}
-      >
-        <Text style={styles.title}>
-          Like
-        </Text>
-
-        <Ionicons
-          name="heart"
-          size={27}
-          color="#FF5964"
+      {/* Header: การ์ดสีขาว มุมล่างโค้ง มีเงา + โลโก้ตรงกลาง */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <ExpoImage
+          source={LIKE_LOGO}
+          style={styles.logo}
+          contentFit="contain"
         />
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator
-            size="large"
-            color="#FF7F87"
-          />
+          <ActivityIndicator size="large" color="#FF7F87" />
         </View>
       ) : error ? (
         <View style={styles.center}>
-          <Text
-            style={styles.errorText}
-          >
-            {error}
-          </Text>
+          <Text style={styles.errorText}>{error}</Text>
 
-          <TouchableOpacity
-            style={
-              styles.retryButton
-            }
-            onPress={loadLikes}
-          >
-            <Text
-              style={
-                styles.retryText
-              }
-            >
-              Try again
-            </Text>
+          <TouchableOpacity style={styles.retryButton} onPress={loadLikes}>
+            <Text style={styles.retryText}>Try again</Text>
           </TouchableOpacity>
         </View>
       ) : likes.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons
-            name="heart-outline"
-            size={48}
-            color="#C9C9C9"
-          />
+          <Ionicons name="heart-outline" size={48} color="#C9C9C9" />
 
-          <Text
-            style={styles.emptyTitle}
-          >
-            No likes yet
-          </Text>
+          <Text style={styles.emptyTitle}>No likes yet</Text>
 
-          <Text
-            style={styles.emptyText}
-          >
-            People who like you
-            will appear here.
+          <Text style={styles.emptyText}>
+            People who like you will appear here.
           </Text>
         </View>
       ) : (
         <FlatList
           data={likes}
-          keyExtractor={(item) =>
-            item.user_id
-          }
+          keyExtractor={(item) => item.user_id}
           numColumns={2}
-          columnWrapperStyle={{
-            gap,
-          }}
+          columnWrapperStyle={{ gap }}
           contentContainerStyle={{
-            paddingHorizontal:
-              horizontalPadding,
-
-            paddingTop: 18,
-            // ✅ 4. ลดจาก 110 เพราะ bar ไม่ได้ลอยทับแล้ว (อยู่ใน layout)
+            paddingHorizontal: horizontalPadding,
+            paddingTop: 22,
             paddingBottom: 24,
           }}
-          showsVerticalScrollIndicator={
-            false
-          }
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => {
-            const firstPhoto =
-              item.photos?.[0];
+            const firstPhoto = item.photos?.[0];
 
             return (
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={[
                   styles.card,
-                  {
-                    width: cardWidth,
-                    height:
-                      cardWidth * 1.25,
-                  },
+                  { width: cardWidth, height: cardHeight },
                 ]}
-                onPress={() =>
-                  openProfile(item)
-                }
+                onPress={() => openProfile(item)}
               >
-                {firstPhoto
-                  ?.storage_path ? (
-                  <ExpoImage
-                    source={{
-                      uri:
-                        getProfilePhotoUrl(
-                          firstPhoto.storage_path
-                        ),
-                    }}
-                    style={
-                      styles.photo
-                    }
-                    contentFit="cover"
-                    transition={150}
-                  />
-                ) : (
-                  <View
-                    style={
-                      styles.noPhoto
-                    }
-                  >
-                    <Ionicons
-                      name="person-outline"
-                      size={48}
-                      color="#AAAAAA"
+                <View style={styles.cardInner}>
+                  {firstPhoto?.storage_path ? (
+                    <ExpoImage
+                      source={{
+                        uri: getProfilePhotoUrl(firstPhoto.storage_path),
+                      }}
+                      style={styles.photo}
+                      contentFit="cover"
+                      transition={150}
                     />
-                  </View>
-                )}
+                  ) : (
+                    <View style={styles.noPhoto}>
+                      <Ionicons
+                        name="person-outline"
+                        size={48}
+                        color="#AAAAAA"
+                      />
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           }}
         />
       )}
-
-      {/* ✅ 1. ลบ <BottomNavigation activeTab="like"/> ออกแล้ว */}
     </View>
   );
 }
 
-function getProfilePhotoUrl(
-  storagePath: string
-) {
-  if (
-    storagePath.startsWith(
-      'http://'
-    ) ||
-    storagePath.startsWith(
-      'https://'
-    )
-  ) {
+function getProfilePhotoUrl(storagePath: string) {
+  if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
     return storagePath;
   }
 
-  return supabase.storage
-    .from('profile-photos')
-    .getPublicUrl(storagePath)
+  return supabase.storage.from('profile-photos').getPublicUrl(storagePath)
     .data.publicUrl;
 }
 
-const styles =
-  StyleSheet.create({
-    screen: {
-      flex: 1,
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F6F6F6',
+  },
 
-      backgroundColor:
-        '#FFF7EE',
-    },
+  header: {
+    paddingBottom: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
 
-    header: {
-      // paddingTop ถูกกำหนดแบบ dynamic ตอน render แล้ว
-      paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
 
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent:
-        'center',
+    // เงาใต้ header
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+  },
 
-      gap: 7,
+  logo: {
+    width: '100%',
+    height: '100',
+    marginBottom: -30,
+    marginTop:-15,
+  },
 
-      backgroundColor:
-        '#FFF7EE',
-    },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+  },
 
-    title: {
-      fontSize: 28,
-      fontWeight: '700',
+  // ตัว wrapper ใส่เงา (ต้องไม่ใส่ overflow: hidden ไม่งั้นเงาหาย)
+  card: {
+    marginBottom: 16,
+    borderRadius: 20,
+    backgroundColor: '#F0E4DB',
 
-      color: '#222222',
-    },
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    elevation: 5,
+  },
 
-    center: {
-      flex: 1,
+  // ตัวตัดมุมรูป
+  cardInner: {
+    flex: 1,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
 
-      alignItems: 'center',
-      justifyContent:
-        'center',
+  photo: {
+    width: '100%',
+    height: '100%',
+  },
 
-      paddingHorizontal: 30,
-    },
+  noPhoto: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFE7E1',
+  },
 
-    card: {
-      marginBottom: 14,
+  errorText: {
+    textAlign: 'center',
+    color: '#C62828',
+  },
 
-      borderRadius: 16,
+  retryButton: {
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#FFF0A8',
+  },
 
-      overflow: 'hidden',
+  retryText: {
+    fontWeight: '600',
+    color: '#333333',
+  },
 
-      backgroundColor:
-        '#F0E4DB',
-    },
+  emptyTitle: {
+    marginTop: 12,
+    fontSize: 19,
+    fontWeight: '700',
+    color: '#444444',
+  },
 
-    photo: {
-      width: '100%',
-      height: '100%',
-    },
-
-    noPhoto: {
-      flex: 1,
-
-      alignItems: 'center',
-      justifyContent:
-        'center',
-
-      backgroundColor:
-        '#EFE7E1',
-    },
-
-    errorText: {
-      textAlign: 'center',
-
-      color: '#C62828',
-    },
-
-    retryButton: {
-      marginTop: 14,
-
-      paddingHorizontal: 18,
-      paddingVertical: 10,
-
-      borderRadius: 12,
-
-      backgroundColor:
-        '#FFF0A8',
-    },
-
-    retryText: {
-      fontWeight: '600',
-
-      color: '#333333',
-    },
-
-    emptyTitle: {
-      marginTop: 12,
-
-      fontSize: 19,
-      fontWeight: '700',
-
-      color: '#444444',
-    },
-
-    emptyText: {
-      marginTop: 5,
-
-      textAlign: 'center',
-
-      color: '#888888',
-    },
-  });
+  emptyText: {
+    marginTop: 5,
+    textAlign: 'center',
+    color: '#888888',
+  },
+});

@@ -116,29 +116,9 @@ export default function LoginScreen() {
     }
   };
 
-  /*
-   * Responsive sizing
-   *
-   * Mobile:
-   *   ใช้พื้นที่เกือบเต็มจอ
-   *
-   * Tablet / Web:
-   *   จำกัดเฉพาะ content ไม่ให้กว้างเกิน design
-   */
   const contentWidth = Math.min(width * 0.86, 390);
-
-  /*
-   * Logo จะย่อเมื่อหน้าจอแคบ
-   * แต่จะไม่ใหญ่เกินขนาดใน Figma
-   */
   const logoWidth = Math.min(width * 0.72, 320);
   const logoHeight = logoWidth * 0.6875;
-
-  /*
-   * เดิมใช้ paddingTop: 190
-   * ปรับตามความสูงหน้าจอเพื่อไม่ให้จอเล็ก
-   * ดัน logo ลงไปจนเกินพื้นที่
-   */
   const topPadding = Math.max(
     60,
     Math.min(height * 0.2, 190)

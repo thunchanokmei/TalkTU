@@ -52,20 +52,48 @@ export default {
       );
 
       if (enqueueError) {
-        console.error("Unable to enqueue account deletion:", enqueueError);
-
-        return Response.json(
-          { error: "Unable to request account deletion" },
-          { status: 500 },
-        );
+        throw enqueueError;
       }
 
-      return Response.json(
-        {
+      // Block any NEW login immediately while account deletion is pending.
+      // 876000h ≈ 100 years. The Auth user will normally be deleted
+      // by the deletion worker within the next cron run.
+      const { error: banError } =
+        await ctx.supabaseAdmin.auth.admin.updateUserById(userId, {
+          ban_duration: "876000h",
+        });
+
+      if (banError) {
+        console.error("Failed to ban user pending deletion:", {
+          userId,
+          message: banError.message,
+        });
+      }
+
+      // Revoke refresh tokens for all currently active sessions.
+      // Existing access-token JWTs can remain valid until they expire,
+      // but they will no longer be refreshable.
+      const { error: signOutError } =
+        await ctx.supabaseAdmin.auth.admin.signOut(accessToken, "global");
+
+      if (signOutError) {
+        console.error("Failed to revoke user sessions:", {
+          userId,
+          message: signOutError.message,
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
           success: true,
           status: "pending",
+        }),
+        {
+          status: 202,
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-        { status: 202 },
       );
     },
   ),

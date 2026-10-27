@@ -402,8 +402,13 @@ export default function ChatRoom() {
   const openProfile = async () => {
     try {
       const userId = await getOtherUserId();
-      router.push(`/user/${userId}` as any);
-    } catch (error) {
+router.push({
+  pathname: '/user/[userId]',
+  params: {
+    userId,
+    source: 'chat',
+  },
+} as any);    } catch (error) {
       Alert.alert(
         'Unable to open profile',
         error instanceof Error ? error.message : 'Please try again.'

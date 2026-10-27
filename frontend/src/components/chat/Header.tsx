@@ -63,24 +63,14 @@ export default function Header({
               onPress={handleBack}
               accessibilityRole="button"
               accessibilityLabel="Back"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.75 : 1,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
-              })}
             >
               <LinearGradient
                 colors={[ORANGE, CORAL]}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
-                style={styles.backPill}
+                style={styles.circleButton}
               >
-                <Ionicons name="chevron-back" size={18} color="#FFFFFF" />
-                <Ionicons
-                  name="chevron-back"
-                  size={18}
-                  color="#FFFFFF"
-                  style={styles.secondChevron}
-                />
+                <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
               </LinearGradient>
             </Pressable>
           </View>
@@ -208,5 +198,20 @@ const styles = StyleSheet.create({
 
   secondChevron: {
     marginLeft: -10,
+  },
+  headerShadow: {
+    borderRadius: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  circleButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -31,8 +31,8 @@ import {
   useLocalSearchParams,
 } from 'expo-router';
 
-import { supabase } from '../../lib/supabase';
-import Header from '../../components/chat/Header';
+import { supabase } from '../../../lib/supabase';
+import Header from '../../../components/chat/Header';
 
 
 import {
@@ -667,7 +667,7 @@ export default function ChatRoom() {
                 {messages.length === 0 ? (
                   <View
                     style={
-                      styles.emptyChat
+                      styles.emptyChatText
                     }
                   >
                     <Text
@@ -1106,7 +1106,7 @@ function MessageBubble({
         </LinearGradient>
       ) : (
         <View style={[styles.bubble, styles.otherBubble]}>
-          <Text style={styles.myBubbleText}>{message.content}</Text>
+          <Text style={styles.otherBubbleText}>{message.content}</Text>
           <Text style={styles.messageTime}>{time}</Text>
         </View>
       )}
@@ -1226,13 +1226,16 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   otherBubble: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     borderBottomLeftRadius: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
     elevation: 1,
+  },
+  otherBubbleText: {
+    color: '#2a2929',
   },
 
   myBubble: {

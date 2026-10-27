@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 
-import Header from '../../components/chat/Header';
+import Header from '../../../components/chat/Header';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';

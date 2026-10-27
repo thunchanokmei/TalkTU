@@ -18,6 +18,9 @@ import { GoogleSans_600SemiBold } from '@expo-google-fonts/google-sans/600SemiBo
 
 import { saveMode } from '../../features/onboarding/services/onboardingService';
 
+import OnboardingBackButton from '../../components/navigation/OnboardingBackButton';
+import OnboardingGoButton from '../../components/navigation/OnboardingGoButton';
+
 type Mode = 'date' | 'friends';
 
 export default function ModeScreen() {
@@ -63,11 +66,11 @@ export default function ModeScreen() {
     );
 
   const titleSize =
-    Math.max(
-      20,
+     Math.max(
+      25,
       Math.min(
-        shortSide * 0.055,
-        30
+        shortSide * 0.1,
+        40
       )
     );
 
@@ -169,70 +172,11 @@ const handleContinue = async () => {
       ]}
       style={styles.screen}
     >
-      {/* =========================
-          BACK BUTTON
-          ========================= */}
-
-      <Pressable
-        style={[
-          styles.backButton,
-          {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
-
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
-          },
-        ]}
+      <OnboardingBackButton
+        top={Math.max(20, height * 0.04)}
+        left={Math.max(20, width * 0.07)}
         onPress={handleBack}
-      >
-        <LinearGradient
-          colors={[
-            '#FFE98F',
-            '#FFB873',
-          ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
-          style={
-            styles.backGradient
-          }
-        >
-          <Text
-            style={[
-              styles.backText,
-              {
-                fontSize:
-                  Math.max(
-                    12,
-                    Math.min(
-                      shortSide *
-                        0.033,
-                      17
-                    )
-                  ),
-              },
-            ]}
-          >
-            {'<<'}
-          </Text>
-        </LinearGradient>
-      </Pressable>
+      />
 
       {/* =========================
           CONTENT
@@ -261,11 +205,10 @@ const handleContinue = async () => {
           style={[
             styles.title,
             {
-              fontSize:
-                titleSize,
-
-              lineHeight:
-                titleSize * 1.15,
+              fontSize:titleSize,
+              lineHeight:titleSize * 1.15,
+              marginTop:10,
+              marginBottom: 20,
             },
           ]}
         >
@@ -325,59 +268,11 @@ const handleContinue = async () => {
           </Text>
         ) : null}
 
-        {/* =========================
-            GO BUTTON
-            ========================= */}
-
         {mode ? (
-          <Pressable
-            style={[
-              styles.goButton,
-              {
-                minWidth:
-                  Math.max(
-                    58,
-                    Math.min(
-                      shortSide *
-                        0.15,
-                      84
-                    )
-                  ),
-
-                height:
-                  Math.max(
-                    34,
-                    Math.min(
-                      height *
-                        0.045,
-                      44
-                    )
-                  ),
-              },
-            ]}
-            onPress={
-              handleContinue
-            }
-          >
-            <Text
-              style={[
-                styles.goText,
-                {
-                  fontSize:
-                    Math.max(
-                      15,
-                      Math.min(
-                        shortSide *
-                          0.04,
-                        20
-                      )
-                    ),
-                },
-              ]}
-            >
-              go!
-            </Text>
-          </Pressable>
+          <OnboardingGoButton
+            onPress={handleContinue}
+            label="go!"
+          />
         ) : null}
       </View>
     </LinearGradient>
@@ -399,19 +294,28 @@ function ChoiceRow({
   selected: boolean;
   onPress: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <Pressable
       style={[
         styles.choice,
-        selected &&
-          styles.choiceSelected,
+        hovered && styles.choiceHovered,
+        selected && styles.choiceSelected,
+        selected && hovered && styles.choiceSelectedHovered,
       ]}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
     >
       <Text
-        style={
-          styles.choiceText
-        }
+        style={[
+          styles.choiceText,
+          hovered && styles.choiceTextHovered,
+          selected && styles.choiceTextSelected,
+        ]}
       >
         {label}
       </Text>
@@ -419,10 +323,12 @@ function ChoiceRow({
       <View
         style={[
           styles.circle,
-          selected &&
-            styles.circleSelected,
+          hovered && styles.circleHovered,
+          selected && styles.circleSelected,
         ]}
-      />
+      >
+        {selected ? <View style={styles.circleDot} /> : null}
+      </View>
     </Pressable>
   );
 }
@@ -439,12 +345,10 @@ const styles = StyleSheet.create({
    * SCREEN
    * ============================
    */
-
   screen: {
     flex: 1,
     width: '100%',
   },
-
   content: {
     flex: 1,
   },
@@ -457,47 +361,28 @@ const styles = StyleSheet.create({
 
   backButton: {
     position: 'absolute',
-
     zIndex: 20,
-
     borderRadius: 999,
-
     overflow: 'hidden',
-
-    shadowColor:
-      '#000000',
-
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 3,
     },
-
     shadowOpacity: 0.22,
-
     shadowRadius: 4,
-
     elevation: 5,
   },
-
   backGradient: {
     flex: 1,
-
     width: '100%',
     height: '100%',
-
     borderRadius: 999,
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
+    justifyContent:'center',
+    alignItems: 'center',
   },
-
   backText: {
-    fontFamily:
-      'GoogleSansMedium',
-
+    fontFamily: 'GoogleSansMedium',
     color: '#222222',
   },
 
@@ -536,52 +421,76 @@ const styles = StyleSheet.create({
 
   choice: {
     width: '100%',
-
-    minHeight: 44,
-
-    backgroundColor:
-      '#FFFFFF',
-
-    borderRadius: 12,
-
+    height:'7%',
+    minHeight: 48,
+    marginBottom:0,
+    marginTop:15,
     paddingHorizontal: 16,
-
-    marginBottom: 10,
-
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.75)',
     flexDirection: 'row',
-
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
 
-    justifyContent:
-      'space-between',
-
-    shadowColor:
-      '#000000',
-
+    shadowColor: '#8D5140',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
+    elevation: 4,
+  },
 
-    shadowOpacity: 0.15,
-
-    shadowRadius: 3,
-
-    elevation: 3,
+  
+  choiceHovered: {
+    backgroundColor: '#FFE0EC',
+    borderColor: '#F08AB3',
+    shadowColor: '#C94F83',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 6,
   },
 
   choiceSelected: {
-    backgroundColor:
-      '#FFF9E8',
+    backgroundColor: '#FFFABF',
+    borderColor: '#fff8a5',
+    borderWidth: 2,
+    shadowColor: '#FFFABF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+
+
+  choiceSelectedHovered: {
+    backgroundColor: '#FFFABF',
+    borderColor: '#FFFABF',
   },
 
   choiceText: {
-    fontFamily:
-      'GoogleSans',
-
     fontSize: 16,
-
     color: '#333333',
+    fontWeight: '400',
+  },
+
+  choiceTextHovered: {
+    color: '#B83D73',
+  },
+
+  choiceTextSelected: {
+    color: '#B83D73',
+    fontWeight: '700',
   },
 
   /*
@@ -591,19 +500,31 @@ const styles = StyleSheet.create({
    */
 
   circle: {
-    width: 16,
-
-    height: 16,
-
+    width: 20,
+    height: 20,
     borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#eae9e9',
+    backgroundColor: '#f4dfd7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-    backgroundColor:
-      '#F2D3C3',
+  circleHovered: {
+    borderColor: '#FFE1E1',
+    backgroundColor: '#FFD1E4',
   },
 
   circleSelected: {
-    backgroundColor:
-      '#F19068',
+    borderColor: '#FFE1E1',
+    backgroundColor: '#FFE1E1',
+  },
+
+  circleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
   },
 
   /*
@@ -630,53 +551,30 @@ const styles = StyleSheet.create({
   goButton: {
     alignSelf:
       'flex-end',
-
     paddingHorizontal: 14,
-
     marginTop: 16,
-
     borderRadius: 12,
-
-    backgroundColor:
-      '#FFF6AE',
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    shadowColor:
-      '#000000',
-
+    backgroundColor:'#FFF6AE',
+    justifyContent:'center',
+    alignItems:'center',
+    shadowColor:'#000000',
     shadowOffset: {
       width: 0,
       height: 4,
     },
-
     shadowOpacity: 0.28,
-
     shadowRadius: 5,
-
     elevation: 6,
   },
-
   goText: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
+    fontFamily:'GoogleSansSemiBold',
     fontWeight: '600',
-
     color: '#111111',
-
-    textShadowColor:
-      'rgba(0, 0, 0, 0.15)',
-
+    textShadowColor:'rgba(0, 0, 0, 0.15)',
     textShadowOffset: {
       width: 0,
       height: 1,
     },
-
     textShadowRadius: 1,
   },
 });

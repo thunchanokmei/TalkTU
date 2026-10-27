@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 
 import {
@@ -21,10 +21,36 @@ import { loginWithTu } from '../../features/auth/services/authService';
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
 
+  const { toast } = useLocalSearchParams<{ toast?: string }>();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [toastMessage, setToastMessage] = useState('');
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (toast !== 'account-deletion-requested') return;
+
+    setToastMessage(
+      'Your account deletion request has been received. Your account will be deleted shortly.',
+    );
+
+    toastTimer.current = setTimeout(() => {
+      setToastMessage('');
+      toastTimer.current = null;
+    }, 4000);
+
+    return () => {
+      if (toastTimer.current) {
+        clearTimeout(toastTimer.current);
+        toastTimer.current = null;
+      }
+    };
+  }, [toast]);
 
   const handleContinue = async () => {
     const cleanUsername = username.trim();
@@ -120,6 +146,11 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.page}>
+      {toastMessage !== '' && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
       <LinearGradient
         colors={['#FF7F87', '#FFA577', '#FFE8C8']}
         locations={[0, 0.45, 1]}
@@ -153,7 +184,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="TU Username"
-              placeholderTextColor="#B8B8B8"
+              placeholderTextColor="#f7d3d3"
               value={username}
               onChangeText={setUsername}
               autoCapitalize="none"
@@ -165,7 +196,7 @@ export default function LoginScreen() {
             <TextInput
               style={[styles.input, styles.passwordInput]}
               placeholder="TU password"
-              placeholderTextColor="#B8B8B8"
+              placeholderTextColor="#f7d3d3"
               value={password}
               onChangeText={setPassword}
               autoCapitalize="none"
@@ -248,19 +279,19 @@ const styles = StyleSheet.create({
     height: 44,
 
     backgroundColor: '#FFFFFF',
-    borderRadius: 11,
+    borderRadius: 15,
 
     paddingHorizontal: 14,
 
     fontSize: 14,
-    color: '#333333',
+    color: '#FFA1A1',
 
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
 
     elevation: 4,
@@ -271,10 +302,10 @@ const styles = StyleSheet.create({
   },
 
   loginButton: {
-    width: '77%',
+    width: '100%',
     height: 44,
-    borderRadius: 11,
-    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    backgroundColor: '#FFFABF',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
@@ -283,7 +314,7 @@ const styles = StyleSheet.create({
       width: 0,
       height: 3,
     },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
   },
@@ -297,9 +328,9 @@ const styles = StyleSheet.create({
   },
 
   loginButtonText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: '#FFA1A1',
   },
 
   errorText: {
@@ -307,5 +338,22 @@ const styles = StyleSheet.create({
     color: '#C62828',
     fontSize: 12,
     marginTop: 8,
+  },
+
+  toastContainer: {
+    position: 'absolute',
+    bottom: 165,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(40, 40, 40, 0.9)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    zIndex: 20,
+  },
+
+  toastText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

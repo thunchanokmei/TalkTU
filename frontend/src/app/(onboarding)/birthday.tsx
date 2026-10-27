@@ -5,7 +5,6 @@ import {
 } from 'react';
 
 import {
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -22,6 +21,12 @@ import {
 
 import WheelPicker
   from '../../components/WheelPicker';
+
+import OnboardingBackButton
+  from '../../components/navigation/OnboardingBackButton';
+
+import OnboardingGoButton
+  from '../../components/navigation/OnboardingGoButton';
 
 import {
   getBirthDate,
@@ -413,10 +418,10 @@ export default function BirthdayScreen() {
 
   const titleSize =
     Math.max(
-      26,
+      25,
       Math.min(
-        shortSide * 0.065,
-        34
+        shortSide * 0.1,
+        40
       )
     );
 
@@ -434,47 +439,13 @@ export default function BirthdayScreen() {
       ]}
       style={styles.screen}
     >
-      <Pressable
-        style={[
-          styles.backButton,
-          {
-            top:
-              Math.max(
-                20,
-                height * 0.04
-              ),
-
-            left:
-              Math.max(
-                20,
-                width * 0.07
-              ),
-          },
-        ]}
+      <OnboardingBackButton
+        top={Math.max(20, height * 0.04)}
+        left={Math.max(20, width * 0.07)}
         onPress={() =>
-          router.replace(
-            '/name'
-          )
+          router.replace('/name')
         }
-      >
-        <LinearGradient
-          colors={[
-            '#FFE98F',
-            '#FFB873',
-          ]}
-          style={
-            styles.backGradient
-          }
-        >
-          <Text
-            style={
-              styles.backText
-            }
-          >
-            {'<<'}
-          </Text>
-        </LinearGradient>
-      </Pressable>
+      />
 
       <View
         style={[
@@ -508,8 +479,7 @@ export default function BirthdayScreen() {
           {displayName ||
             'there'}
           {'\n'}
-          When your{'\n'}
-          Birthday ?
+          When is your Birthday ? 🎂
         </Text>
 
         <View
@@ -581,27 +551,10 @@ export default function BirthdayScreen() {
           </Text>
         ) : null}
 
-        <Pressable
-          disabled={saving}
-          style={[
-            styles.goButton,
-            saving &&
-            styles.disabled,
-          ]}
-          onPress={
-            handleContinue
-          }
-        >
-          <Text
-            style={
-              styles.goText
-            }
-          >
-            {saving
-              ? '...'
-              : 'go!'}
-          </Text>
-        </Pressable>
+        <OnboardingGoButton
+          onPress={handleContinue}
+          loading={saving}
+        />
       </View>
     </LinearGradient>
   );
@@ -617,30 +570,6 @@ const styles =
       flex: 1,
     },
 
-    backButton: {
-      position: 'absolute',
-
-      zIndex: 20,
-
-      width: 50,
-      height: 32,
-
-      borderRadius: 999,
-      overflow: 'hidden',
-    },
-
-    backGradient: {
-      flex: 1,
-
-      alignItems: 'center',
-      justifyContent:
-        'center',
-    },
-
-    backText: {
-      color: '#222222',
-      fontWeight: '500',
-    },
 
     title: {
       marginBottom: 30,
@@ -662,31 +591,20 @@ const styles =
 
     pickerCard: {
       width: '100%',
-
       position: 'relative',
-
       flexDirection: 'row',
-
       alignItems: 'center',
-
       overflow: 'hidden',
-
       borderRadius: 18,
-
       backgroundColor: '#F7D9D8',
-
-      shadowColor: '#000000',
-
+      shadowColor: '#A64D61',
       shadowOffset: {
         width: 0,
-        height: 4,
+        height: 6,
       },
-
       shadowOpacity: 0.22,
-
-      shadowRadius: 5,
-
-      elevation: 5,
+      shadowRadius: 12,
+      elevation: 7,
     },
     sharedSelectedRow: {
       position: 'absolute',
@@ -720,43 +638,4 @@ const styles =
       color: '#C62828',
     },
 
-    goButton: {
-      alignSelf: 'flex-end',
-
-      marginTop: 30,
-
-      minWidth: 112,
-      height: 48,
-
-      borderRadius: 16,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      backgroundColor: '#FFF6AE',
-
-      shadowColor: '#000000',
-
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-
-      shadowOpacity: 0.25,
-
-      shadowRadius: 5,
-
-      elevation: 5,
-    },
-
-    goText: {
-      fontSize: 25,
-      fontWeight: '700',
-
-      color: '#111111',
-    },
-
-    disabled: {
-      opacity: 0.6,
-    },
   });

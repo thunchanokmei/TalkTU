@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
+import OnboardingBackButton from '../../components/navigation/OnboardingBackButton';
+import OnboardingGoButton from '../../components/navigation/OnboardingGoButton';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -35,7 +37,8 @@ export default function StudyScreen() {
   const [generation, setGeneration] = useState<number | null>(null);
   const [showGenerations, setShowGenerations] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
+  const [hoveredGeneration, setHoveredGeneration] =
+  useState<number | null>(null);  
   /*
    * ============================
    * FONT
@@ -60,8 +63,11 @@ export default function StudyScreen() {
   );
 
   const titleSize = Math.max(
-    20,
-    Math.min(shortSide * 0.055, 30)
+      25,
+      Math.min(
+        shortSide * 0.1,
+        40
+      )
   );
 
   const fieldHeight = Math.max(
@@ -69,15 +75,6 @@ export default function StudyScreen() {
     Math.min(height * 0.055, 56)
   );
 
-  const backButtonWidth = Math.max(
-    42,
-    Math.min(shortSide * 0.12, 64)
-  );
-
-  const backButtonHeight = Math.max(
-    28,
-    Math.min(shortSide * 0.072, 38)
-  );
 
   /*
    * ============================
@@ -199,68 +196,13 @@ export default function StudyScreen() {
       style={styles.screen}
     >
       {/* =========================
-          BACK BUTTON
+          SHARED BACK BUTTON
           ========================= */}
-
-      <Pressable
-        style={[
-          styles.backButton,
-          {
-            top: Math.max(
-              20,
-              height * 0.04
-            ),
-
-            left: Math.max(
-              20,
-              width * 0.07
-            ),
-
-            width:
-              backButtonWidth,
-
-            height:
-              backButtonHeight,
-          },
-        ]}
+      <OnboardingBackButton
+        top={Math.max(20, height * 0.04)}
+        left={Math.max(20, width * 0.07)}
         onPress={handleBack}
-      >
-        <LinearGradient
-          colors={[
-            '#FFE98F',
-            '#FFB873',
-          ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 1,
-            y: 1,
-          }}
-          style={
-            styles.backGradient
-          }
-        >
-          <Text
-            style={[
-              styles.backText,
-              {
-                fontSize:
-                  Math.max(
-                    12,
-                    Math.min(
-                      shortSide * 0.033,
-                      17
-                    )
-                  ),
-              },
-            ]}
-          >
-            {'<<'}
-          </Text>
-        </LinearGradient>
-      </Pressable>
+      />
 
       {/* =========================
           CONTENT
@@ -291,15 +233,16 @@ export default function StudyScreen() {
             {
               fontSize:
                 titleSize,
-
               lineHeight:
                 titleSize * 1.15,
+              marginTop:30,
+              marginBottom:20,
             },
           ]}
         >
           What do you
           {'\n'}
-          study? 👀
+          study? 📚
         </Text>
 
         {/* =========================
@@ -312,10 +255,10 @@ export default function StudyScreen() {
             {
               fontSize:
                 Math.max(
-                  13,
+                  20,
                   Math.min(
-                    shortSide * 0.032,
-                    16
+                    shortSide * 0.035,
+                    20
                   )
                 ),
             },
@@ -359,12 +302,13 @@ export default function StudyScreen() {
           style={[
             styles.label,
             {
+              marginTop:20,
               fontSize:
                 Math.max(
-                  13,
+                  20,
                   Math.min(
-                    shortSide * 0.032,
-                    16
+                    shortSide * 0.055,
+                    20
                   )
                 ),
             },
@@ -392,7 +336,7 @@ export default function StudyScreen() {
               {
                 fontSize:
                   Math.max(
-                    14,
+                    15,
                     Math.min(
                       shortSide * 0.035,
                       17
@@ -433,46 +377,43 @@ export default function StudyScreen() {
           <View
             style={styles.dropdown}
           >
-            {generations.map(
-              (item) => (
-                <Pressable
-                  key={item}
-                  style={
-                    styles.dropdownItem
-                  }
-                  onPress={() => {
-                    setGeneration(
-                      item
-                    );
-                    setShowGenerations(
-                      false
-                    );
-                    setErrorMessage(
-                      ''
-                    );
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownText,
-                      {
-                        fontSize:
-                          Math.max(
-                            14,
-                            Math.min(
-                              shortSide *
-                                0.035,
-                              17
-                            )
-                          ),
-                      },
-                    ]}
-                  >
-                    TU{item}
-                  </Text>
-                </Pressable>
-              )
-            )}
+           {generations.map((item) => (
+  <Pressable
+    key={item}
+    style={[
+      styles.dropdownItem,
+      hoveredGeneration === item && {
+        backgroundColor: '#FFE1E1',
+      },
+    ]}
+    onHoverIn={() => setHoveredGeneration(item)}
+    onHoverOut={() => setHoveredGeneration(null)}
+    onPress={() => {
+      setGeneration(item);
+      setShowGenerations(false);
+      setErrorMessage('');
+    }}
+  >
+    <Text
+      style={[
+        styles.dropdownText,
+        {
+          fontSize: Math.max(
+            14,
+            Math.min(shortSide * 0.035, 17)
+          ),
+          color:
+            hoveredGeneration === item
+              ? '#483232'
+              : '#333333',
+        },
+      ]}
+    >
+      TU{item}
+    </Text>
+  </Pressable>
+))}
+                   
           </View>
         ) : null}
 
@@ -501,54 +442,9 @@ export default function StudyScreen() {
         ) : null}
 
         {/* =========================
-            GO BUTTON
+            SHARED GO BUTTON
             ========================= */}
-
-        <Pressable
-          style={[
-            styles.goButton,
-            {
-              minWidth:
-                Math.max(
-                  58,
-                  Math.min(
-                    shortSide * 0.15,
-                    84
-                  )
-                ),
-
-              height:
-                Math.max(
-                  34,
-                  Math.min(
-                    height * 0.045,
-                    44
-                  )
-                ),
-            },
-          ]}
-          onPress={
-            handleContinue
-          }
-        >
-          <Text
-            style={[
-              styles.goText,
-              {
-                fontSize:
-                  Math.max(
-                    15,
-                    Math.min(
-                      shortSide * 0.04,
-                      20
-                    )
-                  ),
-              },
-            ]}
-          >
-            go!
-          </Text>
-        </Pressable>
+        <OnboardingGoButton onPress={handleContinue} label="Next" />
       </View>
     </LinearGradient>
   );
@@ -570,56 +466,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  /*
-   * ============================
-   * BACK BUTTON
-   * ============================
-   */
-
-  backButton: {
-    position: 'absolute',
-
-    zIndex: 20,
-
-    borderRadius: 999,
-
-    overflow: 'hidden',
-
-    shadowColor: '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-
-    shadowOpacity: 0.22,
-
-    shadowRadius: 4,
-
-    elevation: 5,
-  },
-
-  backGradient: {
-    flex: 1,
-
-    width: '100%',
-    height: '100%',
-
-    borderRadius: 999,
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-  },
-
-  backText: {
-    fontFamily:
-      'GoogleSansMedium',
-
-    color: '#222222',
-  },
 
   /*
    * ============================
@@ -628,15 +474,10 @@ const styles = StyleSheet.create({
    */
 
   title: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
+    fontFamily:'GoogleSansSemiBold',
     fontWeight: '600',
-
     color: '#FFFFFF',
-
-    marginBottom: 20,
-
+    marginBottom: 10,
     textShadowColor:
       'rgba(75, 50, 45, 0.35)',
 
@@ -655,18 +496,12 @@ const styles = StyleSheet.create({
    */
 
   label: {
-    fontFamily:
-      'GoogleSansMedium',
-
+    fontFamily:'GoogleSansMedium',
     color: '#FFFFFF',
-
     marginBottom: 8,
-
-    marginTop: 14,
-
+    marginTop: 10,
     textShadowColor:
       'rgba(75, 50, 45, 0.25)',
-
     textShadowOffset: {
       width: 1,
       height: 1,
@@ -683,29 +518,19 @@ const styles = StyleSheet.create({
 
   readOnlyField: {
     width: '100%',
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#F3F3F3',
-
-    justifyContent:
-      'center',
-
+    borderRadius: 20,
+    backgroundColor:'#F3F3F3',
+    justifyContent:'center',
     paddingHorizontal: 16,
+    shadowColor:'#000000',
 
-    shadowColor:
-      '#000000',
 
     shadowOffset: {
       width: 0,
       height: 2,
     },
-
     shadowOpacity: 0.15,
-
     shadowRadius: 3,
-
     elevation: 3,
   },
 
@@ -717,47 +542,30 @@ const styles = StyleSheet.create({
 
   selectField: {
     width: '100%',
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#FFFFFF',
-
+    borderRadius: 20,
+    backgroundColor:'#FFFFFF',
     paddingHorizontal: 16,
-
     flexDirection: 'row',
-
     alignItems: 'center',
-
-    justifyContent:
-      'space-between',
-
-    shadowColor:
-      '#000000',
-
+    justifyContent:'space-between',
+    shadowColor:'#000000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-
     shadowOpacity: 0.15,
-
     shadowRadius: 3,
-
     elevation: 3,
   },
-
   fieldText: {
     fontFamily:
       'GoogleSans',
 
     color: '#333333',
   },
-
   arrow: {
     fontFamily:
       'GoogleSansMedium',
-
     color: '#FFA06E',
   },
 
@@ -769,30 +577,18 @@ const styles = StyleSheet.create({
 
   dropdown: {
     width: '100%',
-
-    backgroundColor:
-      '#FFFFFF',
-
-    borderRadius: 12,
-
+    backgroundColor:'#FFFFFF',
+    borderRadius: 20,
     marginTop: 5,
-
     overflow: 'hidden',
-
-    shadowColor:
-      '#000000',
-
+    shadowColor:'#000000',
     shadowOffset: {
       width: 0,
       height: 3,
     },
-
     shadowOpacity: 0.15,
-
     shadowRadius: 4,
-
     elevation: 4,
-
     zIndex: 10,
   },
 
@@ -824,62 +620,4 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
 
-  /*
-   * ============================
-   * GO BUTTON
-   * ============================
-   */
-
-  goButton: {
-    alignSelf:
-      'flex-end',
-
-    paddingHorizontal: 14,
-
-    marginTop: 16,
-
-    borderRadius: 12,
-
-    backgroundColor:
-      '#FFF6AE',
-
-    justifyContent:
-      'center',
-
-    alignItems:
-      'center',
-
-    shadowColor:
-      '#000000',
-
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-
-    shadowOpacity: 0.28,
-
-    shadowRadius: 5,
-
-    elevation: 6,
-  },
-
-  goText: {
-    fontFamily:
-      'GoogleSansSemiBold',
-
-    fontWeight: '600',
-
-    color: '#111111',
-
-    textShadowColor:
-      'rgba(0, 0, 0, 0.15)',
-
-    textShadowOffset: {
-      width: 0,
-      height: 1,
-    },
-
-    textShadowRadius: 1,
-  },
 });

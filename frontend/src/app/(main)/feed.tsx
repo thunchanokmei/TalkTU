@@ -5197,11 +5197,7 @@ StyleSheet
       padding:
         18,
 
-      borderTopLeftRadius:
-        24,
-
-      borderTopRightRadius:
-        24,
+      borderRadius:30,
 
       backgroundColor:
         '#FFFFFF',
@@ -5311,7 +5307,7 @@ StyleSheet
         12,
 
       borderRadius:
-        13,
+        30,
 
       fontSize:
         12,

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,7 +18,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
 import { supabase } from '../lib/supabase';
+import {
+  GENDER_IDENTITY_MAP,
+  GENDER_IDENTITY_OPTIONS,
+} from '../constants/genderIdentity';
 
+const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
+const INFO_GRADIENT = ['#FF9586', '#FFB77F', '#FFD3A2'] as const;
 const TITLE_PINK = '#F08A8E';
 
 /* พื้นที่ด้านล่างการ์ดที่เว้นไว้ไม่ให้โซนแตะทับชื่อ/ปุ่ม */
@@ -30,6 +35,22 @@ type PreviewPhoto = {
   storage_path: string;
   position: number;
 };
+
+type NamedItem = {
+  id: number;
+  name: string;
+};
+
+type GenderIdentity =
+  (typeof GENDER_IDENTITY_MAP)[keyof typeof GENDER_IDENTITY_MAP];
+
+function getGenderLabel(value: string) {
+  return (
+    GENDER_IDENTITY_OPTIONS.find(
+      (option) => GENDER_IDENTITY_MAP[option] === (value as GenderIdentity)
+    ) ?? ''
+  );
+}
 
 function calculateAge(birthDate: string) {
   const today = new Date();
@@ -62,6 +83,52 @@ function getProfilePhotoUrl(storagePath: string) {
     .getPublicUrl(storagePath).data.publicUrl;
 }
 
+/* รูปบนการ์ด: มี fallback เมื่อโหลดไม่ได้ เหมือนหน้า Swipe */
+function CandidateImage({ uri }: { uri: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <View style={styles.noPhoto}>
+        <Ionicons name="image-outline" size={64} color="#999999" />
+
+        <Text style={styles.noPhotoText}>Unable to load photo</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ExpoImage
+      source={{ uri }}
+      style={styles.photo}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      transition={0}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+function InfoRow({
+  icon,
+  text,
+  last = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  text: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.infoRow, last && styles.infoRowLast]}>
+      <Ionicons name={icon} size={16} color="#222222" />
+
+      <Text style={styles.infoText} numberOfLines={2}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
 export default function PreviewProfileScreen() {
   const router = useRouter();
   const { width: screenWidth, height: screenHeight } =
@@ -70,11 +137,17 @@ export default function PreviewProfileScreen() {
   // ขนาดการ์ดเหมือนหน้า Swipe
   const horizontalPadding = Math.max(2, screenWidth * 0.07);
   const cardWidth = screenWidth - horizontalPadding * 2;
-  const cardHeight = Math.min(screenHeight * 0.78, cardWidth * 1.8);
 
-  const shortSide = Math.min(screenWidth, screenHeight);
+  // สูตรเดียวกับหน้า Swipe แต่จำกัดไม่ให้เกินพื้นที่ว่างของหน้านี้
+  const [areaHeight, setAreaHeight] = useState(0);
+  const cardHeight = Math.min(
+    screenHeight * 0.8,
+    cardWidth * 1.8,
+    areaHeight > 0 ? areaHeight - 32 : Number.MAX_SAFE_INTEGER
+  );
+
   const bioIconSize = Math.max(26, Math.min(cardWidth * 0.07, 32));
-  const closeButtonSize = Math.max(42, Math.min(shortSide * 0.11, 54));
+  const detailPadding = Math.max(14, Math.min(screenWidth * 0.045, 26));
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,14 +156,16 @@ export default function PreviewProfileScreen() {
   const [age, setAge] = useState<number | null>(null);
   const [bio, setBio] = useState<string | null>(null);
   const [heightCm, setHeightCm] = useState<number | null>(null);
+  const [genderIdentity, setGenderIdentity] = useState<string | null>(null);
+  const [generation, setGeneration] = useState<number | null>(null);
   const [faculty, setFaculty] = useState<string | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [photos, setPhotos] = useState<PreviewPhoto[]>([]);
-  const [locations, setLocations] = useState<string[]>([]);
-  const [interests, setInterests] = useState<string[]>([]);
+  const [locations, setLocations] = useState<NamedItem[]>([]);
+  const [interests, setInterests] = useState<NamedItem[]>([]);
 
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [showBio, setShowBio] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
 
   const loadPreview = useCallback(async () => {
     try {
@@ -112,14 +187,18 @@ export default function PreviewProfileScreen() {
       }
 
       const [
-        { data: profile, error: profileError },
-        { data: privateData, error: privateError },
-        { data: photoRows, error: photoError },
-        { data: locationRows, error: locationError },
+        profileResult,
+        privateResult,
+        photoResult,
+        studentResult,
+        interestRowsResult,
+        locationRowsResult,
       ] = await Promise.all([
         supabase
           .from('profiles')
-          .select('display_name, bio, height_cm')
+          .select(
+            'display_name, bio, height_cm, tu_generation, gender_identity'
+          )
           .eq('id', user.id)
           .maybeSingle(),
 
@@ -136,15 +215,33 @@ export default function PreviewProfileScreen() {
           .order('position', { ascending: true }),
 
         supabase
+          .from('student_accounts')
+          .select('faculty, department')
+          .eq('user_id', user.id)
+          .eq('is_current_student', true)
+          .maybeSingle(),
+
+        supabase
+          .from('user_interests')
+          .select('interest_id')
+          .eq('user_id', user.id),
+
+        supabase
           .from('user_locations')
           .select('location_id')
           .eq('user_id', user.id),
       ]);
 
-      if (profileError) throw profileError;
-      if (privateError) throw privateError;
-      if (photoError) throw photoError;
-      if (locationError) throw locationError;
+      if (profileResult.error) throw profileResult.error;
+      if (privateResult.error) throw privateResult.error;
+      if (photoResult.error) throw photoResult.error;
+      if (studentResult.error) throw studentResult.error;
+      if (interestRowsResult.error) throw interestRowsResult.error;
+      if (locationRowsResult.error) throw locationRowsResult.error;
+
+      const profile = profileResult.data;
+      const privateData = privateResult.data;
+      const student = studentResult.data;
 
       setDisplayName(profile?.display_name ?? 'User');
       setBio(profile?.bio ?? null);
@@ -153,6 +250,8 @@ export default function PreviewProfileScreen() {
           ? profile.height_cm
           : null
       );
+      setGenderIdentity(profile?.gender_identity ?? null);
+      setGeneration(profile?.tu_generation ?? null);
 
       setAge(
         privateData?.birth_date
@@ -160,65 +259,43 @@ export default function PreviewProfileScreen() {
           : null
       );
 
-      setPhotos(photoRows ?? []);
-      setPhotoIndex(0);
-
-      // ชื่อสถานที่ในมหาลัย
-      const locationIds = (locationRows ?? []).map(
-        (row) => row.location_id
-      );
-
-      if (locationIds.length > 0) {
-        const { data: campusRows } = await supabase
-          .from('campus_locations')
-          .select('id, name')
-          .in('id', locationIds);
-
-        setLocations((campusRows ?? []).map((row) => row.name));
-      } else {
-        setLocations([]);
-      }
-
-      // คณะ/สาขา (ตาราง student_accounts เหมือนที่ทีมใช้)
-      const { data: student, error: studentError } = await supabase
-        .from('student_accounts')
-        .select('faculty, department')
-        .eq('user_id', user.id)
-        .eq('is_current_student', true)
-        .maybeSingle();
-
-      if (studentError) throw studentError;
-
       setFaculty(student?.faculty ?? null);
       setDepartment(student?.department ?? null);
 
-      // ความสนใจ
-      const { data: interestRows, error: interestRowsError } =
-        await supabase
-          .from('user_interests')
-          .select('interest_id')
-          .eq('user_id', user.id);
+      setPhotos(photoResult.data ?? []);
+      setPhotoIndex(0);
 
-      if (interestRowsError) throw interestRowsError;
-
-      const interestIds = (interestRows ?? [])
+      const interestIds = (interestRowsResult.data ?? [])
         .map((row) => row.interest_id)
         .filter((id): id is number => id !== null);
 
-      if (interestIds.length > 0) {
-        const { data: interestData, error: interestError } =
-          await supabase
-            .from('interests')
-            .select('id, name')
-            .in('id', interestIds)
-            .eq('is_active', true);
+      const locationIds = (locationRowsResult.data ?? [])
+        .map((row) => row.location_id)
+        .filter((id): id is number => id !== null);
 
-        if (interestError) throw interestError;
+      const [interestData, locationData] = await Promise.all([
+        interestIds.length > 0
+          ? supabase
+              .from('interests')
+              .select('id, name')
+              .in('id', interestIds)
+              .eq('is_active', true)
+          : Promise.resolve({ data: [], error: null }),
 
-        setInterests((interestData ?? []).map((row) => row.name));
-      } else {
-        setInterests([]);
-      }
+        locationIds.length > 0
+          ? supabase
+              .from('campus_locations')
+              .select('id, name')
+              .in('id', locationIds)
+              .eq('is_active', true)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (interestData.error) throw interestData.error;
+      if (locationData.error) throw locationData.error;
+
+      setInterests((interestData.data ?? []) as NamedItem[]);
+      setLocations((locationData.data ?? []) as NamedItem[]);
     } catch (err) {
       console.error('Unable to load preview profile:', err);
 
@@ -237,7 +314,7 @@ export default function PreviewProfileScreen() {
   }, [loadPreview]);
 
   const previousPhoto = () => {
-    if (photos.length === 0) {
+    if (photos.length <= 1) {
       return;
     }
 
@@ -247,7 +324,7 @@ export default function PreviewProfileScreen() {
   };
 
   const nextPhoto = () => {
-    if (photos.length === 0) {
+    if (photos.length <= 1) {
       return;
     }
 
@@ -270,6 +347,8 @@ export default function PreviewProfileScreen() {
     ? `${department}${faculty ? `, ${faculty}` : ''}`
     : faculty ?? '';
 
+  const genderLabel = genderIdentity ? getGenderLabel(genderIdentity) : '';
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* ================= HEADER ================= */}
@@ -280,29 +359,34 @@ export default function PreviewProfileScreen() {
           { paddingHorizontal: horizontalPadding },
         ]}
       >
-        <View style={{ width: closeButtonSize }} />
-
-        <Text style={styles.title}>PREVIEW PROFILE</Text>
-
         <TouchableOpacity
-          style={[
-            styles.closeButton,
-            {
-              width: closeButtonSize,
-              height: closeButtonSize,
-              borderRadius: closeButtonSize / 2,
-            },
-          ]}
+          style={styles.headerShadow}
           onPress={goBack}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Ionicons name="close" size={26} color="#FFFFFF" />
+          <LinearGradient
+            colors={THEME_GRADIENT}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.circleButton}
+          >
+            <Ionicons name="chevron-back" size={26} color="#FFFFFF" />
+          </LinearGradient>
         </TouchableOpacity>
+
+        <View pointerEvents="none" style={styles.titleWrap}>
+          <Text style={styles.title}>PREVIEW PROFILE</Text>
+        </View>
       </View>
 
       {/* ================= CARD ================= */}
 
-      <View style={styles.cardArea}>
+      <View
+        style={styles.cardArea}
+        onLayout={(event) =>
+          setAreaHeight(event.nativeEvent.layout.height)
+        }
+      >
         {loading ? (
           <View style={styles.statusState}>
             <ActivityIndicator size="large" color="#FF8D88" />
@@ -319,11 +403,18 @@ export default function PreviewProfileScreen() {
             <Text style={styles.emptyText}>{error}</Text>
 
             <TouchableOpacity
-              style={styles.retryButton}
+              style={styles.retryShadow}
               onPress={loadPreview}
               activeOpacity={0.85}
             >
-              <Text style={styles.retryText}>Try again</Text>
+              <LinearGradient
+                colors={THEME_GRADIENT}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.retryButton}
+              >
+                <Text style={styles.retryText}>Try again</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         ) : (
@@ -336,14 +427,8 @@ export default function PreviewProfileScreen() {
             {/* PROFILE PHOTO */}
 
             {currentPhoto?.storage_path ? (
-              <ExpoImage
-                source={{
-                  uri: getProfilePhotoUrl(currentPhoto.storage_path),
-                }}
-                style={styles.photo}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={0}
+              <CandidateImage
+                uri={getProfilePhotoUrl(currentPhoto.storage_path)}
               />
             ) : (
               <View style={styles.noPhoto}>
@@ -375,12 +460,12 @@ export default function PreviewProfileScreen() {
 
             <TouchableOpacity
               style={[
-                styles.openBioZone,
+                styles.openProfileZone,
                 photos.length > 1
-                  ? styles.openBioZoneWithPhotoNav
-                  : styles.openBioZoneFull,
+                  ? styles.openProfileZoneWithPhotoNav
+                  : styles.openProfileZoneFull,
               ]}
-              onPress={() => setShowBio(true)}
+              onPress={() => setShowDetail(true)}
               activeOpacity={1}
             />
 
@@ -436,7 +521,7 @@ export default function PreviewProfileScreen() {
                     left: 10,
                     right: 10,
                   }}
-                  onPress={() => setShowBio(true)}
+                  onPress={() => setShowDetail(true)}
                 >
                   <Ionicons
                     name="arrow-up-circle-outline"
@@ -456,88 +541,208 @@ export default function PreviewProfileScreen() {
         )}
       </View>
 
-      {/* ================= BIO SHEET ================= */}
+      {/* ================= PROFILE DETAIL (ไม่มีปุ่ม like / pass) ================= */}
 
       <Modal
-        visible={showBio}
-        transparent
+        visible={showDetail}
         animationType="slide"
-        onRequestClose={() => setShowBio(false)}
+        onRequestClose={() => setShowDetail(false)}
       >
-        <Pressable
-          style={styles.sheetOverlay}
-          onPress={() => setShowBio(false)}
-        >
-          <Pressable
-            style={styles.sheet}
-            onPress={(event) => event.stopPropagation()}
+        <SafeAreaView style={styles.detailSafe} edges={['top', 'bottom']}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.detailContent,
+              { paddingHorizontal: detailPadding },
+            ]}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={styles.sheetHandle} />
+            {/* PHOTO */}
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.sheetContent}
-            >
-              <Text style={styles.sheetName}>
-                {displayName}
-                {age !== null ? ` ${age}` : ''}
-              </Text>
+            <View style={styles.detailPhotoCard}>
+              {currentPhoto?.storage_path ? (
+                <CandidateImage
+                  uri={getProfilePhotoUrl(currentPhoto.storage_path)}
+                />
+              ) : (
+                <View style={styles.noPhoto}>
+                  <Ionicons
+                    name="person-outline"
+                    size={76}
+                    color="#AAAAAA"
+                  />
+                </View>
+              )}
 
-              {detailLine ? (
-                <Text style={styles.sheetDetail}>{detailLine}</Text>
+              <TouchableOpacity
+                style={styles.detailBackButton}
+                onPress={() => setShowDetail(false)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="chevron-down"
+                  size={24}
+                  color="#333333"
+                />
+              </TouchableOpacity>
+
+              {photos.length > 0 ? (
+                <View style={styles.detailPhotoCounter}>
+                  <Text style={styles.detailPhotoCounterText}>
+                    {photoIndex + 1}/{photos.length}
+                  </Text>
+                </View>
               ) : null}
 
-              <Text style={styles.sheetSection}>Bio</Text>
+              {photos.length > 1 ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.detailLeftZone}
+                    onPress={previousPhoto}
+                    activeOpacity={1}
+                  />
 
-              <Text style={styles.sheetBody}>
-                {bio && bio.trim().length > 0
-                  ? bio
-                  : 'No bio yet.'}
-              </Text>
+                  <TouchableOpacity
+                    style={styles.detailRightZone}
+                    onPress={nextPhoto}
+                    activeOpacity={1}
+                  />
+                </>
+              ) : null}
+
+              <LinearGradient
+                pointerEvents="none"
+                colors={[
+                  'transparent',
+                  'rgba(0,0,0,0.05)',
+                  'rgba(0,0,0,0.75)',
+                ]}
+                locations={[0, 0.58, 1]}
+                style={styles.profileGradient}
+              />
+
+              <View style={styles.heroInfo} pointerEvents="none">
+                <Text style={styles.heroName}>
+                  {displayName}
+                  {age !== null ? ` ${age}` : ''}
+                </Text>
+
+                {detailLine ? (
+                  <Text style={styles.heroDetail} numberOfLines={1}>
+                    {detailLine}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* BIO */}
+
+            {bio && bio.trim() ? (
+              <LinearGradient
+                colors={INFO_GRADIENT}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.infoCard}
+              >
+                <Text style={styles.cardTitle}>Bio</Text>
+                <Text style={styles.bioText}>{bio.trim()}</Text>
+              </LinearGradient>
+            ) : null}
+
+            {/* ABOUT ME */}
+
+            <LinearGradient
+              colors={INFO_GRADIENT}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.infoCard}
+            >
+              <Text style={styles.cardTitle}>About me</Text>
 
               {heightCm !== null ? (
-                <>
-                  <Text style={styles.sheetSection}>Height</Text>
-                  <Text style={styles.sheetBody}>{heightCm} cm</Text>
-                </>
+                <InfoRow
+                  icon="resize-outline"
+                  text={`${heightCm} cm`}
+                />
               ) : null}
 
-              {interests.length > 0 ? (
-                <>
-                  <Text style={styles.sheetSection}>Interests</Text>
-
-                  <View style={styles.chipRow}>
-                    {interests.map((name) => (
-                      <View key={name} style={styles.chip}>
-                        <Text style={styles.chipText}>{name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
+              {genderLabel ? (
+                <InfoRow
+                  icon="male-female-outline"
+                  text={genderLabel}
+                />
               ) : null}
 
-              {locations.length > 0 ? (
-                <>
-                  <Text style={styles.sheetSection}>
-                    Campus locations
-                  </Text>
-
-                  <View style={styles.chipRow}>
-                    {locations.map((name) => (
-                      <View key={name} style={styles.chip}>
-                        <Text style={styles.chipText}>{name}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
+              {detailLine ? (
+                <InfoRow
+                  icon="school-outline"
+                  text={detailLine}
+                />
               ) : null}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
+
+              {generation !== null ? (
+                <InfoRow
+                  icon="calendar-outline"
+                  text={`TU${generation}`}
+                  last
+                />
+              ) : null}
+            </LinearGradient>
+
+            {/* INTERESTS */}
+
+            {interests.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Interests</Text>
+
+                <View style={styles.chipWrap}>
+                  {interests.map((interest) => (
+                    <View key={interest.id} style={styles.chip}>
+                      <Text style={styles.chipText}>
+                        {interest.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* LOCATIONS */}
+
+            {locations.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  You'll usually find me at..
+                </Text>
+
+                <View style={styles.chipWrap}>
+                  {locations.map((location) => (
+                    <View key={location.id} style={styles.chip}>
+                      <Text style={styles.chipText}>
+                        {location.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
+        </SafeAreaView>
       </Modal>
     </SafeAreaView>
   );
 }
+
+const softShadow = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  android: {
+    elevation: 5,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -545,13 +750,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  /* ================= HEADER ================= */
+  /* ================= HEADER (เหมือนหน้า Edit Profile) ================= */
 
   header: {
     height: 72,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+
+  headerShadow: {
+    borderRadius: 24,
+    backgroundColor: '#FFAF79',
+    ...softShadow,
+  },
+
+  circleButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  titleWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
 
   title: {
@@ -561,19 +787,14 @@ const styles = StyleSheet.create({
     color: TITLE_PINK,
   },
 
-  closeButton: {
-    backgroundColor: '#F4B0B0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
   /* ================= CARD ================= */
 
   cardArea: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 4,
+    justifyContent: 'center',
+    paddingTop: 14,
+    paddingBottom: 18,
   },
 
   statusState: {
@@ -598,10 +819,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  retryButton: {
+  retryShadow: {
     marginTop: 18,
     borderRadius: 999,
     backgroundColor: '#FFAF79',
+    ...softShadow,
+  },
+
+  retryButton: {
+    borderRadius: 999,
     paddingHorizontal: 26,
     paddingVertical: 12,
   },
@@ -643,6 +869,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#E7E7E7',
   },
 
+  noPhotoText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: '#777777',
+  },
+
   /* ================= PHOTO DASHES ================= */
 
   photoDashes: {
@@ -668,19 +900,19 @@ const styles = StyleSheet.create({
 
   /* ================= TAP ZONES ================= */
 
-  openBioZone: {
+  openProfileZone: {
     position: 'absolute',
     top: 0,
     bottom: BOTTOM_RESERVED,
     zIndex: 4,
   },
 
-  openBioZoneWithPhotoNav: {
+  openProfileZoneWithPhotoNav: {
     left: '18%',
     right: '18%',
   },
 
-  openBioZoneFull: {
+  openProfileZoneFull: {
     left: 0,
     right: 0,
   },
@@ -763,77 +995,200 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
 
-  /* ================= BIO SHEET ================= */
+  /* ================= PROFILE DETAIL ================= */
 
-  sheetOverlay: {
+  detailSafe: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-
-  sheet: {
-    maxHeight: '75%',
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 10,
   },
 
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#DDDDDD',
-    marginBottom: 8,
+  detailContent: {
+    paddingTop: 40,
+    paddingBottom: 34,
   },
 
-  sheetContent: {
-    paddingHorizontal: 22,
-    paddingBottom: 32,
+  detailPhotoCard: {
+    width: '100%',
+    aspectRatio: 0.68,
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 22,
+    backgroundColor: '#E9E9E9',
+
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.14,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
 
-  sheetName: {
-    fontSize: 26,
+  detailBackButton: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 38,
+    height: 38,
+    zIndex: 20,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+
+  detailPhotoCounter: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    minWidth: 38,
+    height: 25,
+    zIndex: 20,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+
+  detailPhotoCounterText: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#111111',
   },
 
-  sheetDetail: {
+  detailLeftZone: {
+    position: 'absolute',
+    top: 55,
+    bottom: 90,
+    left: 0,
+    width: '22%',
+    zIndex: 10,
+  },
+
+  detailRightZone: {
+    position: 'absolute',
+    top: 55,
+    bottom: 90,
+    right: 0,
+    width: '22%',
+    zIndex: 10,
+  },
+
+  heroInfo: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 17,
+    zIndex: 12,
+  },
+
+  heroName: {
+    fontSize: 30,
+    lineHeight: 34,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  heroDetail: {
     marginTop: 2,
-    fontSize: 13,
-    color: '#777777',
+    fontSize: 11,
+    color: '#FFFFFF',
+    opacity: 0.96,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
-  sheetSection: {
-    marginTop: 20,
-    marginBottom: 6,
-    fontSize: 15,
+  infoCard: {
+    marginTop: 13,
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+
+  cardTitle: {
+    marginBottom: 8,
+    fontSize: 12,
     fontWeight: '700',
-    color: TITLE_PINK,
+    color: '#171717',
   },
 
-  sheetBody: {
-    fontSize: 15,
-    lineHeight: 22,
+  bioText: {
+    fontSize: 13,
+    lineHeight: 20,
     color: '#222222',
   },
 
-  chipRow: {
+  infoRow: {
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.72)',
+  },
+
+  infoRowLast: {
+    borderBottomWidth: 0,
+  },
+
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#222222',
+  },
+
+  section: {
+    marginTop: 16,
+    paddingHorizontal: 4,
+  },
+
+  sectionTitle: {
+    marginBottom: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#222222',
+  },
+
+  chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 7,
   },
 
   chip: {
-    borderRadius: 18,
-    backgroundColor: '#FFF0E8',
+    minHeight: 28,
+    borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6,
+    backgroundColor: '#F3F3F3',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   chipText: {
-    fontSize: 13,
-    color: '#222222',
+    fontSize: 11,
+    color: '#555555',
   },
 });

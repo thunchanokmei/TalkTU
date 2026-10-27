@@ -3,7 +3,6 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-
 import {
   ActivityIndicator,
   Image,
@@ -15,6 +14,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import Header from '../../../components/chat/Header';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,8 +65,13 @@ export default function ChatPage() {
         );
         setChats([]);
       } else {
-        setChats(result.data ?? []);
-      }
+  console.log(
+    'CHAT LIST DATA:',
+    JSON.stringify(result.data, null, 2)
+  );
+
+  setChats(result.data ?? []);
+}
 
       setLoading(false);
     },
@@ -163,6 +169,8 @@ export default function ChatPage() {
             resizeMode="contain"
           />
         </View>
+
+        <Header variant="logo" />
 
         {/* ================= CHAT LIST ================= */}
 

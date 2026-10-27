@@ -81,6 +81,7 @@ export default function UserProfileScreen() {
   const router = useRouter();
 
   const {
+    userId,
     candidate,
     mode,
     source,
@@ -88,7 +89,7 @@ export default function UserProfileScreen() {
     userId: string;
     candidate?: string;
     mode?: SwipeMode;
-    source?: 'swipe' | 'like';
+    source?: 'swipe' | 'like' | 'chat';
   }>();
 
   const { width } = useWindowDimensions();
@@ -108,37 +109,93 @@ export default function UserProfileScreen() {
   const [matchedMatchId, setMatchedMatchId] =
     useState<string | null>(null);
 
-  const profile = useMemo<Candidate | null>(
-    () => {
-      if (!candidate) {
-        return null;
-      }
+  const parsedCandidate = useMemo<Candidate | null>(() => {
+    if (!candidate) return null;
+    try {
+      return JSON.parse(candidate) as Candidate;
+    } catch (error) {
+      console.error('Parse candidate error:', error);
+      return null;
+    }
+  }, [candidate]);
 
+  const [fetchedProfile, setFetchedProfile] = useState<Candidate | null>(null);
+  const [fetching, setFetching] = useState(false);
+
+  React.useEffect(() => {
+    if (parsedCandidate || !userId) return;
+
+    let cancelled = false;
+
+    (async () => {
       try {
-        return JSON.parse(
-          candidate
-        ) as Candidate;
-      } catch (error) {
-        console.error(
-          'Parse candidate error:',
-          error
-        );
+        setFetching(true);
 
-        return null;
+        const [
+          { data: p, error: pErr },
+          { data: photoRows, error: phErr },
+        ] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', userId)
+            .maybeSingle(),
+          supabase
+            .from('profile_photos')
+            .select('id, storage_path, position')
+            .eq('user_id', userId)
+            .order('position', { ascending: true }),
+        ]);
+
+        if (pErr) throw pErr;
+        if (phErr) throw phErr;
+        if (!p) return;
+
+        if (!cancelled) {
+          setFetchedProfile({
+            user_id: userId,
+            display_name: p.display_name ?? 'User',
+            age: 0,
+            tu_generation: 0,
+            bio: null,
+            height_cm: null,
+            gender_identity: null,
+            faculty: '',
+            department: null,
+            photos: photoRows ?? [],
+            interests: [],
+          });
+        }
+      } catch (error) {
+        console.error('Load profile from chat error:', error);
+      } finally {
+        if (!cancelled) setFetching(false);
       }
-    },
-    [candidate]
-  );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [parsedCandidate, userId]);
+
+  const profile = parsedCandidate ?? fetchedProfile;
+  const fromChat = !parsedCandidate;
+
+  if (!profile && fetching) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.unavailable}>
+          <ActivityIndicator size="large" color="#FF7F87" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!profile) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.unavailable}>
-          <Ionicons
-            name="person-outline"
-            size={54}
-            color="#777777"
-          />
+          <Ionicons name="person-outline" size={54} color="#777777" />
 
           <Text style={styles.unavailableTitle}>
             Profile unavailable
@@ -148,14 +205,14 @@ export default function UserProfileScreen() {
             onPress={() => router.back()}
             style={styles.backFallbackButton}
           >
-            <Text style={styles.backFallbackText}>
-              Go back
-            </Text>
+            <Text style={styles.backFallbackText}>Go back</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
   }
+
+
 
   const photos =
     profile.photos ?? [];

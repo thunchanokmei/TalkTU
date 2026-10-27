@@ -26,14 +26,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
+import {router,useLocalSearchParams,} from 'expo-router';
 
 import { supabase } from '../../../lib/supabase';
 import Header from '../../../components/chat/Header';
-
 
 import {
   getChatList,
@@ -44,15 +40,12 @@ import {
   unsubscribeFromChannel,
 } from '../../../features/chat/services/chatService';
 
-import type {
-  ChatReportReason,
-} from '../../../features/chat/services/chatService';
-
-import type {
-  ChatMessage,
-} from '../../../features/chat/types';
+import type {ChatReportReason,} from '../../../features/chat/services/chatService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type {ChatMessage,} from '../../../features/chat/types';
 
 export default function ChatRoom() {
+  console.log('CHAT ROOM SCREEN RENDERED');
   const params =
     useLocalSearchParams<{
       matchId?: string;
@@ -67,6 +60,8 @@ export default function ChatRoom() {
     typeof params.matchId === 'string'
       ? params.matchId
       : '';
+      console.log('CHAT ROOM PARAMS:', params);
+      console.log('CHAT ROOM matchId:', matchId);
 
   const name =
     typeof params.name === 'string'
@@ -109,7 +104,7 @@ export default function ChatRoom() {
 
 
   const [showSafety, setShowSafety] = useState(false);
-
+const insets = useSafeAreaInsets();
   const [safetyView, setSafetyView] = useState<
     | 'menu'
     | 'unmatchConfirm'
@@ -192,45 +187,34 @@ export default function ChatRoom() {
   }, [loadInitialMessages]);
 
   /* ================= REALTIME ================= */
+useEffect(() => {
+  if (!matchId) return;
 
-  useEffect(() => {
-    if (!matchId) {
-      return;
-    }
+  const channel = supabase
+    .channel(`chat:${matchId}:${Date.now()}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `match_id=eq.${matchId}`,
+      },
+      (payload) => {
+        const newMsg = payload.new as any;
+        setMessages((prev) =>
+          prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+        );
+      }
+    )
+    .subscribe((status) => {
+      console.log('REALTIME STATUS:', status);
+    });
 
-    const channel =
-      subscribeToMessages(
-        matchId,
-        (message) => {
-          setMessages((current) => {
-            if (
-              current.some(
-                (item) =>
-                  item.id === message.id
-              )
-            ) {
-              return current;
-            }
-
-            return [
-              ...current,
-              message,
-            ];
-          });
-
-          setTimeout(() => {
-            scrollRef.current?.scrollToEnd({
-              animated: true,
-            });
-          }, 100);
-        }
-      );
-
-    return () => {
-      void unsubscribeFromChannel(channel);
-    };
-  }, [matchId]);
-
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [matchId]);
   /* ================= OLDER ================= */
 
   const loadOlderMessages = async () => {
@@ -299,54 +283,37 @@ export default function ChatRoom() {
 
   /* ================= SEND ================= */
 
-  const handleSend = async () => {
-    const content =
-      input.trim();
+const handleSend = async () => {
+  const content = input.trim();
 
-    if (
-      !content ||
-      sending ||
-      !matchId
-    ) {
-      return;
-    }
+  if (!content || sending || !matchId) {
+    return;
+  }
 
-    if (content.length > 5000) {
-      Alert.alert(
-        'Message too long',
-        'Message cannot exceed 5000 characters.'
-      );
-      return;
-    }
+  if (content.length > 5000) {
+    Alert.alert('Message too long', 'Message cannot exceed 5000 characters.');
+    return;
+  }
 
-    setSending(true);
+  setSending(true);
 
-    const result =
-      await sendMessage(
-        matchId,
-        content
-      );
+  const result = await sendMessage(matchId, content);
 
-    if (result.error) {
-      Alert.alert(
-        'Unable to send message',
-        result.error.message
-      );
-
-      setSending(false);
-      return;
-    }
-
-    setInput('');
+  if (result.error) {
+    Alert.alert('Unable to send message', result.error.message);
     setSending(false);
+    return;
+  }
 
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({
-        animated: true,
-      });
-    }, 100);
-  };
+  console.log('SEND RESULT:', JSON.stringify(result));
 
+  setInput('');
+  setSending(false);
+
+  setTimeout(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, 100);
+};
   /* ================= SCROLL ================= */
 
   const handleScroll = (
@@ -724,6 +691,7 @@ router.push({
                     } as any),
                   ]}
                 />
+                <View style={{ paddingBottom: insets.bottom }}></View>
 
                 <TouchableOpacity
                   style={[

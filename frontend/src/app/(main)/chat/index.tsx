@@ -105,8 +105,9 @@ export default function ChatPage() {
   };
 
   const openChat = (item: ChatListItem) => {
+    console.log('BEFORE PUSH:', item.match_id);
     router.push({
-      pathname: '/(main)/chat/[matchId]',
+      pathname: '/chat/[matchId]',
       params: {
         matchId: item.match_id,
         name: item.other_display_name ?? 'Unknown',
@@ -258,9 +259,10 @@ export default function ChatPage() {
                   <TouchableOpacity
                     key={item.match_id}
                     activeOpacity={0.82}
-                    onPress={() =>
+                    onPress={() =>{
+                      console.log('CHAT CARD TAPPED');
                       openChat(item)
-                    }
+                    }}
                     style={styles.chatCard}
                   >
                     {/* PROFILE IMAGE */}

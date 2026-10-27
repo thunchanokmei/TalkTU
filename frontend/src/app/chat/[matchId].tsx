@@ -32,6 +32,8 @@ import {
 } from 'expo-router';
 
 import { supabase } from '../../lib/supabase';
+import Header from '../../components/chat/Header';
+
 
 import {
   getChatList,
@@ -394,6 +396,17 @@ export default function ChatRoom() {
 
     return chat.other_user_id;
   };
+  const openProfile = async () => {
+    try {
+      const userId = await getOtherUserId();
+      router.push(`/user/${userId}` as any);
+    } catch (error) {
+      Alert.alert(
+        'Unable to open profile',
+        error instanceof Error ? error.message : 'Please try again.'
+      );
+    }
+  };
 
   const unmatch = () => {
     setSafetyView('unmatchConfirm');
@@ -556,7 +569,7 @@ export default function ChatRoom() {
   /* ================= UI ================= */
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={
@@ -567,101 +580,21 @@ export default function ChatRoom() {
       >
 
         {/* ================= HEADER ================= */}
+        <Header
+          variant="chat"
+          title={name}
+          onReportPress={openSafety}
+        />
 
-        <View
-          style={[
-            styles.header,
-            { width: pageWidth },
-          ]}
-        >
-          {/* BACK */}
-
-          <TouchableOpacity
-            style={styles.backButton}
-            activeOpacity={0.8}
-            onPress={() =>
-              router.back()
-            }
-          >
-            <Text style={styles.backText}>
-              «
-            </Text>
-          </TouchableOpacity>
-
-          {/* NAME */}
-
-          <View style={styles.headerUser}>
-            {image ? (
-              <Image
-                source={{
-                  uri: image,
-                }}
-                style={styles.headerAvatar}
-              />
-            ) : (
-              <View
-                style={
-                  styles.headerAvatarPlaceholder
-                }
-              >
-                <Ionicons
-                  name="person"
-                  size={16}
-                  color="#999999"
-                />
-              </View>
-            )}
-
-            <Text
-              style={styles.headerName}
-              numberOfLines={1}
-            >
-              {name}
-            </Text>
-          </View>
-
-          {/* SAFETY */}
-
-          <TouchableOpacity
-            style={styles.safetyIcon}
-            onPress={() =>
-              setShowSafety(true)
-            }
-          >
-            <Ionicons
-              name="shield-outline"
-              size={21}
-              color="#FF7F87"
-            />
-          </TouchableOpacity>
-        </View>
 
         {/* ================= CHAT ================= */}
 
-        <LinearGradient
-          colors={[
-            '#FFE0B8',
-            '#FFB078',
-            '#FF7D88',
-          ]}
-          start={{
-            x: 0,
-            y: 0,
-          }}
-          end={{
-            x: 0,
-            y: 1,
-          }}
-          style={[
-            styles.chatArea,
-            { width: pageWidth },
-          ]}
-        >
+        <View style={[styles.chatArea, { width: pageWidth }]}>
           {loading ? (
             <View style={styles.center}>
               <ActivityIndicator
                 size="large"
-                color="#FFFFFF"
+                color="#FF7F87"
               />
 
               <Text style={styles.loadingText}>
@@ -673,7 +606,7 @@ export default function ChatRoom() {
               <Ionicons
                 name="cloud-offline-outline"
                 size={45}
-                color="#FFFFFF"
+                color="#FF7F87"
               />
 
               <Text style={styles.loadingText}>
@@ -756,7 +689,8 @@ export default function ChatRoom() {
                           key={message.id}
                           message={message}
                           isMe={isMe}
-                          avatarUrl={image}
+                          avatarUri={image}
+                          onAvatarPress={openProfile}
                         />
                       );
                     }
@@ -813,7 +747,7 @@ export default function ChatRoom() {
               </View>
             </>
           )}
-        </LinearGradient>
+        </View>
 
         {/* ================= SAFETY MODAL ================= */}
 
@@ -1117,67 +1051,65 @@ export default function ChatRoom() {
 function MessageBubble({
   message,
   isMe,
-  avatarUrl,
+  avatarUri,
+  onAvatarPress,
 }: {
   message: ChatMessage;
   isMe: boolean;
-  avatarUrl: string;
+  avatarUri?: string;
+  onAvatarPress?: () => void;
 }) {
+  const time = new Date(message.created_at).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   return (
     <View
       style={[
         styles.messageRow,
-        isMe
-          ? styles.messageRight
-          : styles.messageLeft,
+        isMe ? styles.messageRight : styles.messageLeft,
       ]}
     >
+
       {!isMe && (
-  <View style={styles.messageAvatar}>
-    {avatarUrl ? (
-      <Image
-        source={{ uri: avatarUrl }}
-        style={{
-          width: 27,
-          height: 27,
-          borderRadius: 15,
-        }}
-      />
-    ) : (
-      <Ionicons
-        name="person"
-        size={13}
-        color="#888888"
-      />
-    )}
-  </View>
-)}
-
-      <View
-        style={[
-          styles.bubble,
-          isMe
-            ? styles.myBubble
-            : styles.otherBubble,
-        ]}
-      >
-        <Text style={styles.bubbleText}>
-          {message.content}
-        </Text>
-
-        <Text style={styles.messageTime}>
-          {new Date(
-            message.created_at
-          ).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-        </Text>
-      </View>
+        <TouchableOpacity
+          style={styles.messageAvatar}
+          activeOpacity={0.7}
+          onPress={onAvatarPress}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={styles.messageAvatarImg} />
+          ) : (
+            <Ionicons name="person" size={13} color="#888888" />
+          )}
+        </TouchableOpacity>
+      )}
+      {isMe ? (
+        <LinearGradient
+          colors={['#FFB078', '#FF7D88']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.bubble, styles.myBubble]}
+        >
+          <Text style={[styles.myBubbleText, styles.myBubbleText]}>
+            {message.content}
+          </Text>
+          <Text style={[styles.messageTime, styles.myMessageTime]}>
+            {time}
+          </Text>
+        </LinearGradient>
+      ) : (
+        <View style={[styles.bubble, styles.otherBubble]}>
+          <Text style={styles.myBubbleText}>{message.content}</Text>
+          <Text style={styles.messageTime}>{time}</Text>
+        </View>
+      )}
     </View>
   );
 }
-
 /* =========================================================
  * STYLES
  * ========================================================= */
@@ -1193,112 +1125,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  /* HEADER */
-
-  header: {
-    height: 58,
-
-    marginTop: 7,
-
-    paddingHorizontal: 8,
-
-    backgroundColor: '#FFFFFF',
-
-    borderRadius: 16,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
-
-    zIndex: 5,
-  },
-
-  backButton: {
-    width: 43,
-    height: 32,
-
-    borderRadius: 17,
-
-    backgroundColor: '#FFD080',
-
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  backText: {
-    color: '#FFFFFF',
-
-    fontSize: 27,
-    fontWeight: '800',
-
-    marginTop: -3,
-  },
-
-  headerUser: {
-    flex: 1,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  headerAvatar: {
-    width: 30,
-    height: 30,
-
-    borderRadius: 15,
-
-    marginRight: 8,
-  },
-
-  headerAvatarPlaceholder: {
-    width: 30,
-    height: 30,
-
-    borderRadius: 15,
-
-    backgroundColor: '#EEEEEE',
-
-    justifyContent: 'center',
-    alignItems: 'center',
-
-    marginRight: 8,
-  },
-
-  headerName: {
-    color: '#FF8A80',
-
-    fontSize: 17,
-    fontWeight: '700',
-  },
-
-  safetyIcon: {
-    width: 43,
-    height: 36,
-
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
   /* CHAT */
 
   chatArea: {
     flex: 1,
-
-    borderBottomLeftRadius: 17,
-    borderBottomRightRadius: 17,
-
+    marginTop: 14,
+    marginBottom: 14,
+    borderRadius: 22,
     overflow: 'hidden',
-
     position: 'relative',
+    backgroundColor: '#f3f3f3',
   },
 
   messages: {
@@ -1313,25 +1150,37 @@ const styles = StyleSheet.create({
 
   startConversation: {
     textAlign: 'center',
-
-    color: 'rgba(255,255,255,0.72)',
-
+    color: '#B9A59A',
     fontSize: 10,
-
     marginBottom: 12,
   },
 
-  emptyChat: {
-    alignItems: 'center',
-
+  emptyChatText: {
+    color: '#FF7F87',
+    fontSize: 14,
+    fontWeight: '600',
+    alignItems: 'center', 
     paddingTop: 60,
   },
 
-  emptyChatText: {
-    color: '#FFFFFF',
+  loadingText: {
+    marginTop: 9,
+    color: '#FF7F87',
+    fontSize: 12,
+  },
 
-    fontSize: 14,
-    fontWeight: '600',
+  retryButton: {
+    marginTop: 15,
+    backgroundColor: '#FF7F87',
+    paddingHorizontal: 22,
+    paddingVertical: 9,
+    borderRadius: 20,
+  },
+
+  retryText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 12,
   },
 
   messageRow: {
@@ -1357,7 +1206,7 @@ const styles = StyleSheet.create({
 
     borderRadius: 14,
 
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
 
     justifyContent: 'center',
     alignItems: 'center',
@@ -1373,25 +1222,29 @@ const styles = StyleSheet.create({
 
     borderRadius: 17,
   },
-
   otherBubble: {
     backgroundColor: '#FFFFFF',
-
     borderBottomLeftRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 1,
   },
 
   myBubble: {
-    backgroundColor: '#FFFDF9',
-
     borderBottomRightRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  myBubbleText: {
+    color: '#FFFFFF',
   },
 
-  bubbleText: {
-    color: '#333333',
-
-    fontSize: 13,
-
-    lineHeight: 19,
+  myMessageTime: {
+    color: 'rgba(255,255,255,0.8)',
   },
 
   messageTime: {
@@ -1473,33 +1326,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  loadingText: {
-    marginTop: 9,
-
-    color: '#FFFFFF',
-
-    fontSize: 12,
-  },
-
-  retryButton: {
-    marginTop: 15,
-
-    backgroundColor: '#FFFFFF',
-
-    paddingHorizontal: 22,
-    paddingVertical: 9,
-
-    borderRadius: 20,
-  },
-
-  retryText: {
-    color: '#FF7F87',
-
-    fontWeight: '700',
-
-    fontSize: 12,
-  },
-
+  
   /* MODAL */
 
   overlay: {
@@ -1669,6 +1496,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#222222',
     fontSize: 13,
+  },
+
+  messageAvatarImg: {
+    width: 27,
+    height: 27,
+    borderRadius: 14,
   },
 
 });

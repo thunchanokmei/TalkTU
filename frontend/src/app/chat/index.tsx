@@ -3,7 +3,6 @@ import React, {
   useEffect,
   useState,
 } from 'react';
-
 import {
   ActivityIndicator,
   Image,
@@ -15,6 +14,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+
+import Header from '../../components/chat/Header';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -153,21 +154,7 @@ export default function ChatPage() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
 
-        {/* ================= HEADER ================= */}
-
-        <View
-          style={[
-            styles.header,
-            { width: pageWidth },
-          ]}
-        >
-          <Image
-            source={require('../../../assets/images/chat-header.png')}
-            style={styles.chatLogo}
-            resizeMode="contain"
-          />
-        </View>
-
+        <Header variant="logo" />
         {/* ================= CHAT LIST ================= */}
 
         <View

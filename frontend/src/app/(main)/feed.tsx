@@ -47,8 +47,10 @@ import {
   supabase,
 } from '@/lib/supabase';
 
+
 import {
   createComment,
+  createReply,
   createPost,
   deletePost,
   getFeedPosts,
@@ -56,6 +58,7 @@ import {
   getPostImageUrl,
   togglePostLike,
 } from '../../features/feed/services/feedService';
+
 
 import type {
   FeedComment,
@@ -342,6 +345,12 @@ export default function FeedScreen() {
     setCommentText,
   ] =
     useState('');
+
+  const [
+    replyingTo,
+    setReplyingTo,
+  ] = useState<FeedComment | null>(null);
+
 
   const [
     commentSending,
@@ -968,6 +977,7 @@ export default function FeedScreen() {
       setComments(
         []
       );
+      setReplyingTo(null);
 
 
       try {
@@ -1018,99 +1028,80 @@ export default function FeedScreen() {
       setCommentText(
         ''
       );
+      setReplyingTo(null);
     };
 
 
-  const sendComment =
-    async () => {
-      if (
-        !selectedPost ||
-        !commentText.trim()
-      ) {
-        return;
-      }
+  const sendComment = async () => {
+    if (!selectedPost || !commentText.trim()) {
+      return;
+    }
 
+    try {
+      setCommentSending(true);
 
-      try {
-        setCommentSending(
-          true
+      if (replyingTo) {
+        await createReply(
+          selectedPost.post_id,
+          replyingTo.comment_id,
+          commentText
         );
-
-
+      } else {
         await createComment(
           selectedPost.post_id,
           commentText
         );
-
-
-        setCommentText(
-          ''
-        );
-
-
-        const data =
-          await getPostComments(
-            selectedPost.post_id
-          );
-
-
-        setComments(
-          data
-        );
-
-
-        const updateCount =
-          (
-            post:
-              FeedPost
-          ): FeedPost => ({
-            ...post,
-
-            comment_count:
-              data.length,
-          });
-
-
-        setPosts(
-          (current) =>
-            current.map(
-              (post) =>
-                post.post_id ===
-                  selectedPost.post_id
-                  ? updateCount(
-                    post
-                  )
-                  : post
-            )
-        );
-
-
-        setSelectedPost(
-          (current) =>
-            current &&
-              current.post_id ===
-              selectedPost.post_id
-              ? updateCount(
-                current
-              )
-              : current
-        );
-      } catch (error) {
-        console.error(
-          'Send comment error:',
-          error
-        );
-
-        Alert.alert(
-          'Error',
-          'Unable to send comment.'
-        );
-      } finally {
-        setCommentSending(
-          false
-        );
       }
-    };
+
+      setCommentText('');
+      setReplyingTo(null);
+
+      const data = await getPostComments(
+        selectedPost.post_id
+      );
+
+      setComments(data);
+
+      // Count top-level comments only.
+      const topLevelCount = data.filter(
+        (comment) => !comment.parent_comment_id
+      ).length;
+
+      const updateCount = (
+        post: FeedPost
+      ): FeedPost => ({
+        ...post,
+        comment_count: topLevelCount,
+      });
+
+      setPosts((current) =>
+        current.map((post) =>
+          post.post_id === selectedPost.post_id
+            ? updateCount(post)
+            : post
+        )
+      );
+
+      setSelectedPost((current) =>
+        current &&
+          current.post_id === selectedPost.post_id
+          ? updateCount(current)
+          : current
+      );
+    } catch (error) {
+      console.error('Send comment/reply error:', error);
+
+      Alert.alert(
+        'Error',
+        replyingTo
+          ? 'Unable to send reply.'
+          : 'Unable to send comment.'
+      );
+    } finally {
+      setCommentSending(false);
+    }
+  };
+
 
 
   /* ======================================================
@@ -1190,7 +1181,7 @@ export default function FeedScreen() {
       setReportDetails(
         ''
       );
-      
+
       setReportView(
         'form'
       );
@@ -2189,177 +2180,182 @@ export default function FeedScreen() {
         visible={detailVisible}
         animationType="slide"
         statusBarTranslucent={false}
-         onRequestClose={closePostDetail}
->
+        onRequestClose={closePostDetail}
+      >
         <SafeAreaProvider>
           <SafeAreaView
-      edges={['top', 'left', 'right']}
-      style={styles.detailSafeArea}
-    >
-          <KeyboardAvoidingView
-            style={{
-              flex: 1,
-            }}
-            behavior={
-              Platform.OS ===
-                'ios'
-                ? 'padding'
-                : undefined
-            }
+            edges={['top', 'left', 'right']}
+            style={styles.detailSafeArea}
           >
-
-            {/* DETAIL HEADER */}
-
-            <View
-              style={
-                styles.detailHeader
+            <KeyboardAvoidingView
+              style={{
+                flex: 1,
+              }}
+              behavior={
+                Platform.OS ===
+                  'ios'
+                  ? 'padding'
+                  : undefined
               }
             >
-              <TouchableOpacity
-                style={
-                  styles.detailBackButton
-                }
-                onPress={
-                  closePostDetail
-                }
-              >
-                <Ionicons
-                  name="arrow-back"
-                  size={25}
-                  color="#FF817D"
-                />
-              </TouchableOpacity>
 
-              <Text
-                style={
-                  styles.detailHeaderTitle
-                }
-              >
-                Post
-              </Text>
+              {/* DETAIL HEADER */}
 
               <View
-                style={{
-                  width: 40,
-                }}
-              />
-            </View>
-
-
-            {detailPost ? (
-              <FlatList
-                data={
-                  comments
+                style={
+                  styles.detailHeader
                 }
+              >
+                <TouchableOpacity
+                  style={
+                    styles.detailBackButton
+                  }
+                  onPress={
+                    closePostDetail
+                  }
+                >
+                  <Ionicons
+                    name="arrow-back"
+                    size={25}
+                    color="#FF817D"
+                  />
+                </TouchableOpacity>
 
-                keyExtractor={(
-                  item
-                ) =>
-                  item.comment_id
-                }
+                <Text
+                  style={
+                    styles.detailHeaderTitle
+                  }
+                >
+                  Post
+                </Text>
 
-                contentContainerStyle={
-                  styles.commentsList
-                }
+                <View
+                  style={{
+                    width: 40,
+                  }}
+                />
+              </View>
 
-                ListHeaderComponent={
-                  <View>
-                    <FeedPostCard
-                      post={
-                        detailPost
-                      }
 
-                      onOpen={() =>
-                        undefined
-                      }
+              {detailPost ? (
+                <FlatList
+                  data={
+                    comments
+                  }
 
-                      onLike={() =>
-                        handleLike(
+                  keyExtractor={(
+                    item
+                  ) =>
+                    item.comment_id
+                  }
+
+                  contentContainerStyle={
+                    styles.commentsList
+                  }
+
+                  ListHeaderComponent={
+                    <View>
+                      <FeedPostCard
+                        post={
                           detailPost
-                        )
-                      }
-
-                      onComment={() =>
-                        undefined
-                      }
-
-                      onMore={() =>
-                        openPostOptions(
-                          detailPost
-                        )
-                      }
-
-                      detailMode
-                    />
-
-
-                    <View
-                      style={
-                        styles.commentsTitleRow
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.commentsTitle
                         }
-                      >
-                        Comments
-                      </Text>
 
-                      <Text
-                        style={
-                          styles.commentsCount
+                        onOpen={() =>
+                          undefined
                         }
-                      >
-                        {
-                          detailPost
-                            .comment_count
-                        }
-                      </Text>
-                    </View>
-                  </View>
-                }
 
-                ListEmptyComponent={
-                  commentsLoading ? (
-                    <ActivityIndicator
-                      style={{
-                        marginTop:
-                          30,
-                      }}
-                      color="#FF7F87"
-                    />
-                  ) : (
-                    <View
-                      style={
-                        styles.noComments
-                      }
-                    >
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={36}
-                        color="#CCCCCC"
+                        onLike={() =>
+                          handleLike(
+                            detailPost
+                          )
+                        }
+
+                        onComment={() =>
+                          undefined
+                        }
+
+                        onMore={() =>
+                          openPostOptions(
+                            detailPost
+                          )
+                        }
+
+                        detailMode
                       />
 
-                      <Text
+
+                      <View
                         style={
-                          styles.noCommentsText
+                          styles.commentsTitleRow
                         }
                       >
-                        ยังไม่มีคอมเมนต์
-                      </Text>
+                        <Text
+                          style={
+                            styles.commentsTitle
+                          }
+                        >
+                          Comments
+                        </Text>
+
+                        <Text
+                          style={
+                            styles.commentsCount
+                          }
+                        >
+                          {
+                            detailPost
+                              .comment_count
+                          }
+                        </Text>
+                      </View>
                     </View>
-                  )
+                  }
+
+                  ListEmptyComponent={
+                    commentsLoading ? (
+                      <ActivityIndicator
+                        style={{
+                          marginTop:
+                            30,
+                        }}
+                        color="#FF7F87"
+                      />
+                    ) : (
+                      <View
+                        style={
+                          styles.noComments
+                        }
+                      >
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={36}
+                          color="#CCCCCC"
+                        />
+
+                        <Text
+                          style={
+                            styles.noCommentsText
+                          }
+                        >
+                          ยังไม่มีคอมเมนต์
+                        </Text>
+                      </View>
+                    )
+                  }
+
+              renderItem={({ item }) => {
+                // Replies will be rendered inside their parent comment.
+                if (item.parent_comment_id) {
+                  return null;
                 }
 
-                renderItem={({
-                  item,
-                }) => (
-                  <View
-                    style={
-                      styles.commentRow
-                    }
-                  >
+                const replies = comments.filter(
+                  (comment) =>
+                    comment.parent_comment_id === item.comment_id
+                );
+
+                return (
+                  <View style={styles.commentRow}>
                     <View
                       style={[
                         styles.commentAvatar,
@@ -2371,139 +2367,196 @@ export default function FeedScreen() {
                       <Ionicons
                         name="person"
                         size={16}
-                        color={
-                          item.is_mine
-                            ? '#FFFFFF'
-                            : '#8E8E8E'
-                        }
+                        color={item.is_mine ? '#FFFFFF' : '#8E8E8E'}
                       />
                     </View>
 
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.commentBubble}>
+                        <View style={styles.commentTop}>
+                          <Text style={styles.commentAuthor}>
+                            {item.is_mine ? 'anonymous · You' : 'anonymous'}
+                          </Text>
 
-                    <View
-                      style={
-                        styles.commentBubble
-                      }
-                    >
-                      <View
-                        style={
-                          styles.commentTop
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.commentAuthor
-                          }
-                        >
-                          {item.is_mine
-                            ? 'anonymous · You'
-                            : 'anonymous'}
-                        </Text>
+                          <Text style={styles.commentTime}>
+                            {formatDate(item.created_at)}
+                          </Text>
+                        </View>
 
-                        <Text
-                          style={
-                            styles.commentTime
-                          }
-                        >
-                          {formatDate(
-                            item.created_at
-                          )}
+                        <Text style={styles.commentContent}>
+                          {item.content}
                         </Text>
                       </View>
 
-
-                      <Text
-                        style={
-                          styles.commentContent
-                        }
+                      <TouchableOpacity
+                        onPress={() => {
+                          setReplyingTo(item);
+                          setCommentText('');
+                        }}
+                        style={{ paddingVertical: 7, paddingHorizontal: 8 }}
                       >
-                        {
-                          item.content
-                        }
-                      </Text>
+                        <Text style={{ color: '#FF817D', fontSize: 12, fontWeight: '600' }}>
+                          Reply
+                        </Text>
+                      </TouchableOpacity>
+
+                      {replies.map((reply) => (
+                        <View
+                          key={reply.comment_id}
+                          style={{
+                            flexDirection: 'row',
+                            marginLeft: 18,
+                            marginBottom: 10,
+                            gap: 8,
+                          }}
+                        >
+                          <View
+                            style={[
+                              styles.commentAvatar,
+                              reply.is_mine
+                                ? styles.avatarMine
+                                : styles.avatarOther,
+                            ]}
+                          >
+                            <Ionicons
+                              name="person"
+                              size={14}
+                              color={reply.is_mine ? '#FFFFFF' : '#8E8E8E'}
+                            />
+                          </View>
+
+                          <View style={[styles.commentBubble, { flex: 1 }]}>
+                            <View style={styles.commentTop}>
+                              <Text style={styles.commentAuthor}>
+                                {reply.is_mine ? 'anonymous · You' : 'anonymous'}
+                              </Text>
+
+                              <Text style={styles.commentTime}>
+                                {formatDate(reply.created_at)}
+                              </Text>
+                            </View>
+
+                            <Text style={styles.commentContent}>
+                              {reply.content}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
                     </View>
                   </View>
-                )}
-              />
+                );
+              }}
+            />
             ) : null}
 
 
-            {/* COMMENT INPUT */}
+              {/* COMMENT INPUT */}
 
-            {detailPost ? (
-              <View
-                style={
-                  styles.commentInputContainer
-                }
-              >
+
+              {replyingTo ? (
+                <View
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    backgroundColor: '#FFF5F4',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Text style={{ color: '#FF817D', fontSize: 13, flex: 1 }}>
+                    Replying to {replyingTo.is_mine ? 'your comment' : 'anonymous'}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setReplyingTo(null);
+                      setCommentText('');
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={20} color="#FF817D" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+
+              {detailPost ? (
+
                 <View
                   style={
-                    styles.commentInputAvatar
+                    styles.commentInputContainer
                   }
                 >
-                  <Ionicons
-                    name="person"
-                    size={16}
-                    color="#FFFFFF"
-                  />
-                </View>
-
-                <TextInput
-                  value={
-                    commentText
-                  }
-
-                  onChangeText={
-                    setCommentText
-                  }
-
-                  placeholder="Write a comment..."
-
-                  placeholderTextColor="#AAAAAA"
-
-                  maxLength={
-                    1000
-                  }
-
-                  style={[
-                    styles.commentInput,
-                    webNoOutline,
-                  ]}
-                />
-
-
-                <TouchableOpacity
-                  disabled={
-                    commentSending ||
-                    !commentText.trim()
-                  }
-                  style={[
-                    styles.sendButton,
-
-                    !commentText.trim() &&
-                    styles.sendButtonDisabled,
-                  ]}
-                  onPress={
-                    sendComment
-                  }
-                >
-                  {commentSending ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFFFFF"
-                    />
-                  ) : (
+                  <View
+                    style={
+                      styles.commentInputAvatar
+                    }
+                  >
                     <Ionicons
-                      name="send"
-                      size={17}
+                      name="person"
+                      size={16}
                       color="#FFFFFF"
                     />
-                  )}
-                </TouchableOpacity>
-              </View>
-            ) : null}
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+                  </View>
+
+                  <TextInput
+                    value={
+                      commentText
+                    }
+
+                    onChangeText={
+                      setCommentText
+                    }
+
+                    placeholder={
+                      replyingTo ? 'Write a reply...' : 'Write a comment...'
+                    }
+
+                    placeholderTextColor="#AAAAAA"
+
+                    maxLength={
+                      1000
+                    }
+
+                    style={[
+                      styles.commentInput,
+                      webNoOutline,
+                    ]}
+                  />
+
+
+                  <TouchableOpacity
+                    disabled={
+                      commentSending ||
+                      !commentText.trim()
+                    }
+                    style={[
+                      styles.sendButton,
+
+                      !commentText.trim() &&
+                      styles.sendButtonDisabled,
+                    ]}
+                    onPress={
+                      sendComment
+                    }
+                  >
+                    {commentSending ? (
+                      <ActivityIndicator
+                        size="small"
+                        color="#FFFFFF"
+                      />
+                    ) : (
+                      <Ionicons
+                        name="send"
+                        size={17}
+                        color="#FFFFFF"
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </KeyboardAvoidingView>
+          </SafeAreaView>
         </SafeAreaProvider>
       </Modal>
 
@@ -3711,14 +3764,14 @@ const styles =
 
     header: {
       marginTop: 4,
-      alignItems:'center',
-      justifyContent:'center',
-      backgroundColor:'#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
     },
 
     headerLogo: {
-      width:160,
-      height:75,
+      width: 160,
+      height: 75,
     },
 
 
@@ -4281,7 +4334,7 @@ const styles =
     createModalCard: {
       maxHeight:
         '90%',
-      padding:18,
+      padding: 18,
       overflow:
         'hidden',
 
@@ -4561,16 +4614,16 @@ const styles =
     },
 
     detailHeader: {
-      height:56,
+      height: 56,
 
-      paddingHorizontal:12,
+      paddingHorizontal: 12,
 
-      flexDirection:'row',
-      alignItems:'center',
-      justifyContent:'space-between',
-      backgroundColor:'#FFFFFF',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: '#FFFFFF',
       borderBottomWidth:
-StyleSheet
+        StyleSheet
           .hairlineWidth,
 
       borderBottomColor:
@@ -4578,10 +4631,10 @@ StyleSheet
     },
 
     detailBackButton: {
-      width:40,
-      height:40,
-      alignItems:'center',
-      justifyContent:'center',
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     detailHeaderTitle: {
@@ -4756,11 +4809,11 @@ StyleSheet
     },
 
     commentInputContainer: {
-      paddingHorizontal:15,
-      paddingVertical:35,
-      flexDirection:'row',
-      alignItems:'center',
-      gap:10,
+      paddingHorizontal: 15,
+      paddingVertical: 35,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
       backgroundColor:
         '#FFFFFF',
       borderTopWidth:
@@ -4771,21 +4824,21 @@ StyleSheet
     },
 
     commentInputAvatar: {
-      width:34,
-      height:34,
-      borderRadius:17,
-      alignItems:'center',
-      justifyContent:'center',
-      backgroundColor:'#FF9B88',
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FF9B88',
     },
     commentInput: {
-      flex:1,
-      minHeight:50,
-      paddingHorizontal:14,
-      borderRadius:20,
-      fontSize:13,
-      color:'#222222',
-      backgroundColor:'#F2F2F2',
+      flex: 1,
+      minHeight: 50,
+      paddingHorizontal: 14,
+      borderRadius: 20,
+      fontSize: 13,
+      color: '#222222',
+      backgroundColor: '#F2F2F2',
     },
     sendButton: {
       width:
@@ -4818,16 +4871,16 @@ StyleSheet
     ===================================================== */
 
     optionsOverlay: {
-      flex:1,
-      justifyContent:'flex-end',
-      backgroundColor:'rgba(0, 0, 0, 0.35)',
+      flex: 1,
+      justifyContent: 'flex-end',
+      backgroundColor: 'rgba(0, 0, 0, 0.35)',
     },
     optionsBackdrop: {
-      position:  'absolute',
-      top:0,
-      left:0,
-      right:0,
-      bottom:0,
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
     },
     optionsSheet: {
       alignSelf:
@@ -4940,9 +4993,9 @@ StyleSheet
     ===================================================== */
 
     deleteOverlay: {
-      flex:1,
-      paddingHorizontal:24,
-      alignItems:'center',
+      flex: 1,
+      paddingHorizontal: 24,
+      alignItems: 'center',
 
       justifyContent:
         'center',
@@ -5197,7 +5250,7 @@ StyleSheet
       padding:
         18,
 
-      borderRadius:30,
+      borderRadius: 30,
 
       backgroundColor:
         '#FFFFFF',

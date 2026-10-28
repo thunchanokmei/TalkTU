@@ -371,6 +371,33 @@ export async function createComment(
     return data;
 }
 
+export async function createReply(
+  postId: string,
+  parentCommentId: string,
+  content: string
+): Promise<string> {
+  const cleanContent = content.trim();
+
+  if (!cleanContent) {
+    throw new Error('Reply is required.');
+  }
+
+  const { data, error } = await supabase.rpc(
+    'create_anonymous_reply',
+    {
+      p_post_id: postId,
+      p_parent_comment_id: parentCommentId,
+      p_content: cleanContent,
+    }
+  );
+
+  if (error) {
+    throw error;
+  }
+
+  return data as string;
+}
+
 
 /* ======================================================
    DELETE OWN POST

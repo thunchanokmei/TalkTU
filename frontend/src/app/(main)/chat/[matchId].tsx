@@ -120,6 +120,44 @@ const insets = useSafeAreaInsets();
   const [reportDetails, setReportDetails] = useState('');
   const [safetyBusy, setSafetyBusy] = useState(false);
   const [safetySuccessMessage, setSafetySuccessMessage] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
+  const didInitialScroll = useRef(false);
+
+useEffect(() => {
+  if (loading || error || messages.length === 0) return;
+  if (didInitialScroll.current) return;
+
+  let cancelled = false;
+
+  const scrollAfterLayout = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+
+        scrollRef.current?.scrollToEnd({
+          animated: false,
+        });
+
+        // ตรวจอีกครั้งหลัง layout ปรับขนาดเสร็จ
+        setTimeout(() => {
+          if (cancelled) return;
+
+          scrollRef.current?.scrollToEnd({
+            animated: false,
+          });
+
+          didInitialScroll.current = true;
+        }, 250);
+      });
+    });
+  };
+
+  scrollAfterLayout();
+
+  return () => {
+    cancelled = true;
+  };
+}, [loading, error, messages.length]);
 
 
   const scrollRef =
@@ -542,19 +580,17 @@ router.push({
       setSafetyBusy(false);
     }
   };
+    const scrollToLatest = (animated = false) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated });
+    });
+  };
+
 
   /* ================= UI ================= */
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={
-          Platform.OS === 'ios'
-            ? 'padding'
-            : undefined
-        }
-      >
 
         {/* ================= HEADER ================= */}
         <Header
@@ -563,6 +599,11 @@ router.push({
           onReportPress={openSafety}
         />
 
+        <KeyboardAvoidingView
+         style={styles.container}
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  keyboardVerticalOffset={0}
+      >
 
         {/* ================= CHAT ================= */}
 
@@ -693,8 +734,6 @@ router.push({
                     } as any),
                   ]}
                 />
-                <View style={{ paddingBottom: insets.bottom }}></View>
-
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
@@ -1097,33 +1136,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-
-  container: {
-    flex: 1,
-    alignItems: 'center',
-  },
+container: {
+  flex: 1,
+  alignItems: 'center',
+  width: '100%',
+  minHeight: 0,
+},
 
 
   /* CHAT */
+chatArea: {
+  flex: 1,
+  minHeight: 0,
+  marginTop: 14,
+  marginBottom: 14,
+  borderRadius: 22,
+  overflow: 'hidden',
+  position: 'relative',
+  flexDirection: 'column',
+  backgroundColor: '#f3f3f3',
+},
 
-  chatArea: {
-    flex: 1,
-    marginTop: 14,
-    marginBottom: 14,
-    borderRadius: 22,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#f3f3f3',
-  },
-
-  messages: {
-    flex: 1,
-  },
+messages: {
+  flex: 1,
+  minHeight: 0,
+},
 
   messageContent: {
     paddingHorizontal: 10,
     paddingTop: 18,
-    paddingBottom: 85,
+    paddingBottom: 16,
   },
 
   startConversation: {
@@ -1240,35 +1282,26 @@ const styles = StyleSheet.create({
 
   /* INPUT */
 
-  inputBar: {
-    position: 'absolute',
-
-    left: 10,
-    right: 10,
-    bottom: 12,
-
-    minHeight: 43,
-
-    backgroundColor: '#FFFFFF',
-
-    borderRadius: 23,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    paddingLeft: 15,
-    paddingRight: 5,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
+inputBar: {
+  position: 'relative',
+  left: undefined,
+  right: undefined,
+  bottom: undefined,
+  marginHorizontal: 10,
+  marginBottom: 12,
+  minHeight: 43,
+  backgroundColor: '#FFFFFF',
+  borderRadius: 23,
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingLeft: 15,
+  paddingRight: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+},
   input: {
     flex: 1,
 

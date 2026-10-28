@@ -15,9 +15,9 @@ import {
   View,
 } from 'react-native';
 
-import Header from '../../../components/chat/Header';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import AppHeader from '../../../components/AppHeader';
+
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 
@@ -65,13 +65,13 @@ export default function ChatPage() {
         );
         setChats([]);
       } else {
-  console.log(
-    'CHAT LIST DATA:',
-    JSON.stringify(result.data, null, 2)
-  );
+        console.log(
+          'CHAT LIST DATA:',
+          JSON.stringify(result.data, null, 2)
+        );
 
-  setChats(result.data ?? []);
-}
+        setChats(result.data ?? []);
+      }
 
       setLoading(false);
     },
@@ -105,8 +105,9 @@ export default function ChatPage() {
   };
 
   const openChat = (item: ChatListItem) => {
+    console.log('BEFORE PUSH:', item.match_id);
     router.push({
-      pathname: '/(main)/chat/[matchId]',
+      pathname: '/chat/[matchId]',
       params: {
         matchId: item.match_id,
         name: item.other_display_name ?? 'Unknown',
@@ -150,26 +151,18 @@ export default function ChatPage() {
   };
 
   return (
-    // ✅ 2. เพิ่ม edges={['top']}
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    // AppHeader เว้นพื้นที่ใต้ status bar ให้เองแล้ว จึงไม่ใช้ SafeAreaView ด้านบน
+    <View style={styles.screen}>
+
+      {/* ================= HEADER (กลาง: เหมือนหน้า Like / Profile) ================= */}
+
+      <AppHeader
+        logo={require('../../../../assets/images/chat-header.jpeg')}
+      />
+
       <View style={styles.container}>
 
-        <Header variant="logo" />
-        {/* ================= HEADER ================= */}
 
-        <View
-          style={[
-            styles.header,
-            { width: pageWidth },
-          ]}
-        >
-          <Image
-            // ✅ 3. เพิ่ม ../ อีกชั้น (ถ้าไฟล์ย้ายเข้า (main)/chat แล้วหา assets ไม่เจอ)
-            source={require('../../../../assets/images/chat-header.png')}
-            style={styles.chatLogo}
-            resizeMode="contain"
-          />
-        </View>
 
         {/* ================= CHAT LIST ================= */}
 
@@ -258,9 +251,10 @@ export default function ChatPage() {
                   <TouchableOpacity
                     key={item.match_id}
                     activeOpacity={0.82}
-                    onPress={() =>
+                    onPress={() =>{
+                      console.log('CHAT CARD TAPPED');
                       openChat(item)
-                    }
+                    }}
                     style={styles.chatCard}
                   >
                     {/* PROFILE IMAGE */}
@@ -321,50 +315,19 @@ export default function ChatPage() {
         {/* ✅ 1. ลบ <BottomNavigation activeTab="chat"/> ออกแล้ว */}
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  screen: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
   },
 
   container: {
     flex: 1,
     alignItems: 'center',
-  },
-
-  /* HEADER */
-
-  header: {
-    height: 78,
-
-    marginTop: 7,
-
-    backgroundColor: '#FFFFFF',
-
-    borderRadius: 17,
-
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-
-    paddingLeft: 18,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-
-  chatLogo: {
-    width: 105,
-    height: 60,
   },
 
   /* LIST */
@@ -374,7 +337,8 @@ const styles = StyleSheet.create({
   },
 
   listContent: {
-    paddingTop: 24,
+    // AppHeader เว้นระยะใต้ header ให้แล้ว
+    paddingTop: 0,
     paddingBottom: 20,
   },
 

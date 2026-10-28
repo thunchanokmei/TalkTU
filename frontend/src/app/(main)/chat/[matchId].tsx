@@ -26,10 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import {
-  router,
-  useLocalSearchParams,
-} from 'expo-router';
+import {router,useLocalSearchParams,} from 'expo-router';
 
 
 import { supabase } from '../../../lib/supabase';
@@ -45,15 +42,12 @@ import {
   unsubscribeFromChannel,
 } from '../../../features/chat/services/chatService';
 
-import type {
-  ChatReportReason,
-} from '../../../features/chat/services/chatService';
-
-import type {
-  ChatMessage,
-} from '../../../features/chat/types';
+import type {ChatReportReason,} from '../../../features/chat/services/chatService';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type {ChatMessage,} from '../../../features/chat/types';
 
 export default function ChatRoom() {
+  console.log('CHAT ROOM SCREEN RENDERED');
   const params =
     useLocalSearchParams<{
       matchId?: string;
@@ -68,6 +62,8 @@ export default function ChatRoom() {
     typeof params.matchId === 'string'
       ? params.matchId
       : '';
+      console.log('CHAT ROOM PARAMS:', params);
+      console.log('CHAT ROOM matchId:', matchId);
 
   const name =
     typeof params.name === 'string'
@@ -110,7 +106,7 @@ export default function ChatRoom() {
 
 
   const [showSafety, setShowSafety] = useState(false);
-
+const insets = useSafeAreaInsets();
   const [safetyView, setSafetyView] = useState<
     | 'menu'
     | 'unmatchConfirm'
@@ -193,45 +189,34 @@ export default function ChatRoom() {
   }, [loadInitialMessages]);
 
   /* ================= REALTIME ================= */
+useEffect(() => {
+  if (!matchId) return;
 
-  useEffect(() => {
-    if (!matchId) {
-      return;
-    }
+  const channel = supabase
+    .channel(`chat:${matchId}:${Date.now()}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `match_id=eq.${matchId}`,
+      },
+      (payload) => {
+        const newMsg = payload.new as any;
+        setMessages((prev) =>
+          prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+        );
+      }
+    )
+    .subscribe((status) => {
+      console.log('REALTIME STATUS:', status);
+    });
 
-    const channel =
-      subscribeToMessages(
-        matchId,
-        (message) => {
-          setMessages((current) => {
-            if (
-              current.some(
-                (item) =>
-                  item.id === message.id
-              )
-            ) {
-              return current;
-            }
-
-            return [
-              ...current,
-              message,
-            ];
-          });
-
-          setTimeout(() => {
-            scrollRef.current?.scrollToEnd({
-              animated: true,
-            });
-          }, 100);
-        }
-      );
-
-    return () => {
-      void unsubscribeFromChannel(channel);
-    };
-  }, [matchId]);
-
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [matchId]);
   /* ================= OLDER ================= */
 
   const loadOlderMessages = async () => {
@@ -300,54 +285,37 @@ export default function ChatRoom() {
 
   /* ================= SEND ================= */
 
-  const handleSend = async () => {
-    const content =
-      input.trim();
+const handleSend = async () => {
+  const content = input.trim();
 
-    if (
-      !content ||
-      sending ||
-      !matchId
-    ) {
-      return;
-    }
+  if (!content || sending || !matchId) {
+    return;
+  }
 
-    if (content.length > 5000) {
-      Alert.alert(
-        'Message too long',
-        'Message cannot exceed 5000 characters.'
-      );
-      return;
-    }
+  if (content.length > 5000) {
+    Alert.alert('Message too long', 'Message cannot exceed 5000 characters.');
+    return;
+  }
 
-    setSending(true);
+  setSending(true);
 
-    const result =
-      await sendMessage(
-        matchId,
-        content
-      );
+  const result = await sendMessage(matchId, content);
 
-    if (result.error) {
-      Alert.alert(
-        'Unable to send message',
-        result.error.message
-      );
-
-      setSending(false);
-      return;
-    }
-
-    setInput('');
+  if (result.error) {
+    Alert.alert('Unable to send message', result.error.message);
     setSending(false);
+    return;
+  }
 
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({
-        animated: true,
-      });
-    }, 100);
-  };
+  console.log('SEND RESULT:', JSON.stringify(result));
 
+  setInput('');
+  setSending(false);
+
+  setTimeout(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, 100);
+};
   /* ================= SCROLL ================= */
 
   const handleScroll = (
@@ -403,8 +371,13 @@ export default function ChatRoom() {
   const openProfile = async () => {
     try {
       const userId = await getOtherUserId();
-      router.push(`/user/${userId}` as any);
-    } catch (error) {
+router.push({
+  pathname: '/user/[userId]',
+  params: {
+    userId,
+    source: 'chat',
+  },
+} as any);    } catch (error) {
       Alert.alert(
         'Unable to open profile',
         error instanceof Error ? error.message : 'Please try again.'
@@ -668,7 +641,7 @@ export default function ChatRoom() {
                 {messages.length === 0 ? (
                   <View
                     style={
-                      styles.emptyChat
+                      styles.emptyChatText
                     }
                   >
                     <Text
@@ -720,6 +693,7 @@ export default function ChatRoom() {
                     } as any),
                   ]}
                 />
+                <View style={{ paddingBottom: insets.bottom }}></View>
 
                 <TouchableOpacity
                   style={[
@@ -1107,7 +1081,7 @@ function MessageBubble({
         </LinearGradient>
       ) : (
         <View style={[styles.bubble, styles.otherBubble]}>
-          <Text style={styles.myBubbleText}>{message.content}</Text>
+          <Text style={styles.otherBubbleText}>{message.content}</Text>
           <Text style={styles.messageTime}>{time}</Text>
         </View>
       )}
@@ -1227,13 +1201,16 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   otherBubble: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#ffffff',
     borderBottomLeftRadius: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 3,
     elevation: 1,
+  },
+  otherBubbleText: {
+    color: '#2a2929',
   },
 
   myBubble: {

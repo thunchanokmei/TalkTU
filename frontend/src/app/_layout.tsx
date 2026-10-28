@@ -15,4 +15,5 @@ export default function RootLayout() {
       <Stack.Screen name="account-settings" options={slideUp} />
     </Stack>
   );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

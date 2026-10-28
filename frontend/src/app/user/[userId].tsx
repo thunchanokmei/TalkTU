@@ -63,7 +63,6 @@ type Candidate = {
   department: string | null;
   photos: CandidatePhoto[];
   interests: CandidateInterest[];
-
   locations?: CandidateLocation[];
 };
 
@@ -91,6 +90,16 @@ export default function UserProfileScreen() {
     mode?: SwipeMode;
     source?: 'swipe' | 'like' | 'chat';
   }>();
+
+  const handleBack = () => {
+  if (router.canGoBack()) {
+    router.back();
+  } else if (source === 'chat') {
+    router.replace('/swipe' as any);
+  } else {
+    router.replace('/swipe' as any);
+  }
+};
 
   const { width } = useWindowDimensions();
 
@@ -122,61 +131,70 @@ export default function UserProfileScreen() {
   const [fetchedProfile, setFetchedProfile] = useState<Candidate | null>(null);
   const [fetching, setFetching] = useState(false);
 
-  React.useEffect(() => {
-    if (parsedCandidate || !userId) return;
 
-    let cancelled = false;
+React.useEffect(() => {
+  if (parsedCandidate || !userId) return;
 
-    (async () => {
-      try {
-        setFetching(true);
+  let cancelled = false;
 
-        const [
-          { data: p, error: pErr },
-          { data: photoRows, error: phErr },
-        ] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('id', userId)
-            .maybeSingle(),
-          supabase
-            .from('profile_photos')
-            .select('id, storage_path, position')
-            .eq('user_id', userId)
-            .order('position', { ascending: true }),
-        ]);
+  const loadProfile = async () => {
+    console.log('LOAD CHAT PROFILE RPC:', userId);
+    setFetching(true);
 
-        if (pErr) throw pErr;
-        if (phErr) throw phErr;
-        if (!p) return;
+    try {
+      const { data, error } = await supabase.rpc(
+        'get_chat_user_profile',
+        { p_user_id: userId }
+      );
 
-        if (!cancelled) {
-          setFetchedProfile({
-            user_id: userId,
-            display_name: p.display_name ?? 'User',
-            age: 0,
-            tu_generation: 0,
-            bio: null,
-            height_cm: null,
-            gender_identity: null,
-            faculty: '',
-            department: null,
-            photos: photoRows ?? [],
-            interests: [],
-          });
-        }
-      } catch (error) {
-        console.error('Load profile from chat error:', error);
-      } finally {
-        if (!cancelled) setFetching(false);
-      }
-    })();
+      console.log('CHAT PROFILE RPC RESULT:', { data, error });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [parsedCandidate, userId]);
+      if (error) throw error;
+      if (!data) throw new Error('Profile data is empty');
+      if (cancelled) return;
+
+      const result = data as {
+        user_id: string;
+        display_name: string;
+        age: number | null;
+        tu_generation: number | null;
+        bio: string | null;
+        height_cm: number | null;
+        gender_identity: Candidate['gender_identity'];
+        faculty: string | null;
+        department: string | null;
+        photos: CandidatePhoto[];
+        interests: CandidateInterest[];
+        locations: { id: number; name: string }[];
+      };
+
+      setFetchedProfile({
+        user_id: result.user_id,
+        display_name: result.display_name || 'User',
+        age: result.age ?? 0,
+        tu_generation: result.tu_generation ?? 0,
+        bio: result.bio,
+        height_cm: result.height_cm,
+        gender_identity: result.gender_identity,
+        faculty: result.faculty ?? '',
+        department: result.department ?? null,
+        photos: result.photos ?? [],
+        interests: result.interests ?? [],
+        locations: result.locations ?? [],
+      });
+    } catch (error) {
+      console.error('Load profile from chat RPC error:', error);
+    } finally {
+      if (!cancelled) setFetching(false);
+    }
+  };
+
+  void loadProfile();
+
+  return () => {
+    cancelled = true;
+  };
+}, [parsedCandidate, userId]);
 
   const profile = parsedCandidate ?? fetchedProfile;
   const fromChat = !parsedCandidate;
@@ -202,7 +220,7 @@ export default function UserProfileScreen() {
           </Text>
 
           <TouchableOpacity
-            onPress={() => router.back()}
+onPress={handleBack}
             style={styles.backFallbackButton}
           >
             <Text style={styles.backFallbackText}>Go back</Text>
@@ -353,7 +371,7 @@ export default function UserProfileScreen() {
 
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.back()}
+            onPress={handleBack}
             activeOpacity={0.8}
           >
             <Ionicons
@@ -567,7 +585,7 @@ export default function UserProfileScreen() {
         ) : null}
 
         {/* PASS / LIKE */}
-
+{!fromChat && (
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.actionButton}
@@ -611,6 +629,7 @@ export default function UserProfileScreen() {
             )}
           </TouchableOpacity>
         </View>
+        )}
       </ScrollView>
       <MatchModal
         visible={showMatchModal}

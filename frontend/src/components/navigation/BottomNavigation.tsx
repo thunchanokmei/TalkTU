@@ -74,6 +74,8 @@ useEffect(() => {
   const loadTotalUnread = async () => {
     const result = await getMyUnreadCounts();
 
+    if (!mounted) return;
+
     if (result.error) {
       console.error('BOTTOM NAV UNREAD ERROR:', result.error);
       return;
@@ -84,17 +86,13 @@ useEffect(() => {
       0
     );
 
-    if (mounted) {
-      setTotalUnread(total);
-    }
+    setTotalUnread(total);
   };
 
-  // โหลดจำนวนแจ้งเตือนตอนแสดง BottomNav
   void loadTotalUnread();
 
-  // อัปเดตเมื่อมีข้อความใหม่ หรือ read_at เปลี่ยน
   const channel = supabase
-    .channel('bottom-nav-unread')
+    .channel(`bottom-nav-unread-${Date.now()}`)
     .on(
       'postgres_changes',
       {

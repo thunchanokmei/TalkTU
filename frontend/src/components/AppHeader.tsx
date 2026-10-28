@@ -38,11 +38,10 @@ export default function AppHeader({ logo, right }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
 
   // ล็อกความสูงโลโก้ให้เท่ากันทุกหน้า แล้วคำนวณความกว้างตามสัดส่วนรูป
-  const resolved = Image.resolveAssetSource(logo);
-
+  const resolvedLogo = Image.resolveAssetSource(logo);
   const ratio =
-    resolved?.width && resolved?.height
-      ? resolved.width / resolved.height
+    resolvedLogo?.width && resolvedLogo?.height
+      ? resolvedLogo.width / resolvedLogo.height
       : FALLBACK_RATIO;
 
   let logoHeight = LOGO_HEIGHT;

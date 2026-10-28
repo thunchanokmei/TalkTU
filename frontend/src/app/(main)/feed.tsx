@@ -2401,7 +2401,7 @@ export default function FeedScreen() {
                               setCommentText('');
                             }}
                             style={{ paddingVertical: 7, paddingHorizontal: 8,marginLeft: 5,
-  marginBottom: 1, }}
+  marginBottom: 1, marginTop: -2,}}
                           >
                             <Text style={{ color: '#8E8E8E', fontSize: 12, fontWeight: '600' }}>
                               Reply

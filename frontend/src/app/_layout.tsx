@@ -1,4 +1,6 @@
+
 import { Stack } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const slideUp = {
   presentation: 'fullScreenModal',
@@ -7,13 +9,14 @@ const slideUp = {
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* ...screen เดิมของคุณ... */}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Stack screenOptions={{ headerShown: false }}>
+        {/* ...screen เดิมของคุณ... */}
 
-      <Stack.Screen name="edit-profile" options={slideUp} />
-      <Stack.Screen name="preview-profile" options={slideUp} />
-      <Stack.Screen name="account-settings" options={slideUp} />
-    </Stack>
+        <Stack.Screen name="edit-profile" options={slideUp} />
+        <Stack.Screen name="preview-profile" options={slideUp} />
+        <Stack.Screen name="account-settings" options={slideUp} />
+      </Stack>
+    </GestureHandlerRootView>
   );
-  return <Stack screenOptions={{ headerShown: false }} />;
 }

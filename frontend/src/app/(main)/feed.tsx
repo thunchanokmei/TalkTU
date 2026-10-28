@@ -3566,19 +3566,16 @@ function ZoomablePostImage({
   const startScale = useSharedValue(1);
 
   const pinch = Gesture.Pinch()
-    .onBegin(() => {
+    .onStart(() => {
       startScale.value = scale.value;
     })
     .onUpdate((event) => {
       scale.value = Math.max(
         1,
-        Math.min(
-          4,
-          startScale.value * event.scale
-        )
+        Math.min(4, startScale.value * event.scale)
       );
     })
-    .onEnd(() => {
+    .onFinalize(() => {
       if (scale.value < 1) {
         scale.value = 1;
       }
@@ -3609,130 +3606,152 @@ function ZoomablePostImage({
    POST IMAGE GRID
 ========================================================= */
 
-function PostImages({
-  post,
-}: {
-  post:
-  FeedPost;
-}) {
-  const images =
-    post.images ?? [];
-  console.log(
-    'PostImages debug:',
-    JSON.stringify({
-      postId: post.id,
-      imageCount: images.length,
-      paths: images.map((image) => image.storage_path),
-    }),
-  );
+function PostImages({ post }: { post: FeedPost }) {
+  const images = post.images ?? [];
+  const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
-
-  if (
-    images.length === 0
-  ) {
+  if (images.length === 0) {
     return null;
   }
 
-
-  if (
-    images.length === 1
-  ) {
-    return (
-      <View
-        style={
-          styles.singleImageContainer
-        }
-      >
-        <Image
-        onLayout={(event) => {
-  console.log(
-    'Grid image layout:',
-    event.nativeEvent.layout,
+  const imageUrls = images.map((image) =>
+    getPostImageUrl(image.storage_path)
   );
-}}
-          onError={(event) => {
-            console.log(
-              'Post image failed:',
-              event.nativeEvent.error,
-            );
-          }}
-          source={{
-            uri:
-              getPostImageUrl(
-                images[0]
-                  .storage_path
-              ),
-          }}
-          style={
-            styles.singlePostImage
-          }
-          resizeMode="cover"
-        />
-      </View>
-    );
-  }
-
 
   return (
-    <View
-      style={
-        styles.postImageGrid
-      }
-      onLayout={(event) => {
-    console.log(
-      'Post image grid layout:',
-      event.nativeEvent.layout
-    );
-  }}
-    >
-      {images
-        .slice(
-          0,
-          4
-        )
-        .map(
-          (
-            image,
-            index
-          ) => {
-            const fullWidth =
-              images.length === 3 &&
-              index === 0;
-
-            return (
-
+    <>
+      {images.length === 1 ? (
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => setViewerIndex(0)}
+          style={styles.singleImageContainer}
+        >
+          <Image
+            source={{ uri: imageUrls[0] }}
+            style={styles.singlePostImage}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.postImageGrid}>
+          {images.slice(0, 4).map((image, index) => (
+            <TouchableOpacity
+              key={image.id}
+              activeOpacity={0.9}
+              onPress={() => setViewerIndex(index)}
+              style={{
+                width: '48%',
+                height: 170,
+                flexGrow: 0,
+                flexShrink: 0,
+                borderRadius: 10,
+                overflow: 'hidden',
+              }}
+            >
               <Image
-                key={image.id}
-                source={{
-                  uri: getPostImageUrl(
-                    image.storage_path
-                  ),
-                }}
-                onLoad={() => {
-                  console.log(
-                    'Post image loaded:',
-                    image.storage_path
-                  );
-                }}
-
+                source={{ uri: imageUrls[index] }}
                 resizeMode="cover"
                 style={{
-  width: '48%',
-  height: 170,
-  flexGrow: 0,
-  flexShrink: 0,
-  borderRadius: 10,
-  backgroundColor: '#EEEEEE',
-}}
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#EEEEEE',
+                }}
               />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
-            );
-          }
+      
+<Modal
+  visible={viewerIndex !== null}
+  transparent
+  animationType="fade"
+  statusBarTranslucent
+  onRequestClose={() => setViewerIndex(null)}
+>
+  <View
+    style={{
+      flex: 1,
+      backgroundColor: '#000000',
+    }}
+  >
+    <TouchableOpacity
+      onPress={() => setViewerIndex(null)}
+      hitSlop={12}
+      style={{
+        position: 'absolute',
+        top: 45,
+        right: 18,
+        zIndex: 20,
+        padding: 10,
+      }}
+    >
+      <Ionicons name="close" size={30} color="#FFFFFF" />
+    </TouchableOpacity>
+
+    {viewerIndex !== null && (
+      <FlatList
+        key={`image-viewer-${viewerIndex}`}
+        data={imageUrls}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        initialScrollIndex={viewerIndex}
+        getItemLayout={(_, index) => ({
+          length: screenWidth,
+          offset: screenWidth * index,
+          index,
+        })}
+        keyExtractor={(uri, index) => `${uri}-${index}`}
+        onMomentumScrollEnd={(event) => {
+          const nextIndex = Math.round(
+            event.nativeEvent.contentOffset.x / screenWidth
+          );
+          setViewerIndex(nextIndex);
+        }}
+        renderItem={({ item }) => (
+          <View
+            style={{
+              width: screenWidth,
+              height: screenHeight,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <ZoomablePostImage
+              key={item}
+              uri={item}
+              width={screenWidth}
+              height={screenHeight}
+            />
+          </View>
         )}
+      />
+    )}
+
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        bottom: 30,
+        width: '100%',
+        alignItems: 'center',
+      }}
+    >
+      <Text style={{ color: '#FFFFFF', fontSize: 14 }}>
+        {viewerIndex !== null
+          ? `${viewerIndex + 1} / ${imageUrls.length}`
+          : ''}
+      </Text>
     </View>
+  </View>
+</Modal>
+
+    </>
   );
 }
-
 
 /* =========================================================
    DATE

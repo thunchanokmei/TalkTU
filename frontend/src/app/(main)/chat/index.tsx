@@ -158,6 +158,7 @@ export default function ChatPage() {
 
       <AppHeader
         logo={require('../../../../assets/images/chat-header.jpeg')}
+        centerLogo
       />
 
       <View style={styles.container}>

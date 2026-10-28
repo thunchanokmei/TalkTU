@@ -8,50 +8,23 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-/*
- * Header กลางของหน้า Like / Chat / Profile
- *
- * ปรับขนาดและตำแหน่งโลโก้ได้ที่ค่าคงที่ด้านล่างนี้ที่เดียว
- * ทุกหน้าจะเปลี่ยนตามกัน
- */
 const HEADER_HEIGHT = 96;
 const LOGO_HEIGHT = 64;
 const LOGO_MAX_WIDTH = 250;
-const SIDE_PADDING_LEFT = 32;
+const SIDE_PADDING_LEFT = 5;
 const SIDE_PADDING_RIGHT = 28;
 const MARGIN_BOTTOM = 26;
 
 // ใช้เมื่ออ่านขนาดรูปไม่ได้ (เช่นโลโก้ที่เป็น uri)
-const FALLBACK_RATIO = 3.5;
 
 type AppHeaderProps = {
-  /** รูปโลโก้ของหน้านั้น เช่น require('.../profile.png') */
   logo: ImageSourcePropType;
-
-  /** ปุ่มฝั่งขวา (ไม่ใส่ก็ได้) */
   right?: ReactNode;
+  centerLogo?: boolean;
 };
 
-export default function AppHeader({ logo, right }: AppHeaderProps) {
-  // header ครอบคลุมพื้นที่ใต้ status bar ด้วย เพื่อให้สีขาวต่อเนื่องกับขอบบนของโทรศัพท์
-  // (หน้าที่ใช้ header นี้ไม่ต้องเว้น safe area ด้านบนเอง)
+export default function AppHeader({ logo, right, centerLogo = false, }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-
-  // ล็อกความสูงโลโก้ให้เท่ากันทุกหน้า แล้วคำนวณความกว้างตามสัดส่วนรูป
-  const resolved = Image.resolveAssetSource(logo);
-
-  const ratio =
-    resolved?.width && resolved?.height
-      ? resolved.width / resolved.height
-      : FALLBACK_RATIO;
-
-  let logoHeight = LOGO_HEIGHT;
-  let logoWidth = logoHeight * ratio;
-
-  if (logoWidth > LOGO_MAX_WIDTH) {
-    logoWidth = LOGO_MAX_WIDTH;
-    logoHeight = logoWidth / ratio;
-  }
 
   return (
     <View
@@ -63,11 +36,29 @@ export default function AppHeader({ logo, right }: AppHeaderProps) {
         },
       ]}
     >
-      <Image
-        source={logo}
-        style={{ width: logoWidth, height: logoHeight }}
-        resizeMode="contain"
-      />
+      {centerLogo ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.centerLogoContainer,
+            {
+              top: insets.top,
+            },
+          ]}
+        >
+          <Image
+            source={logo}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+      ) : (
+        <Image
+          source={logo}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      )}
 
       {right ? <View style={styles.right}>{right}</View> : null}
     </View>
@@ -96,11 +87,30 @@ const styles = StyleSheet.create({
       android: {
         elevation: 6,
       },
+
+      web: {
+        boxShadow: '0px 5px 14px rgba(0, 0, 0, 0.16)',
+      },
+
     }),
   },
 
   right: {
     marginLeft: 'auto',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  logo: {
+    width: LOGO_MAX_WIDTH,
+    height: LOGO_HEIGHT,
+  },
+  
+  centerLogoContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: HEADER_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },

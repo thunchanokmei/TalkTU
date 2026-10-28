@@ -2400,9 +2400,10 @@ export default function FeedScreen() {
                               setReplyingTo(item);
                               setCommentText('');
                             }}
-                            style={{ paddingVertical: 7, paddingHorizontal: 8 }}
+                            style={{ paddingVertical: 7, paddingHorizontal: 8,marginLeft: 5,
+  marginBottom: 1, }}
                           >
-                            <Text style={{ color: '#FF817D', fontSize: 12, fontWeight: '600' }}>
+                            <Text style={{ color: '#8E8E8E', fontSize: 12, fontWeight: '600' }}>
                               Reply
                             </Text>
                           </TouchableOpacity>
@@ -2413,7 +2414,7 @@ export default function FeedScreen() {
                               style={{
                                 flexDirection: 'row',
                                 marginLeft: 18,
-                                marginBottom: 10,
+                                marginBottom:10,
                                 gap: 8,
                               }}
                             >
@@ -2423,11 +2424,12 @@ export default function FeedScreen() {
                                   reply.is_mine
                                     ? styles.avatarMine
                                     : styles.avatarOther,
+                                  { width: 28, height: 28, marginTop: 3, marginRight: 1,},
                                 ]}
                               >
                                 <Ionicons
                                   name="person"
-                                  size={14}
+                                  size={12}
                                   color={reply.is_mine ? '#FFFFFF' : '#8E8E8E'}
                                 />
                               </View>
@@ -3607,193 +3609,130 @@ function ZoomablePostImage({
    POST IMAGE GRID
 ========================================================= */
 
-
 function PostImages({
   post,
 }: {
-  post: FeedPost;
+  post:
+  FeedPost;
 }) {
-  const images = post.images ?? [];
-  const { width, height } = useWindowDimensions();
+  const images =
+    post.images ?? [];
+  console.log(
+    'PostImages debug:',
+    JSON.stringify({
+      postId: post.id,
+      imageCount: images.length,
+      paths: images.map((image) => image.storage_path),
+    }),
+  );
 
-  const [viewerVisible, setViewerVisible] =
-    useState(false);
 
-  const [viewerIndex, setViewerIndex] =
-    useState(0);
-
-  const openViewer = (index: number) => {
-    setViewerIndex(index);
-    setViewerVisible(true);
-  };
-
-  if (images.length === 0) {
+  if (
+    images.length === 0
+  ) {
     return null;
   }
 
-  const viewerImages = images.map((image) => ({
-    uri: getPostImageUrl(image.storage_path),
-    key: image.id ?? image.storage_path,
-  }));
+
+  if (
+    images.length === 1
+  ) {
+    return (
+      <View
+        style={
+          styles.singleImageContainer
+        }
+      >
+        <Image
+        onLayout={(event) => {
+  console.log(
+    'Grid image layout:',
+    event.nativeEvent.layout,
+  );
+}}
+          onError={(event) => {
+            console.log(
+              'Post image failed:',
+              event.nativeEvent.error,
+            );
+          }}
+          source={{
+            uri:
+              getPostImageUrl(
+                images[0]
+                  .storage_path
+              ),
+          }}
+          style={
+            styles.singlePostImage
+          }
+          resizeMode="cover"
+        />
+      </View>
+    );
+  }
+
 
   return (
-    <>
-      {images.length === 1 ? (
-        <Pressable
-          onPress={() => openViewer(0)}
-          style={styles.singleImageContainer}
-        >
-          <Image
-            source={{ uri: viewerImages[0].uri }}
-            style={styles.singlePostImage}
-            resizeMode="cover"
-          />
-        </Pressable>
-      ) : (
-        <View style={styles.postImageGrid}>
-          {images.slice(0, 4).map((image, index) => (
-            <Pressable
-              key={image.id ?? image.storage_path}
-              onPress={() => openViewer(index)}
-              style={{
-                width: '48%',
-                height: 170,
-                flexGrow: 0,
-                flexShrink: 0,
-                borderRadius: 10,
-                overflow: 'hidden',
-                backgroundColor: '#EEEEEE',
-              }}
-            >
+    <View
+      style={
+        styles.postImageGrid
+      }
+      onLayout={(event) => {
+    console.log(
+      'Post image grid layout:',
+      event.nativeEvent.layout
+    );
+  }}
+    >
+      {images
+        .slice(
+          0,
+          4
+        )
+        .map(
+          (
+            image,
+            index
+          ) => {
+            const fullWidth =
+              images.length === 3 &&
+              index === 0;
+
+            return (
+
               <Image
+                key={image.id}
                 source={{
                   uri: getPostImageUrl(
                     image.storage_path
                   ),
                 }}
+                onLoad={() => {
+                  console.log(
+                    'Post image loaded:',
+                    image.storage_path
+                  );
+                }}
+
                 resizeMode="cover"
                 style={{
-                  width: '100%',
-                  height: '100%',
-                }}
+  width: '48%',
+  height: 170,
+  flexGrow: 0,
+  flexShrink: 0,
+  borderRadius: 10,
+  backgroundColor: '#EEEEEE',
+}}
               />
-            </Pressable>
-          ))}
-        </View>
-      )}
 
-      <Modal
-        visible={viewerVisible}
-        animationType="fade"
-        presentationStyle="fullScreen"
-        onRequestClose={() =>
-          setViewerVisible(false)
-        }
-        statusBarTranslucent
-      >
-        <GestureHandlerRootView
-          style={{
-            flex: 1,
-            backgroundColor: '#000000',
-          }}
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: '#000000',
-            }}
-          >
-            {viewerVisible && (
-              <FlatList
-                key={post.id}
-                data={viewerImages}
-                horizontal
-                pagingEnabled
-                initialScrollIndex={viewerIndex}
-                getItemLayout={(_, index) => ({
-                  length: width,
-                  offset: width * index,
-                  index,
-                })}
-                keyExtractor={(item) => item.key}
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(event) => {
-                  const index = Math.round(
-                    event.nativeEvent.contentOffset.x /
-                      width
-                  );
-
-                  setViewerIndex(index);
-                }}
-                renderItem={({ item }) => (
-                  <View
-                    style={{
-                      width,
-                      height,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <ZoomablePostImage
-                      key={item.key}
-                      uri={item.uri}
-                      width={width}
-                      height={height}
-                    />
-                  </View>
-                )}
-              />
-            )}
-
-            <Pressable
-              onPress={() => setViewerVisible(false)}
-              hitSlop={12}
-              style={{
-                position: 'absolute',
-                top: 48,
-                right: 20,
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: '#333333',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 10,
-              }}
-            >
-              <Ionicons
-                name="close"
-                size={28}
-                color="#FFFFFF"
-              />
-            </Pressable>
-
-            {images.length > 1 && (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: 58,
-                  alignSelf: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: '#FFFFFF',
-                    fontSize: 14,
-                  }}
-                >
-                  {viewerIndex + 1} / {images.length}
-                </Text>
-              </View>
-            )}
-          </View>
-        </GestureHandlerRootView>
-      </Modal>
-    </>
+            );
+          }
+        )}
+    </View>
   );
 }
+
 
 /* =========================================================
    DATE

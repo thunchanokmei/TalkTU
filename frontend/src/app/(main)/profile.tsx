@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   /* ================= PROFILE CARD ================= */
 
   card: {
-    marginHorizontal: 28,
+    marginHorizontal: 50,
     backgroundColor: '#FFFFFF',
     borderRadius: 36,
     padding: 16,

@@ -37,3 +37,16 @@ export type ToggleLikeResult = {
 
   like_count: number;
 };
+
+
+export type FeedComment = {
+  comment_id: string;
+
+  parent_comment_id: string | null;
+
+  content: string;
+
+  created_at: string;
+
+  is_mine: boolean;
+};

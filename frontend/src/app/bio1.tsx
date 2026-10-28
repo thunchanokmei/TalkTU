@@ -966,155 +966,78 @@ export default function Bio1Screen() {
             </View>
           </LinearGradient>
 
-          {/* One continuous Bio/Profile card */}
-          <LinearGradient
-            colors={[
-              '#fdf1c8',
-              '#FFF5EA',
-              '#f8dfdf',
-            ]}
-            start={{
-              x: 0,
-              y: 0,
-            }}
-            end={{
-              x: 1,
-              y: 1,
-            }}
-            style={styles.detailsCard}
-          >
-            <View style={styles.detailsHeader}>
-              <View style={styles.detailsHeaderIcon}>
-                <Ionicons name="heart" size={18} color="#C75D70" />
-              </View>
-              <View style={styles.detailsHeaderCopy}>
-                <Text style={styles.detailsHeading}>A little about you</Text>
-                <Text style={styles.detailsSubheading}>Let your personality shine.</Text>
-              </View>
-            </View>
+          {/* Profile information — ใช้รูปแบบฟอร์มเดียวกับหน้า Edit Profile */}
+          <Text style={styles.sectionTitle}>Bio</Text>
 
-            <Text style={styles.label}>
-              About me
-            </Text>
-
+          <View style={styles.bioBox}>
             <TextInput
+              style={styles.editBioInput}
               value={bio}
               onChangeText={setBio}
               multiline
-              textAlignVertical="top"
-              placeholder="Tell them something about you..."
-              placeholderTextColor="#8A8A8A"
               maxLength={300}
-              style={styles.bioInput}
+              placeholder="Tell us about yourself"
+              placeholderTextColor="#999999"
+              textAlignVertical="top"
             />
 
-            <Text style={styles.counter}>
-              {bio.length}/300
+            <Text style={styles.characterCount}>{bio.length}/300</Text>
+          </View>
+
+          <Text style={styles.sectionTitle}>Gender identity</Text>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.selectField}
+            onPress={() => setGenderModal(true)}
+          >
+            <Text style={[
+              styles.selectFieldText,
+              !genderIdentity && styles.selectPlaceholder,
+            ]}>
+              {genderIdentity || 'Select gender identity'}
             </Text>
+            <Ionicons name="chevron-down" size={20} color="#777777" />
+          </TouchableOpacity>
 
-            <Text style={styles.label}>
-              Gender identity
-            </Text>
+          <Text style={styles.sectionTitle}>Height</Text>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.dropdown}
-              onPress={() =>
-                setGenderModal(true)
-              }
-            >
-              <Text
-                style={[
-                  styles.dropdownText,
-                  !genderIdentity &&
-                  styles.placeholderText,
-                ]}
-              >
-                {genderIdentity ||
-                  'Select'}
-              </Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.selectField}
+            onPress={() => setHeightModal(true)}
+          >
+            <Text style={styles.selectFieldText}>{heightCm} cm</Text>
+            <Ionicons name="chevron-down" size={20} color="#777777" />
+          </TouchableOpacity>
 
-              <View
-                style={
-                  styles.dropdownIcon
-                }
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={17}
-                  color="#777777"
-                />
-              </View>
-            </TouchableOpacity>
+          <Text style={styles.sectionTitle}>You'll usually find me at..</Text>
 
-            <Text style={styles.label}>
-              Height
-            </Text>
+          <View style={styles.locationsContainer}>
+            {placeOptions.map((place) => {
+              const selected = places.includes(place);
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.dropdown}
-              onPress={() =>
-                setHeightModal(true)
-              }
-            >
-              <Text style={styles.dropdownText}>
-                {heightCm} cm
-              </Text>
-
-              <View style={styles.dropdownIcon}>
-                <Ionicons
-                  name="chevron-down"
-                  size={17}
-                  color="#777777"
-                />
-              </View>
-            </TouchableOpacity>
-
-            <Text
-              style={styles.placesTitle}
-            >
-              You'll usually find me at..
-            </Text>
-
-            <View
-              style={
-                styles.chipsContainer
-              }
-            >
-              {placeOptions.map(
-                (place) => {
-                  const selected =
-                    places.includes(place);
-
-                  return (
-                    <TouchableOpacity
-                      key={place}
-                      activeOpacity={0.8}
-                      onPress={() =>
-                        togglePlace(place)
-                      }
-                      style={[
-                        styles.chip,
-                        selected &&
-                        styles.chipSelected,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected &&
-                          styles.chipTextSelected,
-                        ]}
-                      >
-                        {place}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }
-              )}
-            </View>
-          </LinearGradient>
+              return (
+                <TouchableOpacity
+                  key={place}
+                  activeOpacity={0.8}
+                  onPress={() => togglePlace(place)}
+                  style={[
+                    styles.locationChip,
+                    selected && styles.locationChipSelected,
+                  ]}
+                >
+                  <Text style={[
+                    styles.locationChipText,
+                    selected && styles.locationChipTextSelected,
+                  ]}>
+                    {selected ? '✓ ' : ''}
+                    {place}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           {errorMessage ? (
             <Text
@@ -1605,6 +1528,91 @@ const styles = StyleSheet.create({
 
     backgroundColor:
       'rgba(255,255,255,0.92)',
+  },
+
+  /* Form styling matched to Edit Profile */
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F08A8E',
+    marginTop: 26,
+    marginBottom: 12,
+  },
+
+  bioBox: {
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#FFFFFF',
+  },
+
+  editBioInput: {
+    minHeight: 100,
+    fontSize: 16,
+    color: '#111111',
+    padding: 0,
+  },
+
+  characterCount: {
+    alignSelf: 'flex-end',
+    fontSize: 12,
+    color: '#999999',
+  },
+
+  selectField: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+  },
+
+  selectFieldText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#222222',
+  },
+
+  selectPlaceholder: {
+    color: '#999999',
+  },
+
+  locationsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+
+  locationChip: {
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+  },
+
+  locationChipSelected: {
+    borderColor: '#F08A8E',
+    backgroundColor: '#FFF0E8',
+  },
+
+  locationChipText: {
+    fontSize: 14,
+    color: '#222222',
+  },
+
+  locationChipTextSelected: {
+    color: '#C75D70',
+    fontWeight: '600',
   },
 
   detailsCard: {

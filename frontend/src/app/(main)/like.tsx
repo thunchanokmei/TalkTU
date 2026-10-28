@@ -13,15 +13,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 
+import AppHeader from '../../components/AppHeader';
 import { getMode } from '../../features/onboarding/services/onboardingService';
 
-// 🖼️ ใส่ path รูปโลโก้ "Like" ที่นี่ (ไฟล์นี้อยู่ใน app/(main)/ → ../../ คือ root ของโปรเจกต์)
-// วางไฟล์รูปไว้ที่ assets/images/like-logo.png หรือเปลี่ยน path ตามที่ต้องการ
-const LIKE_LOGO = require('../../../assets/images/like2.png');
+// 🖼️ โลโก้ "Like" (ไฟล์นี้อยู่ใน app/(main)/ → ../../../ คือ root ของโปรเจกต์)
+const LIKE_LOGO = require('../../../assets/images/like.jpeg');
 
 type SwipeMode = 'date' | 'friends';
 
@@ -62,7 +61,6 @@ const FETCH_LIMIT = 20;
 
 export default function LikeScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
   const [mode, setMode] = useState<SwipeMode | null>(null);
@@ -135,14 +133,8 @@ export default function LikeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Header: การ์ดสีขาว มุมล่างโค้ง มีเงา + โลโก้ตรงกลาง */}
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <ExpoImage
-          source={LIKE_LOGO}
-          style={styles.logo}
-          contentFit="contain"
-        />
-      </View>
+      {/* Header กลาง: ตำแหน่งและขนาดโลโก้เท่ากับหน้า Profile / Chat */}
+      <AppHeader logo={LIKE_LOGO} />
 
       {loading ? (
         <View style={styles.center}>
@@ -174,7 +166,7 @@ export default function LikeScreen() {
           columnWrapperStyle={{ gap }}
           contentContainerStyle={{
             paddingHorizontal: horizontalPadding,
-            paddingTop: 22,
+            paddingTop: 0,
             paddingBottom: 24,
           }}
           showsVerticalScrollIndicator={false}
@@ -232,30 +224,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F6F6F6',
-  },
-
-  header: {
-    paddingBottom: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-
-    // เงาใต้ header
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-
-  logo: {
-    width: '100%',
-    height: '100',
-    marginBottom: -30,
-    marginTop:-15,
   },
 
   center: {

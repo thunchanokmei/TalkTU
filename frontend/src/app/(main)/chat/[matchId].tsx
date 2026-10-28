@@ -26,7 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import {router,useLocalSearchParams,} from 'expo-router';
+import { router, useLocalSearchParams, } from 'expo-router';
 
 
 import { supabase } from '../../../lib/supabase';
@@ -40,11 +40,12 @@ import {
   sendMessage,
   subscribeToMessages,
   unsubscribeFromChannel,
+  markMessagesAsRead,
 } from '../../../features/chat/services/chatService';
 
-import type {ChatReportReason,} from '../../../features/chat/services/chatService';
+import type { ChatReportReason, } from '../../../features/chat/services/chatService';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type {ChatMessage,} from '../../../features/chat/types';
+import type { ChatMessage, } from '../../../features/chat/types';
 
 export default function ChatRoom() {
   console.log('CHAT ROOM SCREEN RENDERED');
@@ -62,8 +63,8 @@ export default function ChatRoom() {
     typeof params.matchId === 'string'
       ? params.matchId
       : '';
-      console.log('CHAT ROOM PARAMS:', params);
-      console.log('CHAT ROOM matchId:', matchId);
+  console.log('CHAT ROOM PARAMS:', params);
+  console.log('CHAT ROOM matchId:', matchId);
 
   const name =
     typeof params.name === 'string'
@@ -79,6 +80,17 @@ export default function ChatRoom() {
     width >= 768
       ? Math.min(width - 80, 620)
       : width - 24;
+
+  const markCurrentChatAsRead = async () => {
+    const result = await markMessagesAsRead(matchId);
+
+    if (result.error) {
+      console.error(
+        'MARK AS READ ERROR:',
+        result.error
+      );
+    }
+  };
 
   const [messages, setMessages] =
     useState<ChatMessage[]>([]);
@@ -106,7 +118,7 @@ export default function ChatRoom() {
 
 
   const [showSafety, setShowSafety] = useState(false);
-const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const [safetyView, setSafetyView] = useState<
     | 'menu'
     | 'unmatchConfirm'
@@ -123,41 +135,41 @@ const insets = useSafeAreaInsets();
   const [inputFocused, setInputFocused] = useState(false);
   const didInitialScroll = useRef(false);
 
-useEffect(() => {
-  if (loading || error || messages.length === 0) return;
-  if (didInitialScroll.current) return;
+  useEffect(() => {
+    if (loading || error || messages.length === 0) return;
+    if (didInitialScroll.current) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  const scrollAfterLayout = () => {
-    requestAnimationFrame(() => {
+    const scrollAfterLayout = () => {
       requestAnimationFrame(() => {
-        if (cancelled) return;
-
-        scrollRef.current?.scrollToEnd({
-          animated: false,
-        });
-
-        // ตรวจอีกครั้งหลัง layout ปรับขนาดเสร็จ
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           if (cancelled) return;
 
           scrollRef.current?.scrollToEnd({
             animated: false,
           });
 
-          didInitialScroll.current = true;
-        }, 250);
+          // ตรวจอีกครั้งหลัง layout ปรับขนาดเสร็จ
+          setTimeout(() => {
+            if (cancelled) return;
+
+            scrollRef.current?.scrollToEnd({
+              animated: false,
+            });
+
+            didInitialScroll.current = true;
+          }, 250);
+        });
       });
-    });
-  };
+    };
 
-  scrollAfterLayout();
+    scrollAfterLayout();
 
-  return () => {
-    cancelled = true;
-  };
-}, [loading, error, messages.length]);
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, error, messages.length]);
 
 
   const scrollRef =
@@ -223,39 +235,59 @@ useEffect(() => {
     }, [matchId]);
 
   useEffect(() => {
-    void loadInitialMessages();
-  }, [loadInitialMessages]);
+    const loadAndMarkRead = async () => {
+      await loadInitialMessages();
 
-  /* ================= REALTIME ================= */
-useEffect(() => {
-  if (!matchId) return;
+      if (!matchId) return;
 
-  const channel = supabase
-    .channel(`chat:${matchId}:${Date.now()}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `match_id=eq.${matchId}`,
-      },
-      (payload) => {
-        const newMsg = payload.new as any;
-        setMessages((prev) =>
-          prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
-        );
+      const result = await markMessagesAsRead(matchId);
+
+      if (result.error) {
+        console.error('MARK AS READ ERROR:', result.error);
       }
-    )
-    .subscribe((status) => {
-      console.log('REALTIME STATUS:', status);
-    });
+    };
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [matchId]);
+    void loadAndMarkRead();
+  }, [loadInitialMessages, matchId]);
+  /* ================= REALTIME ================= */
+  useEffect(() => {
+    if (!matchId) return;
+
+    const channel = supabase
+      .channel(`chat:${matchId}:${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `match_id=eq.${matchId}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          setMessages((prev) =>
+            prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+          );
+          if (newMsg.sender_id !== currentUserId) {
+            void markMessagesAsRead(matchId).then((result) => {
+              if (result.error) {
+                console.error('MARK AS READ ERROR:', result.error);
+              }
+
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('REALTIME STATUS:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [matchId]);
   /* ================= OLDER ================= */
+
 
   const loadOlderMessages = async () => {
     if (
@@ -323,37 +355,37 @@ useEffect(() => {
 
   /* ================= SEND ================= */
 
-const handleSend = async () => {
-  const content = input.trim();
+  const handleSend = async () => {
+    const content = input.trim();
 
-  if (!content || sending || !matchId) {
-    return;
-  }
+    if (!content || sending || !matchId) {
+      return;
+    }
 
-  if (content.length > 5000) {
-    Alert.alert('Message too long', 'Message cannot exceed 5000 characters.');
-    return;
-  }
+    if (content.length > 5000) {
+      Alert.alert('Message too long', 'Message cannot exceed 5000 characters.');
+      return;
+    }
 
-  setSending(true);
+    setSending(true);
 
-  const result = await sendMessage(matchId, content);
+    const result = await sendMessage(matchId, content);
 
-  if (result.error) {
-    Alert.alert('Unable to send message', result.error.message);
+    if (result.error) {
+      Alert.alert('Unable to send message', result.error.message);
+      setSending(false);
+      return;
+    }
+
+    console.log('SEND RESULT:', JSON.stringify(result));
+
+    setInput('');
     setSending(false);
-    return;
-  }
 
-  console.log('SEND RESULT:', JSON.stringify(result));
-
-  setInput('');
-  setSending(false);
-
-  setTimeout(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, 100);
-};
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
   /* ================= SCROLL ================= */
 
   const handleScroll = (
@@ -409,13 +441,14 @@ const handleSend = async () => {
   const openProfile = async () => {
     try {
       const userId = await getOtherUserId();
-router.push({
-  pathname: '/user/[userId]',
-  params: {
-    userId,
-    source: 'chat',
-  },
-} as any);    } catch (error) {
+      router.push({
+        pathname: '/user/[userId]',
+        params: {
+          userId,
+          source: 'chat',
+        },
+      } as any);
+    } catch (error) {
       Alert.alert(
         'Unable to open profile',
         error instanceof Error ? error.message : 'Please try again.'
@@ -580,7 +613,7 @@ router.push({
       setSafetyBusy(false);
     }
   };
-    const scrollToLatest = (animated = false) => {
+  const scrollToLatest = (animated = false) => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated });
     });
@@ -592,17 +625,17 @@ router.push({
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
 
-        {/* ================= HEADER ================= */}
-        <Header
-          variant="chat"
-          title={name}
-          onReportPress={openSafety}
-        />
+      {/* ================= HEADER ================= */}
+      <Header
+        variant="chat"
+        title={name}
+        onReportPress={openSafety}
+      />
 
-        <KeyboardAvoidingView
-         style={styles.container}
-  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-  keyboardVerticalOffset={0}
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
 
         {/* ================= CHAT ================= */}
@@ -1043,9 +1076,9 @@ router.push({
                   <TouchableOpacity
                     style={styles.safetyConfirm}
                     onPress={() => {
-                    closeSafety();
-                    router.replace('/chat');
-      }}
+                      closeSafety();
+                      router.replace('/chat');
+                    }}
                   >
                     <Text style={styles.safetyConfirmText}>Close</Text>
                   </TouchableOpacity>
@@ -1136,31 +1169,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-container: {
-  flex: 1,
-  alignItems: 'center',
-  width: '100%',
-  minHeight: 0,
-},
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 0,
+  },
 
 
   /* CHAT */
-chatArea: {
-  flex: 1,
-  minHeight: 0,
-  marginTop: 14,
-  marginBottom: 14,
-  borderRadius: 22,
-  overflow: 'hidden',
-  position: 'relative',
-  flexDirection: 'column',
-  backgroundColor: '#f3f3f3',
-},
+  chatArea: {
+    flex: 1,
+    minHeight: 0,
+    marginTop: 14,
+    marginBottom: 14,
+    borderRadius: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    flexDirection: 'column',
+    backgroundColor: '#f3f3f3',
+  },
 
-messages: {
-  flex: 1,
-  minHeight: 0,
-},
+  messages: {
+    flex: 1,
+    minHeight: 0,
+  },
 
   messageContent: {
     paddingHorizontal: 10,
@@ -1179,7 +1212,7 @@ messages: {
     color: '#FF7F87',
     fontSize: 14,
     fontWeight: '600',
-    alignItems: 'center', 
+    alignItems: 'center',
     paddingTop: 60,
   },
 
@@ -1282,26 +1315,26 @@ messages: {
 
   /* INPUT */
 
-inputBar: {
-  position: 'relative',
-  left: undefined,
-  right: undefined,
-  bottom: undefined,
-  marginHorizontal: 10,
-  marginBottom: 12,
-  minHeight: 43,
-  backgroundColor: '#FFFFFF',
-  borderRadius: 23,
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingLeft: 15,
-  paddingRight: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.15,
-  shadowRadius: 4,
-  elevation: 4,
-},
+  inputBar: {
+    position: 'relative',
+    left: undefined,
+    right: undefined,
+    bottom: undefined,
+    marginHorizontal: 10,
+    marginBottom: 12,
+    minHeight: 43,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 15,
+    paddingRight: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   input: {
     flex: 1,
 
@@ -1340,7 +1373,7 @@ inputBar: {
     alignItems: 'center',
   },
 
-  
+
   /* MODAL */
 
   overlay: {

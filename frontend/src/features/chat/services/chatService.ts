@@ -295,3 +295,45 @@ export async function reportChat(
     error: null,
   };
 }
+export async function getMyUnreadCounts(): Promise<{
+  data: { match_id: string; unread_count: number }[];
+  error: Error | null;
+}> {
+  const { data, error } = await supabase.rpc(
+    'get_my_unread_counts');
+
+  if (error) {
+    return { data: [], error };
+  }
+
+  return {
+    data: (data ?? []).map((item: any) => ({
+      match_id: item.match_id,
+      unread_count: Number(item.unread_count ?? 0),
+    })),
+    error: null,
+  };
+}
+
+export async function markMessagesAsRead(
+  matchId: string
+) {
+  const { data: authData, error: authError } =
+    await supabase.auth.getUser();
+
+  if (authError || !authData.user) {
+    return {
+      error: authError ?? new Error('Not authenticated'),
+    };
+  }
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('match_id', matchId)
+    .neq('sender_id', authData.user.id)
+    .is('read_at', null)
+    .is('deleted_at', null);
+
+  return { error };
+}

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 
 type Destination =
   | '/(auth)/login'
-  | '/name'
+  | '/agreement'
   | '/swipe'
   | null;
 
@@ -41,7 +41,7 @@ export default function Index() {
           return;
         }
 
-        setDestination('/name');
+        setDestination('/agreement');
       } catch (error) {
         console.error('Unable to check auth state:', error);
         setDestination('/(auth)/login');

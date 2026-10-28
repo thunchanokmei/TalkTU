@@ -106,8 +106,7 @@ export default function LoginScreen() {
         router.replace('/swipe');
         return;
       }
-
-      router.replace('/name');
+      router.replace('/agreement');
     } catch (error) {
       console.error('Login error:', error);
       setErrorMessage('Something went wrong while logging in.');

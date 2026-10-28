@@ -6,7 +6,7 @@ import {
   ImageManipulator,
   SaveFormat,
 } from 'expo-image-manipulator';
-
+import { File } from 'expo-file-system';
 
 const MAX_DIMENSION = 1200;
 
@@ -219,16 +219,9 @@ async function prepareNativeImage(
       });
 
 
-    const response =
-      await fetch(
-        saved.uri
-      );
-
-    const blob =
-      await response.blob();
-
-    const arrayBuffer =
-      await blob.arrayBuffer();
+    const file = new File(saved.uri);
+const arrayBuffer = await file.arrayBuffer();
+const sizeBytes = file.size;
 
 
     const prepared: PreparedFeedImage =
@@ -241,8 +234,7 @@ async function prepareNativeImage(
         extension:
           'jpg',
 
-        sizeBytes:
-          blob.size,
+        sizeBytes,
 
         width:
           targetWidth ??
@@ -269,7 +261,7 @@ async function prepareNativeImage(
      * Stop recompressing.
      */
     if (
-      blob.size <=
+      sizeBytes <=
       TARGET_BYTES
     ) {
       return prepared;

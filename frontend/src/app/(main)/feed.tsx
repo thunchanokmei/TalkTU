@@ -65,6 +65,17 @@ import type {
   FeedPost,
 } from '../../features/feed/types';
 
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+
 /* =========================================================
    CONSTANTS
 ========================================================= */
@@ -815,10 +826,6 @@ export default function FeedScreen() {
 
         await refreshFeed();
 
-        Alert.alert(
-          'โพสต์สำเร็จ',
-          'โพสต์ของคุณถูกเผยแพร่แล้ว'
-        );
       } catch (error) {
         console.error(
           'Create post error:',
@@ -2343,111 +2350,111 @@ export default function FeedScreen() {
                     )
                   }
 
-              renderItem={({ item }) => {
-                // Replies will be rendered inside their parent comment.
-                if (item.parent_comment_id) {
-                  return null;
-                }
+                  renderItem={({ item }) => {
+                    // Replies will be rendered inside their parent comment.
+                    if (item.parent_comment_id) {
+                      return null;
+                    }
 
-                const replies = comments.filter(
-                  (comment) =>
-                    comment.parent_comment_id === item.comment_id
-                );
+                    const replies = comments.filter(
+                      (comment) =>
+                        comment.parent_comment_id === item.comment_id
+                    );
 
-                return (
-                  <View style={styles.commentRow}>
-                    <View
-                      style={[
-                        styles.commentAvatar,
-                        item.is_mine
-                          ? styles.avatarMine
-                          : styles.avatarOther,
-                      ]}
-                    >
-                      <Ionicons
-                        name="person"
-                        size={16}
-                        color={item.is_mine ? '#FFFFFF' : '#8E8E8E'}
-                      />
-                    </View>
-
-                    <View style={{ flex: 1 }}>
-                      <View style={styles.commentBubble}>
-                        <View style={styles.commentTop}>
-                          <Text style={styles.commentAuthor}>
-                            {item.is_mine ? 'anonymous · You' : 'anonymous'}
-                          </Text>
-
-                          <Text style={styles.commentTime}>
-                            {formatDate(item.created_at)}
-                          </Text>
+                    return (
+                      <View style={styles.commentRow}>
+                        <View
+                          style={[
+                            styles.commentAvatar,
+                            item.is_mine
+                              ? styles.avatarMine
+                              : styles.avatarOther,
+                          ]}
+                        >
+                          <Ionicons
+                            name="person"
+                            size={16}
+                            color={item.is_mine ? '#FFFFFF' : '#8E8E8E'}
+                          />
                         </View>
 
-                        <Text style={styles.commentContent}>
-                          {item.content}
-                        </Text>
-                      </View>
-
-                      <TouchableOpacity
-                        onPress={() => {
-                          setReplyingTo(item);
-                          setCommentText('');
-                        }}
-                        style={{ paddingVertical: 7, paddingHorizontal: 8 }}
-                      >
-                        <Text style={{ color: '#FF817D', fontSize: 12, fontWeight: '600' }}>
-                          Reply
-                        </Text>
-                      </TouchableOpacity>
-
-                      {replies.map((reply) => (
-                        <View
-                          key={reply.comment_id}
-                          style={{
-                            flexDirection: 'row',
-                            marginLeft: 18,
-                            marginBottom: 10,
-                            gap: 8,
-                          }}
-                        >
-                          <View
-                            style={[
-                              styles.commentAvatar,
-                              reply.is_mine
-                                ? styles.avatarMine
-                                : styles.avatarOther,
-                            ]}
-                          >
-                            <Ionicons
-                              name="person"
-                              size={14}
-                              color={reply.is_mine ? '#FFFFFF' : '#8E8E8E'}
-                            />
-                          </View>
-
-                          <View style={[styles.commentBubble, { flex: 1 }]}>
+                        <View style={{ flex: 1 }}>
+                          <View style={styles.commentBubble}>
                             <View style={styles.commentTop}>
                               <Text style={styles.commentAuthor}>
-                                {reply.is_mine ? 'anonymous · You' : 'anonymous'}
+                                {item.is_mine ? 'anonymous · You' : 'anonymous'}
                               </Text>
 
                               <Text style={styles.commentTime}>
-                                {formatDate(reply.created_at)}
+                                {formatDate(item.created_at)}
                               </Text>
                             </View>
 
                             <Text style={styles.commentContent}>
-                              {reply.content}
+                              {item.content}
                             </Text>
                           </View>
+
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReplyingTo(item);
+                              setCommentText('');
+                            }}
+                            style={{ paddingVertical: 7, paddingHorizontal: 8 }}
+                          >
+                            <Text style={{ color: '#FF817D', fontSize: 12, fontWeight: '600' }}>
+                              Reply
+                            </Text>
+                          </TouchableOpacity>
+
+                          {replies.map((reply) => (
+                            <View
+                              key={reply.comment_id}
+                              style={{
+                                flexDirection: 'row',
+                                marginLeft: 18,
+                                marginBottom: 10,
+                                gap: 8,
+                              }}
+                            >
+                              <View
+                                style={[
+                                  styles.commentAvatar,
+                                  reply.is_mine
+                                    ? styles.avatarMine
+                                    : styles.avatarOther,
+                                ]}
+                              >
+                                <Ionicons
+                                  name="person"
+                                  size={14}
+                                  color={reply.is_mine ? '#FFFFFF' : '#8E8E8E'}
+                                />
+                              </View>
+
+                              <View style={[styles.commentBubble, { flex: 1 }]}>
+                                <View style={styles.commentTop}>
+                                  <Text style={styles.commentAuthor}>
+                                    {reply.is_mine ? 'anonymous · You' : 'anonymous'}
+                                  </Text>
+
+                                  <Text style={styles.commentTime}>
+                                    {formatDate(reply.created_at)}
+                                  </Text>
+                                </View>
+
+                                <Text style={styles.commentContent}>
+                                  {reply.content}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
                         </View>
-                      ))}
-                    </View>
-                  </View>
-                );
-              }}
-            />
-            ) : null}
+                      </View>
+                    );
+                  }}
+                />
+              ) : null}
 
 
               {/* COMMENT INPUT */}
@@ -3540,101 +3547,253 @@ function FeedPostCard({
   );
 }
 
+/* =========================================================
+Zoomable Post Images
+========================================================= */
+
+function ZoomablePostImage({
+  uri,
+  width,
+  height,
+}: {
+  uri: string;
+  width: number;
+  height: number;
+}) {
+  const scale = useSharedValue(1);
+  const startScale = useSharedValue(1);
+
+  const pinch = Gesture.Pinch()
+    .onBegin(() => {
+      startScale.value = scale.value;
+    })
+    .onUpdate((event) => {
+      scale.value = Math.max(
+        1,
+        Math.min(
+          4,
+          startScale.value * event.scale
+        )
+      );
+    })
+    .onEnd(() => {
+      if (scale.value < 1) {
+        scale.value = 1;
+      }
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <GestureDetector gesture={pinch}>
+      <Animated.Image
+        source={{ uri }}
+        resizeMode="contain"
+        style={[
+          {
+            width,
+            height,
+          },
+          animatedStyle,
+        ]}
+      />
+    </GestureDetector>
+  );
+}
 
 /* =========================================================
    POST IMAGE GRID
 ========================================================= */
 
+
 function PostImages({
   post,
 }: {
-  post:
-  FeedPost;
+  post: FeedPost;
 }) {
-  const images =
-    post.images ?? [];
+  const images = post.images ?? [];
+  const { width, height } = useWindowDimensions();
 
+  const [viewerVisible, setViewerVisible] =
+    useState(false);
 
-  if (
-    images.length === 0
-  ) {
+  const [viewerIndex, setViewerIndex] =
+    useState(0);
+
+  const openViewer = (index: number) => {
+    setViewerIndex(index);
+    setViewerVisible(true);
+  };
+
+  if (images.length === 0) {
     return null;
   }
 
-
-  if (
-    images.length === 1
-  ) {
-    return (
-      <View
-        style={
-          styles.singleImageContainer
-        }
-      >
-        <Image
-          source={{
-            uri:
-              getPostImageUrl(
-                images[0]
-                  .storage_path
-              ),
-          }}
-          style={
-            styles.singlePostImage
-          }
-          resizeMode="cover"
-        />
-      </View>
-    );
-  }
-
+  const viewerImages = images.map((image) => ({
+    uri: getPostImageUrl(image.storage_path),
+    key: image.id ?? image.storage_path,
+  }));
 
   return (
-    <View
-      style={
-        styles.postImageGrid
-      }
-    >
-      {images
-        .slice(
-          0,
-          4
-        )
-        .map(
-          (
-            image,
-            index
-          ) => {
-            const fullWidth =
-              images.length === 3 &&
-              index === 0;
-
-            return (
+    <>
+      {images.length === 1 ? (
+        <Pressable
+          onPress={() => openViewer(0)}
+          style={styles.singleImageContainer}
+        >
+          <Image
+            source={{ uri: viewerImages[0].uri }}
+            style={styles.singlePostImage}
+            resizeMode="cover"
+          />
+        </Pressable>
+      ) : (
+        <View style={styles.postImageGrid}>
+          {images.slice(0, 4).map((image, index) => (
+            <Pressable
+              key={image.id ?? image.storage_path}
+              onPress={() => openViewer(index)}
+              style={{
+                width: '48%',
+                height: 170,
+                flexGrow: 0,
+                flexShrink: 0,
+                borderRadius: 10,
+                overflow: 'hidden',
+                backgroundColor: '#EEEEEE',
+              }}
+            >
               <Image
-                key={
-                  image.id
-                }
                 source={{
-                  uri:
-                    getPostImageUrl(
-                      image.storage_path
-                    ),
+                  uri: getPostImageUrl(
+                    image.storage_path
+                  ),
                 }}
                 resizeMode="cover"
-                style={[
-                  styles.gridPostImage,
-
-                  fullWidth &&
-                  styles.gridPostImageFull,
-                ]}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
               />
-            );
-          }
-        )}
-    </View>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      <Modal
+        visible={viewerVisible}
+        animationType="fade"
+        presentationStyle="fullScreen"
+        onRequestClose={() =>
+          setViewerVisible(false)
+        }
+        statusBarTranslucent
+      >
+        <GestureHandlerRootView
+          style={{
+            flex: 1,
+            backgroundColor: '#000000',
+          }}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: '#000000',
+            }}
+          >
+            {viewerVisible && (
+              <FlatList
+                key={post.id}
+                data={viewerImages}
+                horizontal
+                pagingEnabled
+                initialScrollIndex={viewerIndex}
+                getItemLayout={(_, index) => ({
+                  length: width,
+                  offset: width * index,
+                  index,
+                })}
+                keyExtractor={(item) => item.key}
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(event) => {
+                  const index = Math.round(
+                    event.nativeEvent.contentOffset.x /
+                      width
+                  );
+
+                  setViewerIndex(index);
+                }}
+                renderItem={({ item }) => (
+                  <View
+                    style={{
+                      width,
+                      height,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <ZoomablePostImage
+                      key={item.key}
+                      uri={item.uri}
+                      width={width}
+                      height={height}
+                    />
+                  </View>
+                )}
+              />
+            )}
+
+            <Pressable
+              onPress={() => setViewerVisible(false)}
+              hitSlop={12}
+              style={{
+                position: 'absolute',
+                top: 48,
+                right: 20,
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: '#333333',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+              }}
+            >
+              <Ionicons
+                name="close"
+                size={28}
+                color="#FFFFFF"
+              />
+            </Pressable>
+
+            {images.length > 1 && (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 58,
+                  alignSelf: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: 14,
+                  }}
+                >
+                  {viewerIndex + 1} / {images.length}
+                </Text>
+              </View>
+            )}
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
+    </>
   );
 }
-
 
 /* =========================================================
    DATE
@@ -4144,42 +4303,27 @@ const styles =
       aspectRatio:
         4 / 3,
     },
+    
+postImageGrid: {
+  marginTop: 13,
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  gap: 4,
+  width: '100%',
+  alignSelf: 'stretch',
+},
 
-    postImageGrid: {
-      marginTop:
-        13,
+gridPostImage: {
+  width: '48%',
+  aspectRatio: 1,
+  borderRadius: 10,
+  backgroundColor: '#EEEEEE',
+},
 
-      flexDirection:
-        'row',
-
-      flexWrap:
-        'wrap',
-
-      gap:
-        4,
-    },
-
-    gridPostImage: {
-      width:
-        '49%',
-
-      aspectRatio:
-        1,
-
-      borderRadius:
-        10,
-
-      backgroundColor:
-        '#EEEEEE',
-    },
-
-    gridPostImageFull: {
-      width:
-        '100%',
-
-      aspectRatio:
-        1.8,
-    },
+gridPostImageFull: {
+  width: '100%',
+  aspectRatio: 1.8,
+},
 
 
     /* =====================================================

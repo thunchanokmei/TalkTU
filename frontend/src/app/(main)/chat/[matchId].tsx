@@ -55,8 +55,7 @@ export default function ChatRoom() {
       image?: string;
     }>();
 
-  const { width } =
-    useWindowDimensions();
+ const { width, height } = useWindowDimensions();
 
   const matchId =
     typeof params.matchId === 'string'
@@ -120,13 +119,66 @@ const insets = useSafeAreaInsets();
   const [reportDetails, setReportDetails] = useState('');
   const [safetyBusy, setSafetyBusy] = useState(false);
   const [safetySuccessMessage, setSafetySuccessMessage] = useState('');
+  const [inputFocused, setInputFocused] = useState(false);
+  const didInitialScroll = useRef(false);
+
+useEffect(() => {
+  if (loading || error || messages.length === 0) return;
+  if (didInitialScroll.current) return;
+
+  let cancelled = false;
+
+  const scrollAfterLayout = () => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+
+        scrollRef.current?.scrollToEnd({
+          animated: false,
+        });
+
+        // ตรวจอีกครั้งหลัง layout ปรับขนาดเสร็จ
+        setTimeout(() => {
+          if (cancelled) return;
+
+          scrollRef.current?.scrollToEnd({
+            animated: false,
+          });
+
+          didInitialScroll.current = true;
+        }, 250);
+      });
+    });
+  };
+
+  scrollAfterLayout();
+
+  return () => {
+    cancelled = true;
+  };
+}, [loading, error, messages.length]);
 
 
   const scrollRef =
     useRef<React.ElementRef<typeof ScrollView>>(null);
 
-  const pageRef =
-    useRef(0);
+  // Keep the latest message visible when the user is already at the bottom,
+  // or has just sent a message. Do not interrupt someone reading older messages.
+  useEffect(() => {
+    if (loading || error || messages.length === 0) return;
+    if (!isNearBottomRef.current && !stickToBottomRef.current) return;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      });
+    });
+  }, [messages, loading, error]);
+
+  const pageRef = useRef(0);
+  const isNearBottomRef = useRef(true);
+  const stickToBottomRef = useRef(false);
+  const inputRef = useRef<TextInput>(null);
 
   /* ================= CURRENT USER ================= */
 
@@ -298,6 +350,7 @@ const handleSend = async () => {
   }
 
   setSending(true);
+  stickToBottomRef.current = true;
 
   const result = await sendMessage(matchId, content);
 
@@ -311,6 +364,7 @@ const handleSend = async () => {
 
   setInput('');
   setSending(false);
+  inputRef.current?.focus();
 
   setTimeout(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -318,21 +372,17 @@ const handleSend = async () => {
 };
   /* ================= SCROLL ================= */
 
-  const handleScroll = (
-    event: any
-  ) => {
-    const y =
-      event.nativeEvent
-        .contentOffset.y;
+  const handleScroll = (event: any) => {
+  const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+  const y = contentOffset.y;
 
-    if (
-      y <= 30 &&
-      !loadingOlder &&
-      hasMore
-    ) {
-      void loadOlderMessages();
-    }
-  };
+  isNearBottomRef.current =
+    contentSize.height - (y + layoutMeasurement.height) < 80;
+
+  if (y <= 30 && !loadingOlder && hasMore) {
+    void loadOlderMessages();
+  }
+};
 
 
   /* ================= SAFETY ================= */
@@ -542,19 +592,17 @@ router.push({
       setSafetyBusy(false);
     }
   };
+    const scrollToLatest = (animated = false) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated });
+    });
+  };
+
 
   /* ================= UI ================= */
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={
-          Platform.OS === 'ios'
-            ? 'padding'
-            : undefined
-        }
-      >
 
         {/* ================= HEADER ================= */}
         <Header
@@ -563,6 +611,11 @@ router.push({
           onReportPress={openSafety}
         />
 
+        <KeyboardAvoidingView
+         style={styles.container}
+  behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  keyboardVerticalOffset={0}
+      >
 
         {/* ================= CHAT ================= */}
 
@@ -608,70 +661,59 @@ router.push({
               <ScrollView
                 ref={scrollRef}
                 style={styles.messages}
-                contentContainerStyle={
-                  styles.messageContent
-                }
-                showsVerticalScrollIndicator={
-                  false
-                }
+                contentContainerStyle={styles.messageContent}
+                showsVerticalScrollIndicator={false}
                 onScroll={handleScroll}
                 scrollEventThrottle={200}
+                onScrollBeginDrag={() => {
+                  stickToBottomRef.current = false;
+                }}
+                onContentSizeChange={() => {
+                  if (isNearBottomRef.current || stickToBottomRef.current) {
+                    scrollRef.current?.scrollToEnd({ animated: false });
+                  }
+                }}
               >
                 {loadingOlder && (
                   <ActivityIndicator
                     size="small"
                     color="#FFFFFF"
-                    style={{
-                      marginBottom: 12,
-                    }}
+                    style={{ marginBottom: 12 }}
                   />
                 )}
 
-                {!hasMore &&
-                  messages.length > 0 && (
-                    <Text
-                      style={
-                        styles.startConversation
-                      }
-                    >
-                      Start of conversation
-                    </Text>
-                  )}
+                {!hasMore && messages.length > 0 && (
+                  <Text style={styles.startConversation}>
+                    Start of conversation
+                  </Text>
+                )}
 
                 {messages.length === 0 ? (
-                  <View
-                    style={
-                      styles.emptyChatText
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.emptyChatText
-                      }
-                    >
+                  <View style={styles.emptyChatText}>
+                    <Text style={styles.emptyChatText}>
                       Say hi to {name} 👋
                     </Text>
                   </View>
                 ) : (
-                  messages.map(
-                    (message) => {
-                      const isMe =
-                        currentUserId !==
-                        null &&
-                        message.sender_id ===
-                        currentUserId;
+                  messages.map((message, index) => {
+                    const isMe =
+                      currentUserId !== null &&
+                      message.sender_id === currentUserId;
 
-                      return (
-                        <MessageBubble
-                          key={message.id}
-                          message={message}
-                          isMe={isMe}
-                          avatarUri={image}
-                          onAvatarPress={openProfile}
-                        />
-                      );
-                    }
-                  )
+                    const next = messages[index + 1];
+                    const showAvatar = !next || next.sender_id !== message.sender_id;
+
+                    return (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        isMe={isMe}
+                        showAvatar={showAvatar}
+                        avatarUri={image}
+                        onAvatarPress={openProfile}
+                      />
+                    );
+                  })
                 )}
               </ScrollView>
 
@@ -679,13 +721,13 @@ router.push({
 
               <View style={styles.inputBar}>
                 <TextInput
+                  ref={inputRef}
                   value={input}
                   onChangeText={setInput}
                   placeholder={`Say something to ${name}`}
                   placeholderTextColor="#999999"
                   multiline
                   maxLength={5000}
-                  editable={!sending}
                   style={[
                     styles.input,
                     Platform.OS === 'web' && ({
@@ -693,33 +735,18 @@ router.push({
                     } as any),
                   ]}
                 />
-                <View style={{ paddingBottom: insets.bottom }}></View>
-
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
-                    !input.trim() &&
-                    styles.sendDisabled,
+                    !input.trim() && styles.sendDisabled,
                   ]}
-                  disabled={
-                    !input.trim() ||
-                    sending
-                  }
-                  onPress={
-                    handleSend
-                  }
+                  disabled={!input.trim() || sending}
+                  onPress={handleSend}
                 >
                   {sending ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFFFFF"
-                    />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Ionicons
-                      name="arrow-up"
-                      size={20}
-                      color="#FFFFFF"
-                    />
+                    <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -900,7 +927,11 @@ router.push({
                       key={reason.value}
                       style={[
                         styles.reportReason,
-                        reportReason === reason.value && styles.reportReasonSelected,
+                        reportReason === reason.value && {
+                          backgroundColor: '#FFF0E3',
+                          borderWidth: 1,
+                          borderColor: '#E88A43',
+                        },
                       ]}
                       onPress={() => setReportReason(reason.value)}
                     >
@@ -1029,11 +1060,13 @@ router.push({
 function MessageBubble({
   message,
   isMe,
+  showAvatar,
   avatarUri,
   onAvatarPress,
 }: {
   message: ChatMessage;
   isMe: boolean;
+  showAvatar: boolean;
   avatarUri?: string;
   onAvatarPress?: () => void;
 }) {
@@ -1050,7 +1083,7 @@ function MessageBubble({
       ]}
     >
 
-      {!isMe && (
+      {!isMe && showAvatar ? (
         <TouchableOpacity
           style={styles.messageAvatar}
           activeOpacity={0.7}
@@ -1064,7 +1097,9 @@ function MessageBubble({
             <Ionicons name="person" size={13} color="#888888" />
           )}
         </TouchableOpacity>
-      )}
+      ) : !isMe ? (
+        <View style={styles.messageAvatarPlaceholder} />
+      ) : null}
       {isMe ? (
         <LinearGradient
           colors={['#FFB078', '#FF7D88']}
@@ -1097,33 +1132,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-
-  container: {
-    flex: 1,
-    alignItems: 'center',
-  },
+container: {
+  flex: 1,
+  alignItems: 'center',
+  width: '100%',
+  minHeight: 0,
+},
 
 
   /* CHAT */
+chatArea: {
+  flex: 1,
+  minHeight: 0,
+  marginTop: 14,
+  marginBottom: 14,
+  borderRadius: 22,
+  overflow: 'hidden',
+  position: 'relative',
+  flexDirection: 'column',
+  backgroundColor: '#f3f3f3',
+},
 
-  chatArea: {
-    flex: 1,
-    marginTop: 14,
-    marginBottom: 14,
-    borderRadius: 22,
-    overflow: 'hidden',
-    position: 'relative',
-    backgroundColor: '#f3f3f3',
-  },
-
-  messages: {
-    flex: 1,
-  },
+messages: {
+  flex: 1,
+  minHeight: 0,
+},
 
   messageContent: {
     paddingHorizontal: 10,
     paddingTop: 18,
-    paddingBottom: 85,
+    paddingBottom: 16,
   },
 
   startConversation: {
@@ -1211,6 +1249,7 @@ const styles = StyleSheet.create({
   },
   otherBubbleText: {
     color: '#2a2929',
+     fontSize:16,
   },
 
   myBubble: {
@@ -1221,6 +1260,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   myBubbleText: {
+    fontSize:16,
     color: '#FFFFFF',
   },
 
@@ -1240,35 +1280,26 @@ const styles = StyleSheet.create({
 
   /* INPUT */
 
-  inputBar: {
-    position: 'absolute',
-
-    left: 10,
-    right: 10,
-    bottom: 12,
-
-    minHeight: 43,
-
-    backgroundColor: '#FFFFFF',
-
-    borderRadius: 23,
-
-    flexDirection: 'row',
-    alignItems: 'center',
-
-    paddingLeft: 15,
-    paddingRight: 5,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
+inputBar: {
+  position: 'relative',
+  left: undefined,
+  right: undefined,
+  bottom: undefined,
+  marginHorizontal: 10,
+  marginBottom: 12,
+  minHeight: 45,
+  backgroundColor: '#FFFFFF',
+  borderRadius: 23,
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingLeft: 15,
+  paddingRight: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+},
   input: {
     flex: 1,
 
@@ -1277,7 +1308,7 @@ const styles = StyleSheet.create({
 
     paddingVertical: 8,
 
-    fontSize: 11,
+    fontSize: 16,
 
     color: '#333333',
   },
@@ -1388,7 +1419,7 @@ const styles = StyleSheet.create({
   },
 
   safetyOption: {
-    height: 37,
+    minHeight: 46,
 
     borderRadius: 13,
 
@@ -1407,7 +1438,7 @@ const styles = StyleSheet.create({
 
     color: '#222222',
 
-    fontSize: 12,
+    fontSize: 13,
 
     fontWeight: '600',
   },
@@ -1428,7 +1459,7 @@ const styles = StyleSheet.create({
   },
   safetyCancel: {
     flex: 1,
-    minHeight: 42,
+    height: 46,
     borderRadius: 13,
     backgroundColor: '#EEEEEE',
     alignItems: 'center',
@@ -1441,13 +1472,12 @@ const styles = StyleSheet.create({
   },
   safetyConfirm: {
     flex: 1,
-    minHeight: 42,
+    height: 46,
     borderRadius: 13,
     backgroundColor: '#E88A43',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-    marginTop: 8,
   },
   safetyConfirmText: {
     color: '#FFFFFF',
@@ -1455,7 +1485,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   reportReason: {
-    minHeight: 37,
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
@@ -1477,6 +1507,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     color: '#222222',
     fontSize: 13,
+  },
+
+  messageAvatarPlaceholder: {
+    width: 33,
+    height: 1,
   },
 
   messageAvatarImg: {

@@ -26,7 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import { router, useLocalSearchParams, } from 'expo-router';
+import {useLocalSearchParams,usePathname,useRouter} from 'expo-router';
 
 
 import { supabase } from '../../../lib/supabase';
@@ -48,22 +48,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChatMessage, } from '../../../features/chat/types';
 
 export default function ChatRoom() {
-  console.log('CHAT ROOM SCREEN RENDERED');
   const params =
     useLocalSearchParams<{
       matchId?: string;
       name?: string;
       image?: string;
     }>();
-
+  const router = useRouter();
  const { width, height } = useWindowDimensions();
 
   const matchId =
     typeof params.matchId === 'string'
       ? params.matchId
       : '';
-  console.log('CHAT ROOM PARAMS:', params);
-  console.log('CHAT ROOM matchId:', matchId);
+
 
   const name =
     typeof params.name === 'string'
@@ -134,6 +132,15 @@ export default function ChatRoom() {
   const [inputFocused, setInputFocused] = useState(false);
   const didInitialScroll = useRef(false);
 
+const pathname = usePathname();
+useEffect(() => {
+  console.log('PATH NOW ->', pathname);
+}, [pathname]);
+
+useEffect(() => {
+  console.log('CHAT ROOM MOUNTED', matchId);
+  return () => console.log('CHAT ROOM UNMOUNTED', matchId);
+}, [matchId]);
 
 
   useEffect(() => {
@@ -433,14 +440,19 @@ export default function ChatRoom() {
 
   /* ================= SAFETY ================= */
 
-  const closeSafety = () => {
-    if (safetyBusy) return;
+ const closeSafety = () => {
+  if (safetyBusy) return;
 
-    setShowSafety(false);
-    setSafetyView('menu');
-    setReportReason('');
-    setReportDetails('');
-  };
+  if (safetyView === 'success') {
+    router.dismissTo('/chat'); // ถอยกลับไปหน้า Chat List ที่อยู่ใน Stack แล้ว ทิ้งทุกหน้าที่ซ้อนอยู่ด้านบน
+    return;
+  }
+
+  setShowSafety(false);
+  setSafetyView('menu');
+  setReportReason('');
+  setReportDetails('');
+};
 
   const openSafety = () => {
     setSafetyView('menu');
@@ -815,6 +827,17 @@ export default function ChatRoom() {
             style={styles.overlay}
             onPress={closeSafety}
           >
+            <KeyboardAvoidingView
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    keyboardVerticalOffset={0}
+    style={{
+      flex: 1,
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+    }}
+  >
             <Pressable
               style={[
                 styles.safetyModal,
@@ -1082,18 +1105,21 @@ export default function ChatRoom() {
                   <Text style={styles.safetyBody}>{safetySuccessMessage}</Text>
 
                   <TouchableOpacity
-                    style={styles.safetyConfirm}
-                    onPress={() => {
-                      closeSafety();
-                      router.replace('/chat');
-                    }}
-                  >
-                    <Text style={styles.safetyConfirmText}>Close</Text>
-                  </TouchableOpacity>
+  style={styles.safetyConfirm}
+  onPress={() => {
+  console.log('CLOSE PRESSED');
+  closeSafety();
+  router.replace('/chat');
+  console.log('AFTER NAVIGATE');
+}}
+>
+  <Text style={styles.safetyConfirmText}>Close</Text>
+</TouchableOpacity>
                 </>
               )}
 
             </Pressable>
+            </KeyboardAvoidingView>
           </Pressable>
         </Modal>
 
@@ -1530,6 +1556,7 @@ inputBar: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    marginTop: 8,
   },
   safetyConfirmText: {
     color: '#FFFFFF',

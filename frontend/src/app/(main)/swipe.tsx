@@ -5,6 +5,7 @@ import {
   Animated,
   Image,
   Modal,
+  KeyboardAvoidingView,
   PanResponder,
   Platform,
   Pressable,
@@ -1178,6 +1179,17 @@ export default function SwipeScreen() {
             closeSafety
           }
         >
+          <KeyboardAvoidingView
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    keyboardVerticalOffset={0}
+    style={{
+      flex: 1,
+      width: '100%',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+    }}
+  >
           <Pressable
             style={[
               styles.safetyModal,
@@ -1638,7 +1650,10 @@ export default function SwipeScreen() {
                 </>
               )}
           </Pressable>
+          </KeyboardAvoidingView>
+          
         </Pressable>
+        
       </Modal>
 
       {/* ================= SETTINGS BOTTOM SHEET ================= */}
@@ -2387,6 +2402,7 @@ const styles = StyleSheet.create({
 
   reportScroll: {
     maxHeight: 430,
+    
   },
 
   reportReason: {

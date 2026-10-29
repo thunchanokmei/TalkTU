@@ -46,14 +46,14 @@ export default function ChatPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  
+
   const isTablet = width >= 768;
 
   const pageWidth = isTablet
     ? Math.min(width - 80, 620)
     : width - 24;
-  
-  
+
+
   const loadUnreadCounts = useCallback(async () => {
     const result = await getMyUnreadCounts();
 
@@ -72,40 +72,40 @@ export default function ChatPage() {
     setUnreadCounts(counts);
   }, []);
 
-  
-const loadChats = useCallback(
-  async (showLoading = false) => {
-    console.log('LOAD CHATS RUNNING');
 
-    if (showLoading) {
-      setLoading(true);
-    }
+  const loadChats = useCallback(
+    async (showLoading = false) => {
+      console.log('LOAD CHATS RUNNING');
 
-    setError(null);
+      if (showLoading) {
+        setLoading(true);
+      }
 
-    const result = await getChatList();
+      setError(null);
 
-    if (result.error) {
-      setError(
-        result.error.message ||
+      const result = await getChatList();
+
+      if (result.error) {
+        setError(
+          result.error.message ||
           'Unable to load chats.'
-      );
-      setChats([]);
-    } else {
-      console.log(
-        'CHAT LIST DATA:',
-        JSON.stringify(result.data, null, 2)
-      );
+        );
+        setChats([]);
+      } else {
+        console.log(
+          'CHAT LIST DATA:',
+          JSON.stringify(result.data, null, 2)
+        );
 
-      setChats(result.data ?? []);
-    }
+        setChats(result.data ?? []);
+      }
 
-    await loadUnreadCounts();
+      await loadUnreadCounts();
 
-    setLoading(false);
-  },
-  [loadUnreadCounts]
-);
+      setLoading(false);
+    },
+    [loadUnreadCounts]
+  );
 
 
   useEffect(() => {
@@ -119,34 +119,39 @@ const loadChats = useCallback(
       void unsubscribeFromChannel(channel);
     };
   }, [loadChats]);
-  
+
   useEffect(() => {
-  const channel = supabase
-    .channel('chat-list-messages')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      },
-      (payload) => {
-        const newMessage = payload.new as {
-          sender_id: string;
-        };
+    const channelName =
+      `chat-list-messages-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-        void loadUnreadCounts();
-        void loadChats(false);
-      }
-    )
-    .subscribe((status) => {
-      console.log('CHAT LIST REALTIME:', status);
-    });
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          void loadUnreadCounts();
+          void loadChats(false);
+        }
+      )
+      .subscribe((status, error) => {
+        console.log(
+          'CHAT LIST REALTIME:',
+          status,
+          error ?? ''
+        );
+      });
 
-  return () => {
-    void supabase.removeChannel(channel);
-  };
-}, [loadChats, loadUnreadCounts]);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [loadChats, loadUnreadCounts]);
 
   useFocusEffect(
     useCallback(() => {
@@ -209,7 +214,6 @@ const loadChats = useCallback(
   };
 
   return (
-    // AppHeader เว้นพื้นที่ใต้ status bar ให้เองแล้ว จึงไม่ใช้ SafeAreaView ด้านบน
     <View style={styles.screen}>
 
       {/* ================= HEADER (กลาง: เหมือนหน้า Like / Profile) ================= */}
@@ -558,31 +562,31 @@ const styles = StyleSheet.create({
 
     textAlign: 'center',
   },
-unreadBadge: {
-  position: 'absolute',
-  right: 12,
-  top: '60%',
-  transform: [{ translateY: -10 }],
-  minWidth: 20,
-  height: 20,
-  paddingHorizontal: 5,
-  borderRadius: 10,
-  backgroundColor: '#E5484D',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 10,
-},
+  unreadBadge: {
+    position: 'absolute',
+    right: 12,
+    top: '60%',
+    transform: [{ translateY: -10 }],
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: '#E5484D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
   unreadBadgeText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
   },
   messageRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-},
-lastMessage: {
-  flex: 1,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastMessage: {
+    flex: 1,
+  },
 });

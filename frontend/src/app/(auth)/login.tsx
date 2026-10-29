@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { hasAcceptedCurrentPolicies } from '../../constants/policies';
 
 import {
   Image,

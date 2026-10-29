@@ -1499,6 +1499,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEEEEE',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 10,
+    marginTop: 8,
   },
   safetyCancelText: {
     color: '#333333',

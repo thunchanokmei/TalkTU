@@ -119,7 +119,7 @@ export default function AccountSettingsScreen() {
             console.error('Unable to log out:', error);
             return;
         }
-
+        router.dismissAll();
         router.replace('/(auth)/login');
     };
 

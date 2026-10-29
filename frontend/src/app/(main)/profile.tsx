@@ -264,7 +264,9 @@ export default function ProfileScreen() {
             </Text>
           ) : null}
 
-          <View style={styles.bottomRow}>
+          {/* TU / gender (wraps onto a new line on narrow screens) */}
+
+          {generation !== null || gender ? (
             <View style={styles.infoGroup}>
               {generation !== null ? (
                 <View style={styles.infoItem}>
@@ -290,22 +292,24 @@ export default function ProfileScreen() {
                 </View>
               ) : null}
             </View>
+          ) : null}
 
-            <TouchableOpacity
-              style={styles.editShadow}
-              onPress={() => router.push('/edit-profile')}
-              activeOpacity={0.85}
+          {/* EDIT BUTTON (below the info, full width) */}
+
+          <TouchableOpacity
+            style={styles.editShadow}
+            onPress={() => router.push('/edit-profile')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={BUTTON_GRADIENT}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.editButton}
             >
-              <LinearGradient
-                colors={BUTTON_GRADIENT}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.editButton}
-              >
-                <Text style={styles.editText}>EDIT PROFILE</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+              <Text style={styles.editText}>EDIT PROFILE</Text>
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
 
         {errorMessage ? (
@@ -344,8 +348,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 32,
   },
-
-  /* ================= HEADER ================= */
 
   /* ================= PROFILE CARD ================= */
 
@@ -412,19 +414,14 @@ const styles = StyleSheet.create({
     color: '#111111',
   },
 
-  bottomRow: {
+  infoGroup: {
     marginTop: 14,
     marginHorizontal: 6,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  infoGroup: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    columnGap: 16,
+    rowGap: 8,
   },
 
   infoItem: {
@@ -439,6 +436,8 @@ const styles = StyleSheet.create({
   },
 
   editShadow: {
+    marginTop: 18,
+    marginHorizontal: 6,
     borderRadius: 24,
     backgroundColor: '#F6A67E',
     ...softShadow,

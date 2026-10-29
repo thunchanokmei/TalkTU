@@ -2016,7 +2016,7 @@ const styles = StyleSheet.create({
   detailText: {
     color: '#FFFFFF',
 
-    fontSize: 12,
+    fontSize: 14,
 
     marginTop: 2,
 
@@ -2293,7 +2293,7 @@ const styles = StyleSheet.create({
   safetyOption: {
     minHeight: 42,
 
-    borderRadius: 13,
+    borderRadius: 17,
 
     backgroundColor:
       '#EEEEEE',
@@ -2344,7 +2344,7 @@ const styles = StyleSheet.create({
 
     minHeight: 42,
 
-    borderRadius: 13,
+    borderRadius: 17,
 
     backgroundColor:
       '#EEEEEE',
@@ -2365,7 +2365,7 @@ const styles = StyleSheet.create({
 
     minHeight: 42,
 
-    borderRadius: 13,
+    borderRadius: 17,
 
     backgroundColor:
       '#E88A43',
@@ -2395,7 +2395,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
 
-    borderRadius: 10,
+    borderRadius: 17,
 
     paddingHorizontal: 10,
 

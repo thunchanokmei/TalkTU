@@ -1,12 +1,12 @@
-
 import {
   Animated,
+  Platform,
   Pressable,
   StyleSheet,
-  Text,
 } from 'react-native';
 
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
@@ -15,13 +15,17 @@ type Props = {
   onPress: () => void;
 };
 
+const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
+
+// เดิมปุ่มมี marginTop: 50 อยู่ข้างใน ย้ายมาบวกที่ top เพื่อให้ตำแหน่งบนจอเท่าเดิม
+const TOP_OFFSET = 50;
+
 export default function OnboardingBackButton({
   top,
   left,
   onPress,
 }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
-  const [pressed, setPressed] = useState(false);
 
   const animateTo = (value: number) => {
     Animated.spring(scale, {
@@ -37,7 +41,7 @@ export default function OnboardingBackButton({
       style={[
         styles.wrapper,
         {
-          top,
+          top: top + TOP_OFFSET,
           left,
           transform: [{ scale }],
         },
@@ -45,63 +49,53 @@ export default function OnboardingBackButton({
     >
       <Pressable
         onPress={onPress}
-        onPressIn={() => {
-          setPressed(true);
-          animateTo(0.94);
-        }}
-        onPressOut={() => {
-          setPressed(false);
-          animateTo(1);
-        }}
+        onPressIn={() => animateTo(0.94)}
+        onPressOut={() => animateTo(1)}
         accessibilityRole="button"
         accessibilityLabel="Go back"
-        style={[
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
       >
         <LinearGradient
-          colors={['#FFE98F', '#FFB873']}
-          style={styles.gradient}
+          colors={THEME_GRADIENT}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={styles.circleButton}
         >
-          <Text style={styles.text}>{'<<'}</Text>
+          <Ionicons
+            name="chevron-back"
+            size={26}
+            color="#FFFFFF"
+          />
         </LinearGradient>
       </Pressable>
     </Animated.View>
   );
 }
 
+const softShadow = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  android: {
+    elevation: 5,
+  },
+});
+
 const styles = StyleSheet.create({
   wrapper: {
     position: 'absolute',
     zIndex: 20,
-    borderRadius: 999,
-    elevation: 4,
-    shadowColor: '#8D5140',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+    borderRadius: 24,
+    backgroundColor: '#FFAF79',
+    ...softShadow,
   },
-  button: {
-    width: 75,
-    height: 55,
-    borderRadius: 999,
-    overflow: 'hidden',
-    marginTop:50,
-  },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  gradient: {
-    flex: 1,
+  circleButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  text: {
-    fontWeight: '500',
-    color: '#754C35',
   },
 });

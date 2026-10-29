@@ -242,7 +242,7 @@ export default function StudyScreen() {
         >
           What do you
           {'\n'}
-          study? 📚
+          study? 
         </Text>
 
         {/* =========================

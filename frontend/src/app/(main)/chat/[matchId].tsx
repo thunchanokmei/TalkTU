@@ -1407,9 +1407,9 @@ inputBar: {
   safetyModal: {
     backgroundColor: '#FFFFFF',
 
-    borderRadius: 22,
+    borderRadius: 30,
 
-    paddingHorizontal: 12,
+    paddingHorizontal: 15,
     paddingTop: 10,
     paddingBottom: 12,
 
@@ -1471,7 +1471,7 @@ inputBar: {
   safetyOption: {
     minHeight: 46,
 
-    borderRadius: 13,
+    borderRadius: 20,
 
     backgroundColor: '#E6E6E6',
 
@@ -1510,7 +1510,7 @@ inputBar: {
   safetyCancel: {
     flex: 1,
     height: 46,
-    borderRadius: 13,
+    borderRadius: 17,
     backgroundColor: '#EEEEEE',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1523,7 +1523,7 @@ inputBar: {
   safetyConfirm: {
     flex: 1,
     height: 46,
-    borderRadius: 13,
+    borderRadius: 17,
     backgroundColor: '#E88A43',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1538,7 +1538,7 @@ inputBar: {
     minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 17,
     paddingHorizontal: 10,
     marginTop: 5,
     backgroundColor: '#F3F3F3',
@@ -1551,7 +1551,7 @@ inputBar: {
   reportDetails: {
     minHeight: 75,
     maxHeight: 120,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: '#F3F3F3',
     padding: 10,
     marginTop: 10,

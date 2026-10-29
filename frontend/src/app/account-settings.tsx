@@ -1,4 +1,3 @@
-
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -11,13 +10,43 @@ import {
     View,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    SafeAreaProvider,
+    SafeAreaView,
+} from 'react-native-safe-area-context';
 
-import BottomNavigation from '../components/navigation/BottomNavigation';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { supabase } from '../lib/supabase';
 import * as Clipboard from 'expo-clipboard';
 
+const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
+
+const softShadow = Platform.select({
+    ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.18,
+        shadowRadius: 6,
+    },
+    android: {
+        elevation: 5,
+    },
+});
+
+// fullScreenModal screens need their own SafeAreaProvider,
+// otherwise the top inset can come back as 0 and the header
+// overlaps the status bar.
 export default function AccountSettingsScreen() {
+    return (
+        <SafeAreaProvider>
+            <AccountSettingsContent />
+        </SafeAreaProvider>
+    );
+}
+
+function AccountSettingsContent() {
     const router = useRouter();
     const deletingAccountRef = useRef(false);
     const [copiedValue, setCopiedValue] = useState<string | null>(null);
@@ -112,7 +141,7 @@ export default function AccountSettingsScreen() {
         ]);
     };
 
-    const handleLogout = async () => {
+    const performLogout = async () => {
         const { error } = await supabase.auth.signOut();
 
         if (error) {
@@ -123,10 +152,40 @@ export default function AccountSettingsScreen() {
         router.replace('/(auth)/login');
     };
 
+    const handleLogout = () => {
+        const title = 'Log out?';
+        const message = 'Are you sure you want to log out?';
+
+        if (Platform.OS === 'web') {
+            const confirmed = window.confirm(`${title}\n\n${message}`);
+
+            if (confirmed) {
+                void performLogout();
+            }
+
+            return;
+        }
+
+        Alert.alert(title, message, [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Log out',
+                style: 'destructive',
+                onPress: () => {
+                    void performLogout();
+                },
+            },
+        ]);
+    };
+
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView
+            style={styles.container}
+            edges={['top', 'bottom', 'left', 'right']}
+        >
             <View style={styles.header}>
                 <TouchableOpacity
+                    style={styles.headerShadow}
                     onPress={() => {
                         if (router.canGoBack()) {
                             router.back();
@@ -134,15 +193,27 @@ export default function AccountSettingsScreen() {
                             router.replace('/profile');
                         }
                     }}
+                    activeOpacity={0.85}
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
                 >
-                    <Text style={styles.backButton}>←</Text>
+                    <LinearGradient
+                        colors={THEME_GRADIENT}
+                        start={{ x: 0, y: 0.5 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={styles.circleButton}
+                    >
+                        <Ionicons
+                            name="chevron-back"
+                            size={26}
+                            color="#FFFFFF"
+                        />
+                    </LinearGradient>
                 </TouchableOpacity>
 
-                <Text style={styles.headerTitle}>Account Settings</Text>
-
-                <View style={styles.headerSpacer} />
+                <View pointerEvents="none" style={styles.titleWrap}>
+                    <Text style={styles.headerTitle}>Account Settings</Text>
+                </View>
             </View>
 
             <ScrollView
@@ -150,7 +221,6 @@ export default function AccountSettingsScreen() {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.sectionTitle}>Account</Text>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Legal & Safety</Text>
@@ -242,8 +312,6 @@ export default function AccountSettingsScreen() {
                     </View>
                 ))}
             </ScrollView>
-
-            <BottomNavigation />
         </SafeAreaView>
     );
 }
@@ -254,24 +322,34 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
     },
     header: {
-        minHeight: 56,
+        height: 72,
         paddingHorizontal: 20,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    backButton: {
-        fontSize: 28,
-        color: '#222',
-        width: 32,
+    headerShadow: {
+        borderRadius: 24,
+        backgroundColor: '#FFAF79',
+        ...softShadow,
+    },
+    circleButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    titleWrap: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        alignItems: 'center',
     },
     headerTitle: {
         fontSize: 20,
         fontWeight: '700',
         color: '#222',
-    },
-    headerSpacer: {
-        width: 32,
     },
     scrollView: {
         flex: 1,
@@ -281,14 +359,14 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         paddingBottom: 32,
     },
-    
+
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#222',
         marginBottom: 12,
     },
-    
+
     menuItem: {
         minHeight: 52,
         flexDirection: 'row',
@@ -354,7 +432,6 @@ const styles = StyleSheet.create({
         width: '100%',
         marginBottom: 24,
     },
-
 
     settingRow: {
         width: '100%',

@@ -16,7 +16,10 @@ import {
     View,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+    SafeAreaProvider,
+    SafeAreaView,
+} from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -346,7 +349,18 @@ function PhotoSlot(props: PhotoSlotProps) {
    Screen
 ============================================================ */
 
+// fullScreenModal screens need their own SafeAreaProvider,
+// otherwise the top inset can come back as 0 and the header
+// overlaps the status bar.
 export default function EditProfileScreen() {
+    return (
+        <SafeAreaProvider>
+            <EditProfileContent />
+        </SafeAreaProvider>
+    );
+}
+
+function EditProfileContent() {
     const router = useRouter();
     const { width: screenWidth } = useWindowDimensions();
 

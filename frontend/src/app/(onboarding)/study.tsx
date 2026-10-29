@@ -15,8 +15,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import {
   getMyFaculty,
+  getCampus,
   getTuGenerations,
+  saveCampus,
   saveTuGeneration,
+  type Campus,
 } from '../../features/onboarding/services/onboardingService';
 
 import { useFonts } from '@expo-google-fonts/google-sans/useFonts';
@@ -33,12 +36,16 @@ export default function StudyScreen() {
   console.log('STUDY NAME:', name);
 
   const [faculty, setFaculty] = useState('Loading...');
+
+  const [campus, setCampus] = useState<Campus | null>(null);
+  const [showCampuses, setShowCampuses] = useState(false);
+
   const [generations, setGenerations] = useState<number[]>([]);
   const [generation, setGeneration] = useState<number | null>(null);
   const [showGenerations, setShowGenerations] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [hoveredGeneration, setHoveredGeneration] =
-  useState<number | null>(null);  
+    useState<number | null>(null);
   /*
    * ============================
    * FONT
@@ -63,11 +70,11 @@ export default function StudyScreen() {
   );
 
   const titleSize = Math.max(
-      25,
-      Math.min(
-        shortSide * 0.1,
-        40
-      )
+    25,
+    Math.min(
+      shortSide * 0.1,
+      40
+    )
   );
 
   const fieldHeight = Math.max(
@@ -87,16 +94,20 @@ export default function StudyScreen() {
       try {
         const [
           facultyValue,
+          campusValue,
           generationValues,
         ] = await Promise.all([
           getMyFaculty(),
+          getCampus(),
           getTuGenerations(),
         ]);
 
         setFaculty(
           facultyValue ??
-            'Faculty information unavailable'
+          'Faculty information unavailable'
         );
+
+        setCampus(campusValue);
 
         setGenerations(
           generationValues
@@ -122,8 +133,14 @@ export default function StudyScreen() {
    * ============================
    */
 
+
   const handleContinue = async () => {
     setErrorMessage('');
+
+    if (campus === null) {
+      setErrorMessage('Please select your campus.');
+      return;
+    }
 
     if (generation === null) {
       setErrorMessage(
@@ -133,33 +150,31 @@ export default function StudyScreen() {
     }
 
     try {
-      await saveTuGeneration(
-        generation
-      );
+      await saveCampus(campus);
 
-      console.log(
-        'TU generation saved:',
-        generation
-      );
+      await saveTuGeneration(generation);
 
-      router.push('/gender');
+      console.log('Campus saved:', campus);
+      console.log('TU generation saved:', generation);
+
+      router.push({
+        pathname: '/gender',
+        params: { name },
+      });
     } catch (error) {
       console.error(
-        'Save generation error:',
+        'Save study information error:',
         error
       );
 
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : 'Unable to save your TU generation.'
+          : 'Unable to save your study information.'
       );
     }
-    router.push({
-      pathname: '/gender',
-      params: { name },
-    });
   };
+
 
   /*
    * ============================
@@ -235,8 +250,8 @@ export default function StudyScreen() {
                 titleSize,
               lineHeight:
                 titleSize * 1.15,
-              marginTop:30,
-              marginBottom:20,
+              marginTop: 30,
+              marginBottom: 20,
             },
           ]}
         >
@@ -294,6 +309,102 @@ export default function StudyScreen() {
           </Text>
         </View>
 
+
+        {/* =========================
+            CAMPUS
+            ========================= */}
+
+        <Text
+          style={[
+            styles.label,
+            {
+              marginTop: 20,
+              fontSize: Math.max(
+                20,
+                Math.min(shortSide * 0.035, 20)
+              ),
+            },
+          ]}
+        >
+          Campus
+        </Text>
+
+        <Pressable
+          style={[
+            styles.selectField,
+            {
+              height: fieldHeight,
+            },
+          ]}
+          onPress={() => setShowCampuses(!showCampuses)}
+        >
+          <Text
+            style={[
+              styles.fieldText,
+              {
+                fontSize: Math.max(
+                  15,
+                  Math.min(shortSide * 0.035, 17)
+                ),
+              },
+            ]}
+          >
+            {campus ?? 'Select your campus'}
+          </Text>
+
+          <Text
+            style={[
+              styles.arrow,
+              {
+                fontSize: Math.max(
+                  14,
+                  Math.min(shortSide * 0.035, 17)
+                ),
+              },
+            ]}
+          >
+            ▼
+          </Text>
+        </Pressable>
+
+        {showCampuses ? (
+          <View style={styles.dropdown}>
+            {(
+              [
+                'รังสิต',
+                'ท่าพระจันทร์',
+                'พัทยา',
+                'ลำปาง',
+              ] as Campus[]
+            ).map((item) => (
+              <Pressable
+                key={item}
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setCampus(item);
+                  setShowCampuses(false);
+                  setErrorMessage('');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dropdownText,
+                    {
+                      fontSize: Math.max(
+                        14,
+                        Math.min(shortSide * 0.035, 17)
+                      ),
+                    },
+                  ]}
+                >
+                  {item}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+
+
         {/* =========================
             TU GENERATION
             ========================= */}
@@ -302,7 +413,7 @@ export default function StudyScreen() {
           style={[
             styles.label,
             {
-              marginTop:20,
+              marginTop: 20,
               fontSize:
                 Math.max(
                   20,
@@ -377,43 +488,43 @@ export default function StudyScreen() {
           <View
             style={styles.dropdown}
           >
-           {generations.map((item) => (
-  <Pressable
-    key={item}
-    style={[
-      styles.dropdownItem,
-      hoveredGeneration === item && {
-        backgroundColor: '#FFE1E1',
-      },
-    ]}
-    onHoverIn={() => setHoveredGeneration(item)}
-    onHoverOut={() => setHoveredGeneration(null)}
-    onPress={() => {
-      setGeneration(item);
-      setShowGenerations(false);
-      setErrorMessage('');
-    }}
-  >
-    <Text
-      style={[
-        styles.dropdownText,
-        {
-          fontSize: Math.max(
-            14,
-            Math.min(shortSide * 0.035, 17)
-          ),
-          color:
-            hoveredGeneration === item
-              ? '#483232'
-              : '#333333',
-        },
-      ]}
-    >
-      TU{item}
-    </Text>
-  </Pressable>
-))}
-                   
+            {generations.map((item) => (
+              <Pressable
+                key={item}
+                style={[
+                  styles.dropdownItem,
+                  hoveredGeneration === item && {
+                    backgroundColor: '#FFE1E1',
+                  },
+                ]}
+                onHoverIn={() => setHoveredGeneration(item)}
+                onHoverOut={() => setHoveredGeneration(null)}
+                onPress={() => {
+                  setGeneration(item);
+                  setShowGenerations(false);
+                  setErrorMessage('');
+                }}
+              >
+                <Text
+                  style={[
+                    styles.dropdownText,
+                    {
+                      fontSize: Math.max(
+                        14,
+                        Math.min(shortSide * 0.035, 17)
+                      ),
+                      color:
+                        hoveredGeneration === item
+                          ? '#483232'
+                          : '#333333',
+                    },
+                  ]}
+                >
+                  TU{item}
+                </Text>
+              </Pressable>
+            ))}
+
           </View>
         ) : null}
 
@@ -474,7 +585,7 @@ const styles = StyleSheet.create({
    */
 
   title: {
-    fontFamily:'GoogleSansSemiBold',
+    fontFamily: 'GoogleSansSemiBold',
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 10,
@@ -496,7 +607,7 @@ const styles = StyleSheet.create({
    */
 
   label: {
-    fontFamily:'GoogleSansMedium',
+    fontFamily: 'GoogleSansMedium',
     color: '#FFFFFF',
     marginBottom: 8,
     marginTop: 10,
@@ -519,10 +630,10 @@ const styles = StyleSheet.create({
   readOnlyField: {
     width: '100%',
     borderRadius: 20,
-    backgroundColor:'#F3F3F3',
-    justifyContent:'center',
+    backgroundColor: '#F3F3F3',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    shadowColor:'#000000',
+    shadowColor: '#000000',
 
 
     shadowOffset: {
@@ -543,12 +654,12 @@ const styles = StyleSheet.create({
   selectField: {
     width: '100%',
     borderRadius: 20,
-    backgroundColor:'#FFFFFF',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent:'space-between',
-    shadowColor:'#000000',
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
@@ -577,11 +688,11 @@ const styles = StyleSheet.create({
 
   dropdown: {
     width: '100%',
-    backgroundColor:'#FFFFFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginTop: 5,
     overflow: 'hidden',
-    shadowColor:'#000000',
+    shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 3,

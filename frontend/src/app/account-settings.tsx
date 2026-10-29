@@ -4,13 +4,14 @@ import { useRouter } from 'expo-router';
 import {
     Alert,
     Platform,
-    SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '../components/navigation/BottomNavigation';
 import { supabase } from '../lib/supabase';
@@ -151,6 +152,42 @@ export default function AccountSettingsScreen() {
             >
                 <Text style={styles.sectionTitle}>Account</Text>
 
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Legal & Safety</Text>
+
+                    <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => router.push('/privacy-policy')}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.settingText}>Privacy Policy</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => router.push('/terms-of-service')}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.settingText}>Terms of Service</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => router.push('/community-guidelines')}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.settingText}>Community Guidelines</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.settingRow}
+                        onPress={() => router.push('/account-deletion')}
+                        accessibilityRole="button"
+                    >
+                        <Text style={styles.settingText}>Account Deletion Information</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleLogout}
@@ -206,7 +243,7 @@ export default function AccountSettingsScreen() {
                 ))}
             </ScrollView>
 
-            <BottomNavigation activeTab="profile" />
+            <BottomNavigation />
         </SafeAreaView>
     );
 }
@@ -244,12 +281,14 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         paddingBottom: 32,
     },
+    
     sectionTitle: {
         fontSize: 18,
         fontWeight: '700',
         color: '#222',
         marginBottom: 12,
     },
+    
     menuItem: {
         minHeight: 52,
         flexDirection: 'row',
@@ -309,5 +348,25 @@ const styles = StyleSheet.create({
     },
     copiedText: {
         color: '#16a34a',
+    },
+
+    section: {
+        width: '100%',
+        marginBottom: 24,
+    },
+
+
+    settingRow: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 14,
+        marginBottom: 10,
+    },
+
+    settingText: {
+        fontSize: 15,
+        color: '#333333',
     },
 });

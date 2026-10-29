@@ -134,7 +134,7 @@ export default function LikeScreen() {
   return (
     <View style={styles.screen}>
       {/* Header กลาง: ตำแหน่งและขนาดโลโก้เท่ากับหน้า Profile / Chat */}
-      <AppHeader logo={LIKE_LOGO} />
+      <AppHeader logo={LIKE_LOGO} centerLogo />
 
       {loading ? (
         <View style={styles.center}>

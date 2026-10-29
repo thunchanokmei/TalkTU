@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { getMyUnreadCounts } from '../../features/chat/services/chatService';
 import {
   Animated,
   LayoutChangeEvent,
@@ -64,6 +66,64 @@ export default function BottomNavigation({
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = getTabFromPath(pathname);
+  const [totalUnread, setTotalUnread] = useState(0);
+
+useEffect(() => {
+  let mounted = true;
+
+  const loadTotalUnread = async () => {
+    const result = await getMyUnreadCounts();
+
+    if (!mounted) return;
+
+    if (result.error) {
+      console.error('BOTTOM NAV UNREAD ERROR:', result.error);
+      return;
+    }
+
+    const total = result.data.reduce(
+      (sum, item) => sum + item.unread_count,
+      0
+    );
+
+    setTotalUnread(total);
+  };
+
+  void loadTotalUnread();
+
+  const channel = supabase
+    .channel(`bottom-nav-unread-${Date.now()}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      },
+      () => {
+        void loadTotalUnread();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+      },
+      () => {
+        void loadTotalUnread();
+      }
+    )
+    .subscribe((status) => {
+      console.log('BOTTOM NAV REALTIME:', status);
+    });
+
+  return () => {
+    mounted = false;
+    void supabase.removeChannel(channel);
+  };
+}, []);
 
   const { width, height } = useWindowDimensions();
   const shortSide = Math.min(width, height);
@@ -369,11 +429,21 @@ export default function BottomNavigation({
           ]}
           onPress={() => goTo(index)}
         >
-          <Ionicons
-            name={item.icon}
-            size={iconSize}
-            color="#f7f3f3"
-          />
+          <View style={{ position: 'relative' }}>
+  <Ionicons
+    name={item.icon}
+    size={iconSize}
+    color="#f7f3f3"
+  />
+
+  {item.key === 'chat' && totalUnread > 0 && (
+    <View style={styles.unreadBadge}>
+      <Text style={styles.unreadBadgeText}>
+        {totalUnread > 99 ? '99+' : totalUnread}
+      </Text>
+    </View>
+  )}
+</View>
 
           <Text style={styles.navLabel}>
             {item.label}
@@ -447,4 +517,24 @@ const styles = StyleSheet.create({
 
     color: '#fbfafa',
   },
+  unreadBadge: {
+  position: 'absolute',
+  top: -9,
+  right: -13,
+  minWidth: 17,
+  height: 17,
+  paddingHorizontal: 4,
+  borderRadius: 9,
+  backgroundColor: '#E53935',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1,
+  borderColor: '#FFFFFF',
+},
+
+unreadBadgeText: {
+  color: '#FFFFFF',
+  fontSize: 9,
+  fontWeight: '700',
+},
 });

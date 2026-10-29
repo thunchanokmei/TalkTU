@@ -86,6 +86,15 @@ export async function loginWithTu(
     });
 
     if (verifyError) {
+      const errorMessage = verifyError.message?.toLowerCase() ?? '';
+      if (errorMessage.includes('user is banned')) {
+        return {
+          success: false,
+          message:
+            'Your account is currently being deleted. Please wait until the deletion process is complete.',
+        };
+      }
+
       console.error('Supabase session error:', verifyError);
 
       return {
@@ -94,7 +103,6 @@ export async function loginWithTu(
           verifyError.message || 'Unable to create Supabase session.',
       };
     }
-
     const {
       data: { session },
     } = await supabase.auth.getSession();

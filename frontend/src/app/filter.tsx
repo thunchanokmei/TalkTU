@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    SafeAreaView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     AppMode,
     DatingInterest,

@@ -20,6 +20,7 @@ import AppHeader from '../../../components/AppHeader';
 
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { supabase } from '../../../lib/supabase';
 
 // ✅ 1. ลบ import BottomNavigation และ LinearGradient (ไม่ได้ใช้) ออก
 
@@ -30,6 +31,9 @@ import {
   unsubscribeFromChannel,
 } from '../../../features/chat/services/chatService';
 
+import {
+  getMyUnreadCounts,
+} from '../../../features/chat/services/chatService';
 import type {
   ChatListItem,
 } from '../../../features/chat/types';
@@ -41,6 +45,7 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const isTablet = width >= 768;
 
@@ -48,8 +53,30 @@ export default function ChatPage() {
     ? Math.min(width - 80, 620)
     : width - 24;
 
+
+  const loadUnreadCounts = useCallback(async () => {
+    const result = await getMyUnreadCounts();
+
+    if (result.error) {
+      console.error('UNREAD COUNTS ERROR:', result.error);
+      return;
+    }
+
+    const counts: Record<string, number> = {};
+
+    for (const item of result.data) {
+      counts[item.match_id] = item.unread_count;
+    }
+    console.log('UNREAD COUNTS:', counts);
+
+    setUnreadCounts(counts);
+  }, []);
+
+
   const loadChats = useCallback(
     async (showLoading = false) => {
+      console.log('LOAD CHATS RUNNING');
+
       if (showLoading) {
         setLoading(true);
       }
@@ -61,7 +88,7 @@ export default function ChatPage() {
       if (result.error) {
         setError(
           result.error.message ||
-            'Unable to load chats.'
+          'Unable to load chats.'
         );
         setChats([]);
       } else {
@@ -73,10 +100,13 @@ export default function ChatPage() {
         setChats(result.data ?? []);
       }
 
+      await loadUnreadCounts();
+
       setLoading(false);
     },
-    []
+    [loadUnreadCounts]
   );
+
 
   useEffect(() => {
     void loadChats(true);
@@ -89,6 +119,39 @@ export default function ChatPage() {
       void unsubscribeFromChannel(channel);
     };
   }, [loadChats]);
+
+  useEffect(() => {
+    const channelName =
+      `chat-list-messages-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
+
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          void loadUnreadCounts();
+          void loadChats(false);
+        }
+      )
+      .subscribe((status, error) => {
+        console.log(
+          'CHAT LIST REALTIME:',
+          status,
+          error ?? ''
+        );
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [loadChats, loadUnreadCounts]);
 
   useFocusEffect(
     useCallback(() => {
@@ -151,13 +214,13 @@ export default function ChatPage() {
   };
 
   return (
-    // AppHeader เว้นพื้นที่ใต้ status bar ให้เองแล้ว จึงไม่ใช้ SafeAreaView ด้านบน
     <View style={styles.screen}>
 
       {/* ================= HEADER (กลาง: เหมือนหน้า Like / Profile) ================= */}
 
       <AppHeader
         logo={require('../../../../assets/images/chat-header.jpeg')}
+        centerLogo
       />
 
       <View style={styles.container}>
@@ -246,12 +309,12 @@ export default function ChatPage() {
                   getProfilePhotoUrl(
                     item.profile_photo_path
                   );
-
+                const unreadCount = unreadCounts[item.match_id] ?? 0;
                 return (
                   <TouchableOpacity
                     key={item.match_id}
                     activeOpacity={0.82}
-                    onPress={() =>{
+                    onPress={() => {
                       console.log('CHAT CARD TAPPED');
                       openChat(item)
                     }}
@@ -305,6 +368,15 @@ export default function ChatPage() {
                         item.last_message_at
                       )}
                     </Text>
+
+
+                    {unreadCount > 0 && (
+                      <View style={styles.unreadBadge}>
+                        <Text style={styles.unreadBadgeText}>
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -410,7 +482,7 @@ const styles = StyleSheet.create({
 
   time: {
     fontSize: 9,
-
+    top: '-20%',
     color: '#999999',
 
     marginLeft: 5,
@@ -489,5 +561,32 @@ const styles = StyleSheet.create({
     color: '#888888',
 
     textAlign: 'center',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    right: 12,
+    top: '60%',
+    transform: [{ translateY: -10 }],
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 5,
+    borderRadius: 10,
+    backgroundColor: '#E5484D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastMessage: {
+    flex: 1,
   },
 });

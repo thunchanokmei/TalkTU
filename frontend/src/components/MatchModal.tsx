@@ -1,4 +1,6 @@
+import matchLogo from '../../assets/images/match.png';
 import { useEffect, useRef, useState } from 'react';
+import { Animated } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import {
   ActivityIndicator,
@@ -31,6 +33,51 @@ export default function MatchModal({
   onContinue,
 }: MatchModalProps) {
   const [message, setMessage] = useState('');
+  const matchAnim = useRef(new Animated.Value(0)).current;
+
+  const leftCardAnim = useRef(new Animated.Value(0)).current;
+  const rightCardAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+  if (!visible) return;
+
+  leftCardAnim.setValue(0);
+  rightCardAnim.setValue(0);
+  matchAnim.setValue(0);
+
+  Animated.sequence([
+    // การ์ดสองใบวิ่งเข้าหากัน
+    Animated.parallel([
+      Animated.spring(leftCardAnim, {
+        toValue: 1,
+        speed: 8,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+      Animated.spring(rightCardAnim, {
+        toValue: 1,
+        speed: 8,
+        bounciness: 10,
+        useNativeDriver: true,
+      }),
+    ]),
+
+    // โลโก้เด้งขึ้นหลังการ์ดเข้าหากัน
+    Animated.sequence([
+      Animated.timing(matchAnim, {
+        toValue: 0.8,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.spring(matchAnim, {
+        toValue: 1,
+        speed: 12,
+        bounciness: 22,
+        useNativeDriver: true,
+      }),
+    ]),
+  ]).start();
+}, [visible, leftCardAnim, rightCardAnim, matchAnim]);
   const [sending, setSending] = useState(false);
   const [sendSucceeded, setSendSucceeded] = useState(false);
   useEffect(() => {
@@ -235,6 +282,7 @@ export default function MatchModal({
         locations={[0, 0.5, 1]}
         style={styles.container}
       >
+
         <View style={styles.centerArea}>
           <View style={styles.photoArea}>
             <View style={[styles.photoCard, styles.leftPhoto]}>
@@ -263,17 +311,36 @@ export default function MatchModal({
               )}
             </View>
 
-            <Text style={styles.matchTitle}>
-              it's a Match!
-            </Text>
+            <Animated.Image
+              source={matchLogo}
+              resizeMode="contain"
+              style={[
+                styles.matchLogo,
+                {
+                  opacity: matchAnim,
+                  transform: [
+                    {
+                      translateX: matchAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 0],
+                      }),
+                    },
+                    {
+                      scale: matchAnim.interpolate({
+                        inputRange: [0, 0.65, 0.85, 1],
+                        outputRange: [0.1, 2.5, 0.8, 1],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
           </View>
         </View>
 
         {toastMessage !== '' && (
           <View style={styles.toastContainer}>
-            <Text style={styles.toastText}>
-              {toastMessage}
-            </Text>
+            <Text style={styles.toastText}>{toastMessage}</Text>
           </View>
         )}
 
@@ -284,9 +351,7 @@ export default function MatchModal({
               placeholderTextColor="#999999"
               style={[
                 styles.messageInput,
-                Platform.OS === 'web' && ({
-                  outline: 'none',
-                } as any),
+                Platform.OS === 'web' && ({ outline: 'none' } as any),
               ]}
               value={message}
               onChangeText={setMessage}
@@ -304,11 +369,7 @@ export default function MatchModal({
                 {sending ? (
                   <ActivityIndicator color="#FF7885" size="small" />
                 ) : (
-                  <Ionicons
-                    name="arrow-up"
-                    size={20}
-                    color="#FF7885"
-                  />
+                  <Ionicons name="arrow-up" size={20} color="#FF7885" />
                 )}
               </TouchableOpacity>
             )}
@@ -324,9 +385,7 @@ export default function MatchModal({
               end={{ x: 1, y: 0 }}
               style={styles.doneButton}
             >
-              <Text style={styles.doneText}>
-                Done
-              </Text>
+              <Text style={styles.doneText}>Done</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -390,17 +449,13 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  matchTitle: {
+  matchLogo: {
     position: 'absolute',
     zIndex: 10,
-    fontSize: 43,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    textShadowColor: '#E85E79',
-    textShadowOffset: { width: 3, height: 4 },
-    textShadowRadius: 4,
+    width: 340,
+    height: 240,
+    alignSelf: 'center',
+    top: '35%',
   },
 
   bottomArea: {
@@ -436,7 +491,7 @@ const styles = StyleSheet.create({
 
   doneText: {
     color: '#FFFFFF',
-    fontSize: 19,
+    fontSize: 20,
     fontWeight: '800',
   },
 

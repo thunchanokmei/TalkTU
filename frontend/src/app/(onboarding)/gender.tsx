@@ -125,7 +125,7 @@ export default function GenderScreen() {
           ]}
         >
           What's your{'\n'}
-          Sex at birth ? 👶
+          Sex at birth ? 
         </Text>
 
         <ChoiceRow

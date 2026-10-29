@@ -11,7 +11,10 @@ import {
   View,
 } from 'react-native';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -129,7 +132,18 @@ function InfoRow({
   );
 }
 
+// fullScreenModal screens need their own SafeAreaProvider,
+// otherwise the top inset can come back as 0 and the header
+// overlaps the status bar.
 export default function PreviewProfileScreen() {
+  return (
+    <SafeAreaProvider>
+      <PreviewProfileContent />
+    </SafeAreaProvider>
+  );
+}
+
+function PreviewProfileContent() {
   const router = useRouter();
   const { width: screenWidth, height: screenHeight } =
     useWindowDimensions();
@@ -548,185 +562,187 @@ export default function PreviewProfileScreen() {
         animationType="slide"
         onRequestClose={() => setShowDetail(false)}
       >
-        <SafeAreaView style={styles.detailSafe} edges={['top', 'bottom']}>
-          <ScrollView
-            contentContainerStyle={[
-              styles.detailContent,
-              { paddingHorizontal: detailPadding },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* PHOTO */}
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.detailSafe} edges={['top', 'bottom']}>
+            <ScrollView
+              contentContainerStyle={[
+                styles.detailContent,
+                { paddingHorizontal: detailPadding },
+              ]}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* PHOTO */}
 
-            <View style={styles.detailPhotoCard}>
-              {currentPhoto?.storage_path ? (
-                <CandidateImage
-                  uri={getProfilePhotoUrl(currentPhoto.storage_path)}
-                />
-              ) : (
-                <View style={styles.noPhoto}>
+              <View style={styles.detailPhotoCard}>
+                {currentPhoto?.storage_path ? (
+                  <CandidateImage
+                    uri={getProfilePhotoUrl(currentPhoto.storage_path)}
+                  />
+                ) : (
+                  <View style={styles.noPhoto}>
+                    <Ionicons
+                      name="person-outline"
+                      size={76}
+                      color="#AAAAAA"
+                    />
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={styles.detailBackButton}
+                  onPress={() => setShowDetail(false)}
+                  activeOpacity={0.8}
+                >
                   <Ionicons
-                    name="person-outline"
-                    size={76}
-                    color="#AAAAAA"
+                    name="chevron-down"
+                    size={24}
+                    color="#333333"
                   />
-                </View>
-              )}
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.detailBackButton}
-                onPress={() => setShowDetail(false)}
-                activeOpacity={0.8}
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={24}
-                  color="#333333"
-                />
-              </TouchableOpacity>
-
-              {photos.length > 0 ? (
-                <View style={styles.detailPhotoCounter}>
-                  <Text style={styles.detailPhotoCounterText}>
-                    {photoIndex + 1}/{photos.length}
-                  </Text>
-                </View>
-              ) : null}
-
-              {photos.length > 1 ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.detailLeftZone}
-                    onPress={previousPhoto}
-                    activeOpacity={1}
-                  />
-
-                  <TouchableOpacity
-                    style={styles.detailRightZone}
-                    onPress={nextPhoto}
-                    activeOpacity={1}
-                  />
-                </>
-              ) : null}
-
-              <LinearGradient
-                pointerEvents="none"
-                colors={[
-                  'transparent',
-                  'rgba(0,0,0,0.05)',
-                  'rgba(0,0,0,0.75)',
-                ]}
-                locations={[0, 0.58, 1]}
-                style={styles.profileGradient}
-              />
-
-              <View style={styles.heroInfo} pointerEvents="none">
-                <Text style={styles.heroName}>
-                  {displayName}
-                  {age !== null ? ` ${age}` : ''}
-                </Text>
-
-                {detailLine ? (
-                  <Text style={styles.heroDetail} numberOfLines={1}>
-                    {detailLine}
-                  </Text>
+                {photos.length > 0 ? (
+                  <View style={styles.detailPhotoCounter}>
+                    <Text style={styles.detailPhotoCounterText}>
+                      {photoIndex + 1}/{photos.length}
+                    </Text>
+                  </View>
                 ) : null}
+
+                {photos.length > 1 ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.detailLeftZone}
+                      onPress={previousPhoto}
+                      activeOpacity={1}
+                    />
+
+                    <TouchableOpacity
+                      style={styles.detailRightZone}
+                      onPress={nextPhoto}
+                      activeOpacity={1}
+                    />
+                  </>
+                ) : null}
+
+                <LinearGradient
+                  pointerEvents="none"
+                  colors={[
+                    'transparent',
+                    'rgba(0,0,0,0.05)',
+                    'rgba(0,0,0,0.75)',
+                  ]}
+                  locations={[0, 0.58, 1]}
+                  style={styles.profileGradient}
+                />
+
+                <View style={styles.heroInfo} pointerEvents="none">
+                  <Text style={styles.heroName}>
+                    {displayName}
+                    {age !== null ? ` ${age}` : ''}
+                  </Text>
+
+                  {detailLine ? (
+                    <Text style={styles.heroDetail} numberOfLines={1}>
+                      {detailLine}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
 
-            {/* BIO */}
+              {/* BIO */}
 
-            {bio && bio.trim() ? (
+              {bio && bio.trim() ? (
+                <LinearGradient
+                  colors={INFO_GRADIENT}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.infoCard}
+                >
+                  <Text style={styles.cardTitle}>Bio</Text>
+                  <Text style={styles.bioText}>{bio.trim()}</Text>
+                </LinearGradient>
+              ) : null}
+
+              {/* ABOUT ME */}
+
               <LinearGradient
                 colors={INFO_GRADIENT}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.infoCard}
               >
-                <Text style={styles.cardTitle}>Bio</Text>
-                <Text style={styles.bioText}>{bio.trim()}</Text>
+                <Text style={styles.cardTitle}>About me</Text>
+
+                {heightCm !== null ? (
+                  <InfoRow
+                    icon="resize-outline"
+                    text={`${heightCm} cm`}
+                  />
+                ) : null}
+
+                {genderLabel ? (
+                  <InfoRow
+                    icon="male-female-outline"
+                    text={genderLabel}
+                  />
+                ) : null}
+
+                {detailLine ? (
+                  <InfoRow
+                    icon="school-outline"
+                    text={detailLine}
+                  />
+                ) : null}
+
+                {generation !== null ? (
+                  <InfoRow
+                    icon="calendar-outline"
+                    text={`TU${generation}`}
+                    last
+                  />
+                ) : null}
               </LinearGradient>
-            ) : null}
 
-            {/* ABOUT ME */}
+              {/* INTERESTS */}
 
-            <LinearGradient
-              colors={INFO_GRADIENT}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.infoCard}
-            >
-              <Text style={styles.cardTitle}>About me</Text>
+              {interests.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Interests</Text>
 
-              {heightCm !== null ? (
-                <InfoRow
-                  icon="resize-outline"
-                  text={`${heightCm} cm`}
-                />
-              ) : null}
-
-              {genderLabel ? (
-                <InfoRow
-                  icon="male-female-outline"
-                  text={genderLabel}
-                />
-              ) : null}
-
-              {detailLine ? (
-                <InfoRow
-                  icon="school-outline"
-                  text={detailLine}
-                />
-              ) : null}
-
-              {generation !== null ? (
-                <InfoRow
-                  icon="calendar-outline"
-                  text={`TU${generation}`}
-                  last
-                />
-              ) : null}
-            </LinearGradient>
-
-            {/* INTERESTS */}
-
-            {interests.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Interests</Text>
-
-                <View style={styles.chipWrap}>
-                  {interests.map((interest) => (
-                    <View key={interest.id} style={styles.chip}>
-                      <Text style={styles.chipText}>
-                        {interest.name}
-                      </Text>
-                    </View>
-                  ))}
+                  <View style={styles.chipWrap}>
+                    {interests.map((interest) => (
+                      <View key={interest.id} style={styles.chip}>
+                        <Text style={styles.chipText}>
+                          {interest.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
+              ) : null}
 
-            {/* LOCATIONS */}
+              {/* LOCATIONS */}
 
-            {locations.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
-                  You'll usually find me at..
-                </Text>
+              {locations.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>
+                    You'll usually find me at..
+                  </Text>
 
-                <View style={styles.chipWrap}>
-                  {locations.map((location) => (
-                    <View key={location.id} style={styles.chip}>
-                      <Text style={styles.chipText}>
-                        {location.name}
-                      </Text>
-                    </View>
-                  ))}
+                  <View style={styles.chipWrap}>
+                    {locations.map((location) => (
+                      <View key={location.id} style={styles.chip}>
+                        <Text style={styles.chipText}>
+                          {location.name}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-          </ScrollView>
-        </SafeAreaView>
+              ) : null}
+            </ScrollView>
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </SafeAreaView>
   );
@@ -1129,13 +1145,13 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     marginBottom: 8,
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
     color: '#171717',
   },
 
   bioText: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
     color: '#222222',
   },
@@ -1155,7 +1171,7 @@ const styles = StyleSheet.create({
 
   infoText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 14,
     color: '#222222',
   },
 
@@ -1166,7 +1182,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     marginBottom: 8,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
     color: '#222222',
   },
@@ -1188,7 +1204,7 @@ const styles = StyleSheet.create({
   },
 
   chipText: {
-    fontSize: 11,
+    fontSize: 14,
     color: '#555555',
   },
 });

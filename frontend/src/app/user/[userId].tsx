@@ -975,14 +975,14 @@ const styles = StyleSheet.create({
   cardTitle: {
     marginBottom: 8,
 
-    fontSize: 12,
+    fontSize: 15,
     fontWeight: '700',
 
     color: '#171717',
   },
 
   bioText: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
 
     color: '#222222',
@@ -1010,7 +1010,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
 
-    fontSize: 12,
+    fontSize: 14,
 
     color: '#222222',
   },
@@ -1024,7 +1024,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginBottom: 8,
 
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
 
     color: '#222222',
@@ -1052,7 +1052,7 @@ const styles = StyleSheet.create({
   },
 
   chipText: {
-    fontSize: 11,
+    fontSize: 14,
 
     color: '#555555',
   },

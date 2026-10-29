@@ -479,7 +479,7 @@ export default function BirthdayScreen() {
           {displayName ||
             'there'}
           {'\n'}
-          When is your Birthday ? 🎂
+          When is your Birthday ? 
         </Text>
 
         <View

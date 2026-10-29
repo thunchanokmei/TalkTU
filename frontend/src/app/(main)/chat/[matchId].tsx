@@ -56,8 +56,7 @@ export default function ChatRoom() {
       image?: string;
     }>();
 
-  const { width } =
-    useWindowDimensions();
+ const { width, height } = useWindowDimensions();
 
   const matchId =
     typeof params.matchId === 'string'
@@ -135,6 +134,8 @@ export default function ChatRoom() {
   const [inputFocused, setInputFocused] = useState(false);
   const didInitialScroll = useRef(false);
 
+
+
   useEffect(() => {
     if (loading || error || messages.length === 0) return;
     if (didInitialScroll.current) return;
@@ -144,11 +145,14 @@ export default function ChatRoom() {
     const scrollAfterLayout = () => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+
           if (cancelled) return;
 
           scrollRef.current?.scrollToEnd({
             animated: false,
           });
+
+
 
           // ตรวจอีกครั้งหลัง layout ปรับขนาดเสร็จ
           setTimeout(() => {
@@ -172,11 +176,27 @@ export default function ChatRoom() {
   }, [loading, error, messages.length]);
 
 
+
   const scrollRef =
     useRef<React.ElementRef<typeof ScrollView>>(null);
 
-  const pageRef =
-    useRef(0);
+  // Keep the latest message visible when the user is already at the bottom,
+  // or has just sent a message. Do not interrupt someone reading older messages.
+  useEffect(() => {
+    if (loading || error || messages.length === 0) return;
+    if (!isNearBottomRef.current && !stickToBottomRef.current) return;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      });
+    });
+  }, [messages, loading, error]);
+
+  const pageRef = useRef(0);
+  const isNearBottomRef = useRef(true);
+  const stickToBottomRef = useRef(false);
+  const inputRef = useRef<TextInput>(null);
 
   /* ================= CURRENT USER ================= */
 
@@ -367,7 +387,10 @@ export default function ChatRoom() {
       return;
     }
 
-    setSending(true);
+
+  setSending(true);
+  stickToBottomRef.current = true;
+
 
     const result = await sendMessage(matchId, content);
 
@@ -382,27 +405,30 @@ export default function ChatRoom() {
     setInput('');
     setSending(false);
 
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
+  console.log('SEND RESULT:', JSON.stringify(result));
+
+  setInput('');
+  setSending(false);
+  inputRef.current?.focus();
+
+  setTimeout(() => {
+    scrollRef.current?.scrollToEnd({ animated: true });
+  }, 100);
+};
+
   /* ================= SCROLL ================= */
 
-  const handleScroll = (
-    event: any
-  ) => {
-    const y =
-      event.nativeEvent
-        .contentOffset.y;
+  const handleScroll = (event: any) => {
+  const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+  const y = contentOffset.y;
 
-    if (
-      y <= 30 &&
-      !loadingOlder &&
-      hasMore
-    ) {
-      void loadOlderMessages();
-    }
-  };
+  isNearBottomRef.current =
+    contentSize.height - (y + layoutMeasurement.height) < 80;
+
+  if (y <= 30 && !loadingOlder && hasMore) {
+    void loadOlderMessages();
+  }
+};
 
 
   /* ================= SAFETY ================= */
@@ -613,7 +639,7 @@ export default function ChatRoom() {
       setSafetyBusy(false);
     }
   };
-  const scrollToLatest = (animated = false) => {
+    const scrollToLatest = (animated = false) => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated });
     });
@@ -624,6 +650,8 @@ export default function ChatRoom() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+
+
 
       {/* ================= HEADER ================= */}
       <Header
@@ -682,70 +710,59 @@ export default function ChatRoom() {
               <ScrollView
                 ref={scrollRef}
                 style={styles.messages}
-                contentContainerStyle={
-                  styles.messageContent
-                }
-                showsVerticalScrollIndicator={
-                  false
-                }
+                contentContainerStyle={styles.messageContent}
+                showsVerticalScrollIndicator={false}
                 onScroll={handleScroll}
                 scrollEventThrottle={200}
+                onScrollBeginDrag={() => {
+                  stickToBottomRef.current = false;
+                }}
+                onContentSizeChange={() => {
+                  if (isNearBottomRef.current || stickToBottomRef.current) {
+                    scrollRef.current?.scrollToEnd({ animated: false });
+                  }
+                }}
               >
                 {loadingOlder && (
                   <ActivityIndicator
                     size="small"
                     color="#FFFFFF"
-                    style={{
-                      marginBottom: 12,
-                    }}
+                    style={{ marginBottom: 12 }}
                   />
                 )}
 
-                {!hasMore &&
-                  messages.length > 0 && (
-                    <Text
-                      style={
-                        styles.startConversation
-                      }
-                    >
-                      Start of conversation
-                    </Text>
-                  )}
+                {!hasMore && messages.length > 0 && (
+                  <Text style={styles.startConversation}>
+                    Start of conversation
+                  </Text>
+                )}
 
                 {messages.length === 0 ? (
-                  <View
-                    style={
-                      styles.emptyChatText
-                    }
-                  >
-                    <Text
-                      style={
-                        styles.emptyChatText
-                      }
-                    >
+                  <View style={styles.emptyChatText}>
+                    <Text style={styles.emptyChatText}>
                       Say hi to {name} 👋
                     </Text>
                   </View>
                 ) : (
-                  messages.map(
-                    (message) => {
-                      const isMe =
-                        currentUserId !==
-                        null &&
-                        message.sender_id ===
-                        currentUserId;
+                  messages.map((message, index) => {
+                    const isMe =
+                      currentUserId !== null &&
+                      message.sender_id === currentUserId;
 
-                      return (
-                        <MessageBubble
-                          key={message.id}
-                          message={message}
-                          isMe={isMe}
-                          avatarUri={image}
-                          onAvatarPress={openProfile}
-                        />
-                      );
-                    }
-                  )
+                    const next = messages[index + 1];
+                    const showAvatar = !next || next.sender_id !== message.sender_id;
+
+                    return (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        isMe={isMe}
+                        showAvatar={showAvatar}
+                        avatarUri={image}
+                        onAvatarPress={openProfile}
+                      />
+                    );
+                  })
                 )}
               </ScrollView>
 
@@ -753,13 +770,13 @@ export default function ChatRoom() {
 
               <View style={styles.inputBar}>
                 <TextInput
+                  ref={inputRef}
                   value={input}
                   onChangeText={setInput}
                   placeholder={`Say something to ${name}`}
                   placeholderTextColor="#999999"
                   multiline
                   maxLength={5000}
-                  editable={!sending}
                   style={[
                     styles.input,
                     Platform.OS === 'web' && ({
@@ -770,28 +787,15 @@ export default function ChatRoom() {
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
-                    !input.trim() &&
-                    styles.sendDisabled,
+                    !input.trim() && styles.sendDisabled,
                   ]}
-                  disabled={
-                    !input.trim() ||
-                    sending
-                  }
-                  onPress={
-                    handleSend
-                  }
+                  disabled={!input.trim() || sending}
+                  onPress={handleSend}
                 >
                   {sending ? (
-                    <ActivityIndicator
-                      size="small"
-                      color="#FFFFFF"
-                    />
+                    <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Ionicons
-                      name="arrow-up"
-                      size={20}
-                      color="#FFFFFF"
-                    />
+                    <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
                   )}
                 </TouchableOpacity>
               </View>
@@ -972,7 +976,11 @@ export default function ChatRoom() {
                       key={reason.value}
                       style={[
                         styles.reportReason,
-                        reportReason === reason.value && styles.reportReasonSelected,
+                        reportReason === reason.value && {
+                          backgroundColor: '#FFF0E3',
+                          borderWidth: 1,
+                          borderColor: '#E88A43',
+                        },
                       ]}
                       onPress={() => setReportReason(reason.value)}
                     >
@@ -1101,11 +1109,13 @@ export default function ChatRoom() {
 function MessageBubble({
   message,
   isMe,
+  showAvatar,
   avatarUri,
   onAvatarPress,
 }: {
   message: ChatMessage;
   isMe: boolean;
+  showAvatar: boolean;
   avatarUri?: string;
   onAvatarPress?: () => void;
 }) {
@@ -1122,7 +1132,7 @@ function MessageBubble({
       ]}
     >
 
-      {!isMe && (
+      {!isMe && showAvatar ? (
         <TouchableOpacity
           style={styles.messageAvatar}
           activeOpacity={0.7}
@@ -1136,7 +1146,9 @@ function MessageBubble({
             <Ionicons name="person" size={13} color="#888888" />
           )}
         </TouchableOpacity>
-      )}
+      ) : !isMe ? (
+        <View style={styles.messageAvatarPlaceholder} />
+      ) : null}
       {isMe ? (
         <LinearGradient
           colors={['#FFB078', '#FF7D88']}
@@ -1169,31 +1181,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    width: '100%',
-    minHeight: 0,
-  },
+container: {
+  flex: 1,
+  alignItems: 'center',
+  width: '100%',
+  minHeight: 0,
+},
 
 
   /* CHAT */
-  chatArea: {
-    flex: 1,
-    minHeight: 0,
-    marginTop: 14,
-    marginBottom: 14,
-    borderRadius: 22,
-    overflow: 'hidden',
-    position: 'relative',
-    flexDirection: 'column',
-    backgroundColor: '#f3f3f3',
-  },
+chatArea: {
+  flex: 1,
+  minHeight: 0,
+  marginTop: 14,
+  marginBottom: 14,
+  borderRadius: 22,
+  overflow: 'hidden',
+  position: 'relative',
+  flexDirection: 'column',
+  backgroundColor: '#f3f3f3',
+},
 
-  messages: {
-    flex: 1,
-    minHeight: 0,
-  },
+messages: {
+  flex: 1,
+  minHeight: 0,
+},
 
   messageContent: {
     paddingHorizontal: 10,
@@ -1286,6 +1298,7 @@ const styles = StyleSheet.create({
   },
   otherBubbleText: {
     color: '#2a2929',
+     fontSize:16,
   },
 
   myBubble: {
@@ -1296,6 +1309,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   myBubbleText: {
+    fontSize:16,
     color: '#FFFFFF',
   },
 
@@ -1315,26 +1329,27 @@ const styles = StyleSheet.create({
 
   /* INPUT */
 
-  inputBar: {
-    position: 'relative',
-    left: undefined,
-    right: undefined,
-    bottom: undefined,
-    marginHorizontal: 10,
-    marginBottom: 12,
-    minHeight: 43,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 23,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: 15,
-    paddingRight: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
+inputBar: {
+  position: 'relative',
+  left: undefined,
+  right: undefined,
+  bottom: undefined,
+  marginHorizontal: 10,
+  marginBottom: 12,
+  minHeight: 45,
+  backgroundColor: '#FFFFFF',
+  borderRadius: 23,
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingLeft: 15,
+  paddingRight: 5,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.15,
+  shadowRadius: 4,
+  elevation: 4,
+},
+
   input: {
     flex: 1,
 
@@ -1343,7 +1358,7 @@ const styles = StyleSheet.create({
 
     paddingVertical: 8,
 
-    fontSize: 11,
+    fontSize: 16,
 
     color: '#333333',
   },
@@ -1392,9 +1407,9 @@ const styles = StyleSheet.create({
   safetyModal: {
     backgroundColor: '#FFFFFF',
 
-    borderRadius: 22,
+    borderRadius: 30,
 
-    paddingHorizontal: 12,
+    paddingHorizontal: 15,
     paddingTop: 10,
     paddingBottom: 12,
 
@@ -1454,9 +1469,9 @@ const styles = StyleSheet.create({
   },
 
   safetyOption: {
-    height: 37,
+    minHeight: 46,
 
-    borderRadius: 13,
+    borderRadius: 20,
 
     backgroundColor: '#E6E6E6',
 
@@ -1473,7 +1488,7 @@ const styles = StyleSheet.create({
 
     color: '#222222',
 
-    fontSize: 12,
+    fontSize: 13,
 
     fontWeight: '600',
   },
@@ -1494,8 +1509,8 @@ const styles = StyleSheet.create({
   },
   safetyCancel: {
     flex: 1,
-    minHeight: 42,
-    borderRadius: 13,
+    height: 46,
+    borderRadius: 17,
     backgroundColor: '#EEEEEE',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1509,13 +1524,12 @@ const styles = StyleSheet.create({
   },
   safetyConfirm: {
     flex: 1,
-    minHeight: 42,
-    borderRadius: 13,
+    height: 46,
+    borderRadius: 17,
     backgroundColor: '#E88A43',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-    marginTop: 8,
   },
   safetyConfirmText: {
     color: '#FFFFFF',
@@ -1523,10 +1537,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   reportReason: {
-    minHeight: 37,
+    minHeight: 42,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 17,
     paddingHorizontal: 10,
     marginTop: 5,
     backgroundColor: '#F3F3F3',
@@ -1539,12 +1553,17 @@ const styles = StyleSheet.create({
   reportDetails: {
     minHeight: 75,
     maxHeight: 120,
-    borderRadius: 12,
+    borderRadius: 20,
     backgroundColor: '#F3F3F3',
     padding: 10,
     marginTop: 10,
     color: '#222222',
     fontSize: 13,
+  },
+
+  messageAvatarPlaceholder: {
+    width: 33,
+    height: 1,
   },
 
   messageAvatarImg: {

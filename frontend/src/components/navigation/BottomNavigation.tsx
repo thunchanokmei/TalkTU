@@ -49,7 +49,6 @@ const ROUTES = {
   profile: '/profile',
 } as const;
 
-// หา tab ที่ active จาก path (รองรับหน้าย่อย เช่น /chat/123)
 function getTabFromPath(pathname: string): BottomNavTab {
   if (pathname.startsWith('/like')) return 'like';
   if (pathname.startsWith('/feed')) return 'board';
@@ -66,64 +65,66 @@ export default function BottomNavigation({
   const router = useRouter();
   const pathname = usePathname();
   const activeTab = getTabFromPath(pathname);
+
   const [totalUnread, setTotalUnread] = useState(0);
 
-useEffect(() => {
-  let mounted = true;
+  // โหลดจำนวนข้อความที่ยังไม่ได้อ่าน
+  useEffect(() => {
+    let mounted = true;
 
-  const loadTotalUnread = async () => {
-    const result = await getMyUnreadCounts();
+    const loadTotalUnread = async () => {
+      const result = await getMyUnreadCounts();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result.error) {
-      console.error('BOTTOM NAV UNREAD ERROR:', result.error);
-      return;
-    }
-
-    const total = result.data.reduce(
-      (sum, item) => sum + item.unread_count,
-      0
-    );
-
-    setTotalUnread(total);
-  };
-
-  void loadTotalUnread();
-
-  const channel = supabase
-    .channel(`bottom-nav-unread-${Date.now()}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      },
-      () => {
-        void loadTotalUnread();
+      if (result.error) {
+        console.error('BOTTOM NAV UNREAD ERROR:', result.error);
+        return;
       }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages',
-      },
-      () => {
-        void loadTotalUnread();
-      }
-    )
-    .subscribe((status) => {
-      console.log('BOTTOM NAV REALTIME:', status);
-    });
 
-  return () => {
-    mounted = false;
-    void supabase.removeChannel(channel);
-  };
-}, []);
+      const total = result.data.reduce(
+        (sum, item) => sum + item.unread_count,
+        0
+      );
+
+      setTotalUnread(total);
+    };
+
+    void loadTotalUnread();
+
+    const channel = supabase
+      .channel(`bottom-nav-unread-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          void loadTotalUnread();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          void loadTotalUnread();
+        }
+      )
+      .subscribe((status) => {
+        console.log('BOTTOM NAV REALTIME:', status);
+      });
+
+    return () => {
+      mounted = false;
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   const { width, height } = useWindowDimensions();
   const shortSide = Math.min(width, height);
@@ -167,7 +168,70 @@ useEffect(() => {
   const translateX = useRef(new Animated.Value(0)).current;
   const pillScale = useRef(new Animated.Value(1)).current;
 
-  // refs เพื่อให้ PanResponder อ่านค่าล่าสุดได้เสมอ
+  // บาร์ขยับเพียงเล็กน้อย
+  const barScale = useRef(new Animated.Value(1)).current;
+
+  // Animation แยกสำหรับไอคอนแต่ละปุ่ม
+  const iconScales = useRef(
+    NAV_ITEMS.map(() => new Animated.Value(1))
+  ).current;
+
+  const barAnimationRef =
+    useRef<Animated.CompositeAnimation | null>(null);
+
+  const iconAnimationRefs = useRef<
+    (Animated.CompositeAnimation | null)[]
+  >(NAV_ITEMS.map(() => null));
+
+  // เด้งทั้งบาร์แบบเบา ๆ
+  const animateBarPress = () => {
+    barAnimationRef.current?.stop();
+    barScale.setValue(1);
+
+    barAnimationRef.current = Animated.sequence([
+      Animated.timing(barScale, {
+        toValue: 0.990,
+        duration: 90,
+        useNativeDriver: true,
+      }),
+      Animated.spring(barScale, {
+        toValue: 1,
+        speed: 20,
+        bounciness: 3,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    barAnimationRef.current.start();
+  };
+
+  // เด้งเฉพาะไอคอนที่กด
+  const animateIconPress = (index: number) => {
+    const scale = iconScales[index];
+
+    if (!scale) return;
+
+    iconAnimationRefs.current[index]?.stop();
+    scale.setValue(1);
+
+    iconAnimationRefs.current[index] = Animated.sequence([
+      Animated.timing(scale, {
+        toValue: 0.86,
+        duration: 75,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        speed: 18,
+        bounciness: 5,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    iconAnimationRefs.current[index]?.start();
+  };
+
+  // Refs เพื่อให้ PanResponder อ่านค่าล่าสุดได้เสมอ
   const startX = useRef(0);
   const currentX = useRef(0);
 
@@ -195,16 +259,16 @@ useEffect(() => {
     };
   }, [translateX]);
 
-  // เลื่อน pill ไปที่ tab ที่ active
+  // เลื่อน pill ไปที่ Tab ที่ active
   useEffect(() => {
     if (slotWidth === 0 || activeIndex < 0) return;
 
     Animated.spring(translateX, {
       toValue: pillX(activeIndex),
       useNativeDriver: true,
-      damping: 16,
-      stiffness: 180,
-      mass: 0.8,
+      damping: 10,
+      stiffness: 220,
+      mass: 0.7,
     }).start();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -227,7 +291,6 @@ useEffect(() => {
       activeIndex: ai,
     } = latest.current;
 
-    // ป้องกันการคำนวณตำแหน่งผิดในช่วง layout
     if (sw <= 0 || ai < 0) return;
 
     const center = currentX.current - PADDING + is / 2;
@@ -248,9 +311,7 @@ useEffect(() => {
 
     const target = NAV_ITEMS[idx];
 
-    if (!target || idx === ai ) {
-      // Board ยังไม่มีการเปลี่ยนหน้าจากการลาก
-      // ให้ pill เด้งกลับตำแหน่งเดิม
+    if (!target || idx === ai) {
       Animated.spring(translateX, {
         toValue: PADDING + ai * sw + (sw - is) / 2,
         useNativeDriver: true,
@@ -274,7 +335,7 @@ useEffect(() => {
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        // จับเฉพาะการลากแนวนอน ไม่รบกวนการกดปุ่มปกติ
+        // จับเฉพาะการลากแนวนอน
         onMoveShouldSetPanResponder: (_, gesture) =>
           Math.abs(gesture.dx) > 6 &&
           Math.abs(gesture.dx) > Math.abs(gesture.dy),
@@ -300,8 +361,7 @@ useEffect(() => {
           if (sw <= 0) return;
 
           const min = PADDING + (sw - is) / 2;
-          const max =
-            min + sw * (NAV_ITEMS.length - 1);
+          const max = min + sw * (NAV_ITEMS.length - 1);
 
           const next = Math.max(
             min,
@@ -313,7 +373,8 @@ useEffect(() => {
 
         onPanResponderRelease: (_, gesture) => {
           if (Math.abs(gesture.dx) < 6) return;
-             finishDrag();
+
+          finishDrag();
         },
 
         onPanResponderTerminate: () => {
@@ -334,7 +395,7 @@ useEffect(() => {
   };
 
   return (
-    <View
+    <Animated.View
       onLayout={onLayout}
       {...panResponder.panHandlers}
       style={[
@@ -343,6 +404,7 @@ useEffect(() => {
           marginHorizontal: horizontalMargin,
           marginBottom: bottomMargin,
           minHeight: navHeight,
+          transform: [{ scale: barScale }],
         },
         style,
       ]}
@@ -418,39 +480,51 @@ useEffect(() => {
         </Animated.View>
       )}
 
-      {/* ปุ่ม Navigation: render เพียง 5 ปุ่ม */}
+      {/* Navigation ทั้ง 5 ปุ่ม */}
       {NAV_ITEMS.map((item, index) => (
         <TouchableOpacity
           key={item.key}
-          activeOpacity={0.75}
+          activeOpacity={1}
           style={[
             styles.navItem,
             { height: itemSize },
           ]}
-          onPress={() => goTo(index)}
+          onPress={() => {
+            animateBarPress();
+            animateIconPress(index);
+            goTo(index);
+          }}
         >
-          <View style={{ position: 'relative' }}>
-  <Ionicons
-    name={item.icon}
-    size={iconSize}
-    color="#f7f3f3"
-  />
+          <Animated.View
+            style={{
+              position: 'relative',
+              transform: [
+                { scale: iconScales[index] },
+              ],
+            }}
+          >
+            <Ionicons
+              name={item.icon}
+              size={iconSize}
+              color="#f7f3f3"
+            />
 
-  {item.key === 'chat' && totalUnread > 0 && (
-    <View style={styles.unreadBadge}>
-      <Text style={styles.unreadBadgeText}>
-        {totalUnread > 99 ? '99+' : totalUnread}
-      </Text>
-    </View>
-  )}
-</View>
+            {/* จำนวนข้อความที่ยังไม่ได้อ่าน */}
+            {item.key === 'chat' && totalUnread > 0 && (
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>
+                  {totalUnread > 99 ? '99+' : totalUnread}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
 
           <Text style={styles.navLabel}>
             {item.label}
           </Text>
         </TouchableOpacity>
       ))}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -486,7 +560,7 @@ const styles = StyleSheet.create({
   },
 
   background: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
   },
 
@@ -511,30 +585,29 @@ const styles = StyleSheet.create({
 
   navLabel: {
     marginTop: 1,
-
     fontSize: 10,
     fontWeight: '600',
-
     color: '#fbfafa',
   },
-  unreadBadge: {
-  position: 'absolute',
-  top: -9,
-  right: -13,
-  minWidth: 17,
-  height: 17,
-  paddingHorizontal: 4,
-  borderRadius: 9,
-  backgroundColor: '#E53935',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderWidth: 1,
-  borderColor: '#FFFFFF',
-},
 
-unreadBadgeText: {
-  color: '#FFFFFF',
-  fontSize: 9,
-  fontWeight: '700',
-},
+  unreadBadge: {
+    position: 'absolute',
+    top: -9,
+    right: -13,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: '#E53935',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+  },
 });

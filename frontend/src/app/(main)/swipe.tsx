@@ -841,7 +841,7 @@ export default function SwipeScreen() {
               <Ionicons
                 name="people-outline"
                 size={58}
-                color="#555555"
+                color="#FF9A82"
               />
 
               <Text style={styles.emptyTitle}>

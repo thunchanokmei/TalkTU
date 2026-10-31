@@ -912,7 +912,11 @@ export default function FeedScreen() {
               data={visiblePosts}
               keyExtractor={(item) => item.post_id}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.feedContent}
+              contentContainerStyle={
+                  visiblePosts.length === 0
+                  ? styles.feedEmptyContent
+                  : styles.feedContent
+}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -975,7 +979,7 @@ export default function FeedScreen() {
 
                   <Text style={styles.stateText}>
                     {activeFeedTab === 'mine'
-                      ? 'โพสต์ของคุณจะแสดงอยู่ที่นี่'
+                      ? 'Your posts will appear here.'
                       : 'Be the first anonymous post!'}
                   </Text>
                 </View>
@@ -2182,9 +2186,19 @@ const styles = StyleSheet.create({
 
   /* FEED */
 
-  feedContainer: { flex: 1 },
+  /* FEED */
+feedContainer: {
+  flex: 1,
+},
 
-  feedContent: { paddingBottom: 18 },
+feedContent: {
+  paddingBottom: 18,
+},
+
+feedEmptyContent: {
+  flexGrow: 1,
+  paddingBottom: 18,
+},
 
 
   /* QUICK COMPOSER */
@@ -2348,14 +2362,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  stateText: {
-    marginTop: 8,
-    fontSize: 12,
-    textAlign: 'center',
-    color: '#888888',
-  },
 
-  empty: { marginTop: 80, alignItems: 'center' },
+stateText: {
+  marginTop: 8,
+  fontSize: 12,
+  textAlign: 'center',
+  color: '#888888',
+},
+
+  empty: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  paddingHorizontal: 24,
+},
+
 
   emptyTitle: {
     marginTop: 12,

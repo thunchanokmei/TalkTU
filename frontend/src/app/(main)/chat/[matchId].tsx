@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -131,6 +132,7 @@ export default function ChatRoom() {
   const [safetySuccessMessage, setSafetySuccessMessage] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const didInitialScroll = useRef(false);
+  const [showMessages, setShowMessages] = useState(false);
 
   useEffect(() => {
     if (loading || error || messages.length === 0) return;
@@ -159,6 +161,7 @@ export default function ChatRoom() {
             });
 
             didInitialScroll.current = true;
+            setShowMessages(true);
           }, 250);
         });
       });
@@ -193,6 +196,38 @@ export default function ChatRoom() {
   const isNearBottomRef = useRef(true);
   const stickToBottomRef = useRef(false);
   const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
+
+  /* ================= KEYBOARD ================= */
+
+  // เมื่อแป้นพิมพ์เปิด ให้ดันข้อความล่าสุดขึ้นมาให้เห็นเสมอ
+  // เมื่อแป้นพิมพ์เปิด: ยึดข้อความล่าสุดไว้ แล้วเลื่อนลงสุดแบบมีแอนิเมชัน 1 ครั้ง
+  // หน่วงตามเวลาที่แป้นพิมพ์ใช้เปิดจริง เพื่อให้เลื่อนหลัง layout ปรับขนาดแล้ว
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e: any) => {
+        stickToBottomRef.current = true;
+
+        const delay =
+          Platform.OS === 'ios'
+            ? Math.max(0, Number(e?.duration ?? 250) - 50)
+            : 50;
+
+        if (timer) clearTimeout(timer);
+
+        timer = setTimeout(() => {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }, delay);
+      }
+    );
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      showSub.remove();
+    };
+  }, []);
 
   /* ================= CURRENT USER ================= */
 
@@ -694,18 +729,24 @@ export default function ChatRoom() {
               </TouchableOpacity>
             </View>
           ) : (
-            <>
-              {/* MESSAGES */}
-
               <ScrollView
                 ref={scrollRef}
-                style={styles.messages}
+                style={[
+                  styles.messages,
+                  { opacity: messages.length === 0 || showMessages ? 1 : 0 },
+                ]}
                 contentContainerStyle={styles.messageContent}
                 showsVerticalScrollIndicator={false}
                 onScroll={handleScroll}
                 scrollEventThrottle={200}
                 onScrollBeginDrag={() => {
                   stickToBottomRef.current = false;
+                }}
+                onLayout={() => {
+                  // พื้นที่แชทหดลงตอนแป้นพิมพ์เปิด -> ดันข้อความล่าสุดขึ้นมาให้เห็น
+                  if (isNearBottomRef.current || stickToBottomRef.current) {
+                    scrollRef.current?.scrollToEnd({ animated: true });
+                  }
                 }}
                 onContentSizeChange={() => {
                   if (isNearBottomRef.current || stickToBottomRef.current) {
@@ -755,8 +796,9 @@ export default function ChatRoom() {
                   })
                 )}
               </ScrollView>
+          )}
 
-              {/* INPUT */}
+          {/* INPUT (แสดงตลอด ไม่ซ่อนตอนโหลด) */}
 
               <View style={styles.inputBar}>
                 <TextInput
@@ -777,9 +819,9 @@ export default function ChatRoom() {
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
-                    !input.trim() && styles.sendDisabled,
+                    (!input.trim() || loading || !!error) && styles.sendDisabled,
                   ]}
-                  disabled={!input.trim() || sending}
+                  disabled={!input.trim() || sending || loading || !!error}
                   onPress={handleSend}
                 >
                   {sending ? (
@@ -789,8 +831,6 @@ export default function ChatRoom() {
                   )}
                 </TouchableOpacity>
               </View>
-            </>
-          )}
         </View>
 
         {/* ================= SAFETY MODAL ================= */}

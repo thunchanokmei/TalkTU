@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
@@ -8,17 +9,18 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AgreementScreen() {
     const router = useRouter();
 
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [guidelinesAccepted, setGuidelinesAccepted] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
-    const canContinue = termsAccepted && guidelinesAccepted;
+    const canContinue = termsAccepted && guidelinesAccepted && privacyAccepted;
 
     const handleContinue = async () => {
         if (!canContinue || isSubmitting) return;
@@ -82,129 +84,156 @@ export default function AgreementScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView
-                contentContainerStyle={styles.content}
-                showsVerticalScrollIndicator={false}
-            >
-                <Text style={styles.title}>Before you start</Text>
-
-                <Text style={styles.description}>
-                    Please review TalkTU&apos;s policies before creating your profile.
-                </Text>
-
-                <View style={styles.card}>
-                    <TouchableOpacity
-                        style={styles.checkRow}
-                        onPress={() => setTermsAccepted((current) => !current)}
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: termsAccepted }}
-                    >
-                        <View
-                            style={[
-                                styles.checkbox,
-                                termsAccepted && styles.checkboxChecked,
-                            ]}
-                        >
-                            {termsAccepted && (
-                                <Text style={styles.checkmark}>✓</Text>
-                            )}
-                        </View>
-
-                        <Text style={styles.checkText}>
-                            I have read and agree to the{' '}
-                            <Text
-                                style={styles.link}
-                                onPress={() => router.push('/terms-of-service')}
-                            >
-                                Terms of Service
-                            </Text>
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.checkRow}
-                        onPress={() =>
-                            setGuidelinesAccepted((current) => !current)
-                        }
-                        accessibilityRole="checkbox"
-                        accessibilityState={{ checked: guidelinesAccepted }}
-                    >
-                        <View
-                            style={[
-                                styles.checkbox,
-                                guidelinesAccepted && styles.checkboxChecked,
-                            ]}
-                        >
-                            {guidelinesAccepted && (
-                                <Text style={styles.checkmark}>✓</Text>
-                            )}
-                        </View>
-
-                        <Text style={styles.checkText}>
-                            I have read and agree to the{' '}
-                            <Text
-                                style={styles.link}
-                                onPress={() => router.push('/community-guidelines')}
-                            >
-                                Community Guidelines
-                            </Text>
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                <Text style={styles.privacyText}>
-                    You can also review our{' '}
-                    <Text
-                        style={styles.link}
-                        onPress={() => router.push('/privacy-policy')}
-                    >
-                        Privacy Policy
-                    </Text>
-                    .
-                </Text>
-
-                <TouchableOpacity
-                    style={[
-                        styles.startButton,
-                        (!canContinue || isSubmitting) &&
-                        styles.startButtonDisabled,
-                    ]}
-                    onPress={handleContinue}
-                    disabled={!canContinue || isSubmitting}
-                    accessibilityRole="button"
-                    accessibilityState={{
-                        disabled: !canContinue || isSubmitting,
-                    }}
+        <LinearGradient
+            colors={['#FF7F87', '#FFA577', '#FFE8C8']}
+            locations={[0, 0.45, 1]}
+            style={styles.container}
+        >
+            <SafeAreaView style={styles.safeArea}>
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
                 >
-                    <Text
-                        style={[
-                            styles.startButtonText,
-                            (!canContinue || isSubmitting) &&
-                            styles.startButtonTextDisabled,
-                        ]}
-                    >
-                        {isSubmitting ? 'SAVING...' : 'START'}
-                    </Text>
-            </TouchableOpacity>
-            {errorMessage ? (
-                <Text style={styles.errorText}>
-                    {errorMessage}
-                </Text>
-            ) : null}
+                    <Text style={styles.title}>Before you start</Text>
 
-            <Text style={styles.notice}>
-                You must accept both policies before continuing.
-            </Text>
-        </ScrollView>
-        </SafeAreaView>
+                    <Text style={styles.description}>
+                        Please review TalkTU&apos;s policies before creating your profile.
+                    </Text>
+
+                    <View style={styles.card}>
+                        <TouchableOpacity
+                            style={styles.checkRow}
+                            onPress={() => setTermsAccepted((current) => !current)}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: termsAccepted }}
+                        >
+                            <View
+                                style={[
+                                    styles.checkbox,
+                                    termsAccepted && styles.checkboxChecked,
+                                ]}
+                            >
+                                {termsAccepted && (
+                                    <Text style={styles.checkmark}>✓</Text>
+                                )}
+                            </View>
+
+                            <Text style={styles.checkText}>
+                                I have read and agree to the{' '}
+                                <Text
+                                    style={styles.link}
+                                    onPress={() => router.push('/terms-of-service')}
+                                >
+                                    Terms of Service
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.checkRow}
+                            onPress={() =>
+                                setGuidelinesAccepted((current) => !current)
+                            }
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: guidelinesAccepted }}
+                        >
+                            <View
+                                style={[
+                                    styles.checkbox,
+                                    guidelinesAccepted && styles.checkboxChecked,
+                                ]}
+                            >
+                                {guidelinesAccepted && (
+                                    <Text style={styles.checkmark}>✓</Text>
+                                )}
+                            </View>
+
+                            <Text style={styles.checkText}>
+                                I have read and agree to the{' '}
+                                <Text
+                                    style={styles.link}
+                                    onPress={() => router.push('/community-guidelines')}
+                                >
+                                    Community Guidelines
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.checkRow}
+                            onPress={() => setPrivacyAccepted((current) => !current)}
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: privacyAccepted }}
+                        >
+                            <View
+                                style={[
+                                    styles.checkbox,
+                                    privacyAccepted && styles.checkboxChecked,
+                                ]}
+                            >
+                                {privacyAccepted && (
+                                    <Text style={styles.checkmark}>✓</Text>
+                                )}
+                            </View>
+
+                            <Text style={styles.checkText}>
+                                I have read and agree to the{' '}
+                                <Text
+                                    style={styles.link}
+                                    onPress={() => router.push('/privacy-policy')}
+                                >
+                                    Privacy Policy
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.startButton,
+                            (!canContinue || isSubmitting) &&
+                            styles.startButtonDisabled,
+                        ]}
+                        onPress={handleContinue}
+                        disabled={!canContinue || isSubmitting}
+                        accessibilityRole="button"
+                        accessibilityState={{
+                            disabled: !canContinue || isSubmitting,
+                        }}
+                    >
+                        <Text
+                            style={[
+                                styles.startButtonText,
+                                (!canContinue || isSubmitting) &&
+                                styles.startButtonTextDisabled,
+                            ]}
+                        >
+                            {isSubmitting ? 'SAVING...' : 'START'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {errorMessage ? (
+                        <Text style={styles.errorText}>
+                            {errorMessage}
+                        </Text>
+                    ) : null}
+
+                    <Text style={styles.notice}>
+                        You must accept all three policies before continuing.
+                    </Text>
+                </ScrollView>
+            </SafeAreaView>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFF5F0',
+    },
+
+    safeArea: {
+        flex: 1,
     },
 
     content: {
@@ -217,7 +246,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: '700',
-        color: '#222222',
+        color: '#ffffff',
         textAlign: 'center',
         marginBottom: 12,
     },

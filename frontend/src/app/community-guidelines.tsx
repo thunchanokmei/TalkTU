@@ -1,218 +1,280 @@
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useState } from 'react';
 
-const SUPPORT_EMAIL = 'talktu.team@gmail.com';
+import PolicyPageLayout, {
+  type PolicyLanguage,
+} from '@/components/policy/PolicyPageLayout';
+
+const SUPPORT_EMAIL =
+  'talktu.team@gmail.com';
 
 export default function CommunityGuidelinesPage() {
+  const [language, setLanguage] =
+    useState<PolicyLanguage>('en');
+
+  const isThai = language === 'th';
+
   return (
-    <ScrollView contentContainerStyle={styles.page}>
-      <View style={styles.card}>
-        <Text style={styles.title}>TalkTU Community Guidelines</Text>
+    <PolicyPageLayout
+      language={language}
+      onChangeLanguage={setLanguage}
+      title={
+        isThai
+          ? 'แนวทางการอยู่ร่วมกันในชุมชน TalkTU'
+          : 'TalkTU Community Guidelines'
+      }
+      updated={
+        isThai
+          ? 'อัปเดตล่าสุด: 28 ตุลาคม 2569'
+          : 'Last updated: October 28, 2026'
+      }
+      introduction={
+        isThai
+          ? [
+              'TalkTU เป็นชุมชนสำหรับนักศึกษามหาวิทยาลัยธรรมศาสตร์ที่มีสิทธิ์ใช้งานและมีอายุตั้งแต่ 18 ปีขึ้นไป แนวทางนี้ครอบคลุมโปรไฟล์ รูปภาพ การ Swipe การ Like การจับคู่ ข้อความแชท โพสต์ ความคิดเห็น การตอบกลับ และกิจกรรมอื่นภายใน TalkTU',
+            ]
+          : [
+              'TalkTU is a community for eligible Thammasat University students aged 18 or older. These Guidelines apply to profiles, photos, swipes, Likes, matches, chat messages, posts, comments, replies, and other activity on TalkTU.',
+            ]
+      }
+      sections={
+        isThai
+          ? [
+              {
+                heading:
+                  '1. เคารพผู้ใช้อื่น',
+                paragraphs: [
+                  'ห้ามคุกคาม กลั่นแกล้ง ข่มขู่ ทำให้อับอาย จงใจมุ่งโจมตี หรือกระทำพฤติกรรมที่เป็นการติดต่อซ้ำโดยไม่เป็นที่ต้องการ',
+                ],
+              },
 
-        <Text style={styles.updated}>
-          Last updated: October 28, 2026
-        </Text>
+              {
+                heading:
+                  '2. ห้ามสร้างความเกลียดชังหรือเลือกปฏิบัติ',
+                paragraphs: [
+                  'ห้ามเผยแพร่เนื้อหาที่โจมตี ดูหมิ่น ข่มขู่ หรือส่งเสริมความเกลียดชังต่อบุคคลหรือกลุ่มบุคคลจากอัตลักษณ์หรือลักษณะส่วนบุคคล',
+                ],
+              },
 
-        <Text style={styles.text}>
-          TalkTU is a community for eligible Thammasat University students
-          aged 18 or older. These guidelines apply to profiles, posts,
-          comments, messages, photos, and all other activity on TalkTU.
-        </Text>
+              {
+                heading:
+                  '3. ห้ามเนื้อหาทางเพศที่เป็นการแสวงหาประโยชน์',
+                paragraphs: [
+                  'ห้ามเผยแพร่หรือส่งเนื้อหาลามก เนื้อหาที่เป็นการแสวงหาประโยชน์ทางเพศ ภาพส่วนตัวที่เผยแพร่โดยไม่ได้รับความยินยอม การคุกคามทางเพศ หรือเนื้อหาที่เกี่ยวข้องกับการแสวงหาประโยชน์ทางเพศ',
+                ],
+              },
 
-        <Text style={styles.heading}>1. Treat others with respect</Text>
+              {
+                heading:
+                  '4. ห้ามการข่มขู่และพฤติกรรมอันตราย',
+                paragraphs: [
+                  'ห้ามข่มขู่อย่างน่าเชื่อถือ ส่งเสริมความรุนแรง สนับสนุนการกระทำอันตราย หรือใช้ TalkTU เพื่อจัดกิจกรรมที่ผิดกฎหมายหรือก่อให้เกิดอันตราย',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not harass, bully, threaten, intimidate, shame, or deliberately
-          target another person. Repeated unwanted contact or abusive behavior
-          is not allowed.
-        </Text>
+              {
+                heading:
+                  '5. เคารพความเป็นส่วนตัว',
+                paragraphs: [
+                  'ห้ามเปิดเผยข้อมูลส่วนตัวของบุคคลอื่นโดยไม่ได้รับอนุญาต เช่น ข้อมูลติดต่อส่วนตัว ที่อยู่ รหัสผ่าน เอกสารระบุตัวตน ข้อความส่วนตัว หรือข้อมูลอ่อนไหวอื่น',
+                ],
+              },
 
-        <Text style={styles.heading}>2. No hate or discrimination</Text>
+              {
+                heading:
+                  '6. ใช้ตัวตนอย่างสุจริต',
+                paragraphs: [
+                  'ห้ามแอบอ้างบุคคลอื่น สร้างตัวตนที่ทำให้เข้าใจผิด อ้างความเกี่ยวข้องกับบุคคลหรือองค์กรโดยไม่เป็นความจริง หรือจงใจหลอกลวงผู้ใช้อื่นเกี่ยวกับตัวตนของตน',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Content that attacks, degrades, threatens, or promotes hatred toward
-          people based on protected or personal characteristics is not allowed.
-        </Text>
+              {
+                heading:
+                  '7. ห้าม Spam การฉ้อโกง และการหลอกลวง',
+                paragraphs: [
+                  'ห้ามใช้ TalkTU เพื่อ Scam, Phishing, Spam, ฉ้อโกง โฆษณาหลอกลวง ใช้งานระบบแบบอัตโนมัติในทางที่ผิด หรือหลอกให้ผู้ใช้อื่นส่งเงิน ข้อมูลส่วนตัว รหัสผ่าน หรือรหัสยืนยัน',
+                ],
+              },
 
-        <Text style={styles.heading}>3. No sexual exploitation or explicit content</Text>
+              {
+                heading:
+                  '8. เคารพความยินยอมและขอบเขตของผู้อื่น',
+                paragraphs: [
+                  'เคารพการตัดสินใจและขอบเขตส่วนบุคคลของผู้ใช้อื่น หากอีกฝ่ายขอให้หยุดติดต่อ ต้องหยุดติดต่อ',
+                  'ห้ามใช้บัญชีอื่นเพื่อหลีกเลี่ยงการ Block หรือมาตรการด้านความปลอดภัยที่ผู้ใช้อื่นเลือกใช้',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not post or send pornographic material, sexually exploitative
-          content, non-consensual intimate content, sexual harassment, or
-          content that promotes prostitution or sexual exploitation.
-        </Text>
+              {
+                heading:
+                  '9. ใช้ TalkTU โดยชอบด้วยกฎหมาย',
+                paragraphs: [
+                  'ห้ามใช้ TalkTU เพื่อขาย ขอ แจกจ่าย หรืออำนวยความสะดวกเกี่ยวกับสินค้า บริการ สาร หรือกิจกรรมที่ผิดกฎหมาย',
+                ],
+              },
 
-        <Text style={styles.heading}>4. No threats or dangerous behavior</Text>
+              {
+                heading:
+                  '10. คุณสมบัติผู้ใช้งาน',
+                paragraphs: [
+                  'TalkTU มีไว้สำหรับนักศึกษามหาวิทยาลัยธรรมศาสตร์ที่มีสิทธิ์ใช้งานและมีอายุตั้งแต่ 18 ปีขึ้นไป การพยายามหลีกเลี่ยงข้อกำหนดด้านสิทธิ์หรืออายุอาจนำไปสู่การยุติบัญชี',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not make credible threats, encourage violence, promote dangerous
-          acts, or use TalkTU to organize illegal or harmful activity.
-        </Text>
+              {
+                heading: '11. การรายงาน',
+                paragraphs: [
+                  'หากพบโปรไฟล์ โพสต์ ความคิดเห็น ข้อความ หรือพฤติกรรมที่ละเมิดแนวทางนี้ สามารถใช้ฟังก์ชัน Report ภายในแอปได้',
+                  'รายงานควรให้ข้อมูลตามความเป็นจริง การจงใจส่งรายงานเท็จเพื่อคุกคามหรือกลั่นแกล้งผู้อื่นอาจถือเป็นการละเมิดแนวทางชุมชน',
+                ],
+              },
 
-        <Text style={styles.heading}>5. Protect privacy</Text>
+              {
+                heading:
+                  '12. การ Block และ Unmatch',
+                paragraphs: [
+                  'ผู้ใช้สามารถ Block ผู้ใช้อื่นเพื่อความปลอดภัยหรือความสบายใจ โดยระบบจะจำกัดไม่ให้บัญชีทั้งสองพบเจอกันอีกตามการทำงานของระบบ',
+                  'ผู้ใช้สามารถ Unmatch เพื่อยุติความสัมพันธ์ในการจับคู่ได้ แต่ Unmatch ไม่เหมือนกับ Block และทั้งสองฝ่ายอาจพบเจอกันอีกในโหมดอื่น',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not share another person's private information without permission.
-          This includes private contact information, addresses, passwords,
-          identification documents, private conversations, or other sensitive
-          information.
-        </Text>
+              {
+                heading:
+                  '13. การบังคับใช้',
+                paragraphs: [
+                  'TalkTU อาจลบหรือจำกัดเนื้อหา จำกัดฟังก์ชัน ระงับบัญชี หรือยุติบัญชีอย่างถาวรเมื่อพบการละเมิดแนวทาง การคุกคามความปลอดภัยของผู้ใช้ หรือการใช้งานระบบในทางที่ผิด',
+                  'กรณีร้ายแรงอาจได้รับการดำเนินการทันทีโดยไม่ต้องมีการเตือนล่วงหน้า',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not attempt to expose or identify users who choose to participate
-          anonymously through TalkTU's community features.
-        </Text>
+              {
+                heading:
+                  '14. ช่องทางติดต่อ',
+                paragraphs: [
+                  `หากมีข้อกังวลด้านความปลอดภัย คำถามเกี่ยวกับการดูแลชุมชน หรือปัญหาอื่น สามารถติดต่อทีม TalkTU ได้ที่ ${SUPPORT_EMAIL}`,
+                ],
+              },
+            ]
+          : [
+              {
+                heading:
+                  '1. Treat others with respect',
+                paragraphs: [
+                  'Do not harass, bully, threaten, intimidate, shame, deliberately target, or repeatedly contact another person in an unwanted or abusive manner.',
+                ],
+              },
 
-        <Text style={styles.heading}>6. Be authentic</Text>
+              {
+                heading:
+                  '2. No hate or discrimination',
+                paragraphs: [
+                  'Content that attacks, degrades, threatens, or promotes hatred toward people based on identity or personal characteristics is not allowed.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not impersonate another person, create misleading identities,
-          falsely claim affiliation with another person or organization, or
-          deliberately deceive users about who you are.
-        </Text>
+              {
+                heading:
+                  '3. No sexual exploitation or explicit abusive content',
+                paragraphs: [
+                  'Do not post or send pornographic material, sexually exploitative content, non-consensual intimate content, sexual harassment, or content that facilitates sexual exploitation.',
+                ],
+              },
 
-        <Text style={styles.heading}>7. No spam, scams, or manipulation</Text>
+              {
+                heading:
+                  '4. No threats or dangerous behavior',
+                paragraphs: [
+                  'Do not make credible threats, encourage violence, promote dangerous acts, or use TalkTU to organize illegal or harmful activity.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not use TalkTU for scams, phishing, spam, fraudulent activity,
-          deceptive promotions, automated abuse, or attempts to manipulate
-          other users.
-        </Text>
+              {
+                heading:
+                  '5. Protect privacy',
+                paragraphs: [
+                  'Do not share another person’s private information without permission. This includes private contact information, addresses, passwords, identification documents, private conversations, or other sensitive information.',
+                ],
+              },
 
-        <Text style={styles.heading}>8. Respect consent and boundaries</Text>
+              {
+                heading:
+                  '6. Be authentic',
+                paragraphs: [
+                  'Do not impersonate another person, create a misleading identity, falsely claim affiliation with another person or organization, or deliberately deceive users about who you are.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Respect other users' decisions and personal boundaries. If someone
-          asks you to stop contacting them, stop. Blocking or unmatching must
-          not be bypassed using another account.
-        </Text>
+              {
+                heading:
+                  '7. No spam, scams, or manipulation',
+                paragraphs: [
+                  'Do not use TalkTU for scams, phishing, spam, fraudulent activity, deceptive promotions, automated abuse, or attempts to trick users into providing money, personal information, passwords, or verification codes.',
+                ],
+              },
 
-        <Text style={styles.heading}>9. Keep content lawful</Text>
+              {
+                heading:
+                  '8. Respect consent and boundaries',
+                paragraphs: [
+                  'Respect other users’ decisions and personal boundaries. If someone asks you to stop contacting them, stop.',
+                  'Do not use another account to bypass a Block or another safety measure chosen by another user.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          Do not use TalkTU to sell, request, distribute, or facilitate illegal
-          goods, services, substances, or activities.
-        </Text>
+              {
+                heading:
+                  '9. Keep activity lawful',
+                paragraphs: [
+                  'Do not use TalkTU to sell, request, distribute, or facilitate illegal goods, services, substances, or activities.',
+                ],
+              },
 
-        <Text style={styles.heading}>10. Eligibility</Text>
+              {
+                heading:
+                  '10. Eligibility',
+                paragraphs: [
+                  'TalkTU is intended only for eligible Thammasat University students who are at least 18 years old. Attempts to bypass eligibility or age requirements may result in account termination.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          TalkTU is intended only for eligible Thammasat University students
-          who are at least 18 years old. Attempts to bypass eligibility or age
-          requirements may result in account removal.
-        </Text>
+              {
+                heading: '11. Reporting',
+                paragraphs: [
+                  'If you see a profile, post, comment, message, or behavior that violates these Guidelines, use the in-app Report feature.',
+                  'Reports should be truthful. Intentionally submitting false reports to harass or bully another person may itself violate these Guidelines.',
+                ],
+              },
 
-        <Text style={styles.heading}>11. Reporting</Text>
+              {
+                heading:
+                  '12. Blocking and unmatching',
+                paragraphs: [
+                  'You may Block users where necessary for your safety or comfort. Blocking prevents the accounts from encountering each other again in accordance with the system’s functionality.',
+                  'You may also Unmatch another user to end a matching relationship. Unmatching is not the same as Blocking, so the users may encounter each other again in another mode.',
+                ],
+              },
 
-        <Text style={styles.text}>
-          If you see a profile, post, comment, message, or conversation that
-          violates these guidelines, use the in-app Report feature. Reports
-          may be reviewed by the TalkTU team and appropriate action may be
-          taken.
-        </Text>
+              {
+                heading:
+                  '13. Enforcement',
+                paragraphs: [
+                  'TalkTU may remove or restrict content, restrict features, suspend accounts, or permanently terminate accounts that violate these Guidelines, threaten user safety, or abuse the service.',
+                  'Serious violations may result in immediate action without prior warning.',
+                ],
+              },
 
-        <Text style={styles.heading}>12. Blocking and unmatching</Text>
-
-        <Text style={styles.text}>
-          You can block users when necessary for your safety or comfort.
-          Blocking restricts interaction between the accounts. You may also
-          unmatch users through supported TalkTU features.
-        </Text>
-
-        <Text style={styles.heading}>13. Enforcement</Text>
-
-        <Text style={styles.text}>
-          TalkTU may remove content, restrict features, suspend accounts, or
-          permanently remove accounts that violate these guidelines, threaten
-          user safety, abuse the service, or repeatedly violate community
-          standards.
-        </Text>
-
-        <Text style={styles.text}>
-          Serious violations may result in immediate action without prior
-          warning.
-        </Text>
-
-        <Text style={styles.heading}>14. Contact</Text>
-
-        <Text style={styles.text}>
-          For safety concerns, moderation questions, or other community issues,
-          contact the TalkTU team at:
-        </Text>
-
-        <Text style={styles.contact}>
-          {SUPPORT_EMAIL}
-        </Text>
-
-        <Text style={styles.footer}>
-          TalkTU · Community Guidelines
-        </Text>
-      </View>
-    </ScrollView>
+              {
+                heading: '14. Contact',
+                paragraphs: [
+                  `For safety concerns, moderation questions, or other community issues, contact the TalkTU team at ${SUPPORT_EMAIL}.`,
+                ],
+              },
+            ]
+      }
+      footer={
+        isThai
+          ? 'TalkTU · แนวทางชุมชน'
+          : 'TalkTU · Community Guidelines'
+      }
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  page: {
-    flexGrow: 1,
-    backgroundColor: '#FFF5F0',
-    paddingHorizontal: 20,
-    paddingVertical: 48,
-    alignItems: 'center',
-  },
-
-  card: {
-    width: '100%',
-    maxWidth: 720,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 28,
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.08)',
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2B2B2B',
-    marginBottom: 6,
-  },
-
-  updated: {
-    fontSize: 13,
-    color: '#999999',
-    marginBottom: 24,
-  },
-
-  heading: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2B2B2B',
-    marginTop: 26,
-    marginBottom: 8,
-  },
-
-  text: {
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#555555',
-    marginBottom: 10,
-  },
-
-  contact: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FF7F87',
-    marginTop: 8,
-  },
-
-  footer: {
-    marginTop: 36,
-    fontSize: 13,
-    color: '#999999',
-    textAlign: 'center',
-  },
-});

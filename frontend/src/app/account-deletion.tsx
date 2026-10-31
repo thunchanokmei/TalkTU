@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 import {
   Linking,
   Platform,
@@ -8,13 +10,33 @@ import {
   View,
 } from 'react-native';
 
-const SUPPORT_EMAIL = 'talktu.team@gmail.com';
+type Language = 'en' | 'th';
+
+const SUPPORT_EMAIL =
+  'talktu.team@gmail.com';
 
 export default function AccountDeletionPage() {
-  const handleRequestDeletion = async () => {
-  const subject = 'TalkTU Account Deletion Request';
+  const [language, setLanguage] =
+    useState<Language>('en');
 
-  const body = `Hello TalkTU Team,
+  const isThai = language === 'th';
+
+  const handleRequestDeletion = async () => {
+    const subject = isThai
+      ? 'คำขอลบบัญชี TalkTU'
+      : 'TalkTU Account Deletion Request';
+
+    const body = isThai
+      ? `สวัสดีทีม TalkTU
+
+ฉันต้องการลบบัญชี TalkTU และข้อมูลส่วนบุคคลที่เกี่ยวข้องอย่างถาวร
+
+TU Username:
+
+ฉันเข้าใจว่าการลบบัญชีเป็นการดำเนินการถาวร
+
+ขอบคุณ`
+      : `Hello TalkTU Team,
 
 I would like to permanently delete my TalkTU account and associated personal data.
 
@@ -24,84 +46,173 @@ I understand that account deletion is permanent.
 
 Thank you.`;
 
-  const encodedSubject = encodeURIComponent(subject);
-  const encodedBody = encodeURIComponent(body);
+    const encodedSubject =
+      encodeURIComponent(subject);
 
-  if (Platform.OS === 'web') {
-    const gmailUrl =
-      `https://mail.google.com/mail/?view=cm&fs=1` +
-      `&to=${encodeURIComponent(SUPPORT_EMAIL)}` +
-      `&su=${encodedSubject}` +
+    const encodedBody =
+      encodeURIComponent(body);
+
+    if (Platform.OS === 'web') {
+      const gmailUrl =
+        `https://mail.google.com/mail/?view=cm&fs=1` +
+        `&to=${encodeURIComponent(
+          SUPPORT_EMAIL,
+        )}` +
+        `&su=${encodedSubject}` +
+        `&body=${encodedBody}`;
+
+      await Linking.openURL(gmailUrl);
+      return;
+    }
+
+    const mailtoUrl =
+      `mailto:${SUPPORT_EMAIL}` +
+      `?subject=${encodedSubject}` +
       `&body=${encodedBody}`;
 
-    await Linking.openURL(gmailUrl);
-    return;
-  }
-
-  const mailtoUrl =
-    `mailto:${SUPPORT_EMAIL}` +
-    `?subject=${encodedSubject}` +
-    `&body=${encodedBody}`;
-
-  await Linking.openURL(mailtoUrl);
-};
+    await Linking.openURL(mailtoUrl);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.page}>
       <View style={styles.card}>
-        <Text style={styles.title}>Delete your TalkTU account</Text>
+        <View style={styles.languageRow}>
+          <Pressable
+            style={[
+              styles.languageButton,
+              isThai &&
+                styles.languageButtonActive,
+            ]}
+            onPress={() =>
+              setLanguage('th')
+            }
+          >
+            <Text
+              style={[
+                styles.languageText,
+                isThai &&
+                  styles.languageTextActive,
+              ]}
+            >
+              ไทย
+            </Text>
+          </Pressable>
 
-        <Text style={styles.text}>
-          TalkTU users can permanently delete their account and associated
-          personal data.
+          <Pressable
+            style={[
+              styles.languageButton,
+              !isThai &&
+                styles.languageButtonActive,
+            ]}
+            onPress={() =>
+              setLanguage('en')
+            }
+          >
+            <Text
+              style={[
+                styles.languageText,
+                !isThai &&
+                  styles.languageTextActive,
+              ]}
+            >
+              EN
+            </Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.title}>
+          {isThai
+            ? 'ลบบัญชี TalkTU'
+            : 'Delete your TalkTU account'}
         </Text>
 
-        <Text style={styles.heading}>Delete your account in TalkTU</Text>
-
         <Text style={styles.text}>
-          Open TalkTU, go to Profile → Account Settings → Delete Account,
-          then confirm the deletion request.
+          {isThai
+            ? 'ผู้ใช้ TalkTU สามารถขอลบบัญชีและข้อมูลส่วนบุคคลที่เกี่ยวข้องอย่างถาวรได้'
+            : 'TalkTU users can request permanent deletion of their account and associated personal data.'}
         </Text>
 
-        <Text style={styles.heading}>Request deletion without the app</Text>
+        <Text style={styles.heading}>
+          {isThai
+            ? 'ลบบัญชีผ่านแอป TalkTU'
+            : 'Delete your account in TalkTU'}
+        </Text>
 
         <Text style={styles.text}>
-          If you no longer have access to the TalkTU app, you can request
-          account deletion by contacting the TalkTU team.
+          {isThai
+            ? 'เปิด TalkTU แล้วไปที่ Profile → Account Settings → Delete Account จากนั้นยืนยันคำขอลบบัญชี'
+            : 'Open TalkTU, go to Profile → Account Settings → Delete Account, then confirm the deletion request.'}
+        </Text>
+
+        <Text style={styles.heading}>
+          {isThai
+            ? 'ขอลบบัญชีเมื่อไม่สามารถเข้าแอปได้'
+            : 'Request deletion without the app'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'หากไม่สามารถเข้าถึงแอป TalkTU ได้ สามารถส่งคำขอลบบัญชีโดยติดต่อทีม TalkTU'
+            : 'If you no longer have access to the TalkTU app, you can request account deletion by contacting the TalkTU team.'}
         </Text>
 
         <Pressable
           style={({ pressed }) => [
             styles.button,
-            pressed && styles.buttonPressed,
+            pressed &&
+              styles.buttonPressed,
           ]}
-          onPress={handleRequestDeletion}
+          onPress={
+            handleRequestDeletion
+          }
         >
           <Text style={styles.buttonText}>
-            Request Account Deletion
+            {isThai
+              ? 'ส่งคำขอลบบัญชี'
+              : 'Request Account Deletion'}
           </Text>
         </Pressable>
 
         <Text style={styles.contact}>
-          Contact: {SUPPORT_EMAIL}
+          {isThai
+            ? `ติดต่อ: ${SUPPORT_EMAIL}`
+            : `Contact: ${SUPPORT_EMAIL}`}
         </Text>
 
-        <Text style={styles.heading}>Data that will be deleted</Text>
-
-        <Text style={styles.text}>
-          Your TalkTU account and associated personal data will be permanently
-          deleted. This includes your profile information, profile photos,
-          preferences, posts, comments, likes, matches, messages, and other
-          account-related information.
+        <Text style={styles.heading}>
+          {isThai
+            ? 'ข้อมูลที่เกี่ยวข้องกับบัญชี'
+            : 'Account-related data'}
         </Text>
 
-        <Text style={styles.heading}>Verification and processing</Text>
+        <Text style={styles.text}>
+          {isThai
+            ? 'เมื่อกระบวนการลบบัญชีเสร็จสมบูรณ์ TalkTU จะลบบัญชีและข้อมูลที่เชื่อมโยงกับบัญชีออกจากระบบที่ใช้งานอยู่ตามกระบวนการของระบบ ซึ่งอาจรวมถึงข้อมูลโปรไฟล์ รูปภาพ การตั้งค่า โพสต์ ความคิดเห็น การตอบกลับ Likes, Swipes, Matches, ข้อความ และข้อมูลบัญชีอื่นที่เกี่ยวข้อง'
+            : 'When account deletion is completed, TalkTU removes the account and information associated with the account from its active systems in accordance with the deletion process. This may include profile information, photos, preferences, posts, comments, replies, Likes, Swipes, Matches, messages, and other account-related information.'}
+        </Text>
+
+        <Text style={styles.heading}>
+          {isThai
+            ? 'ข้อมูลบางประเภทที่อาจต้องเก็บรักษา'
+            : 'Information that may need to be retained'}
+        </Text>
 
         <Text style={styles.text}>
-          For deletion requests submitted outside the app, we may ask you to
-          verify that you own the account before processing the request.
-          Once verified, the account and associated personal data will be
-          permanently deleted.
+          {isThai
+            ? 'ข้อมูลบางประเภทอาจได้รับการเก็บรักษาไว้เท่าที่จำเป็นเพื่อความปลอดภัย การป้องกันการทุจริต การตรวจสอบการใช้งานในทางที่ผิด การจัดการข้อพิพาท หรือหน้าที่ตามกฎหมาย ตามที่อธิบายไว้ในนโยบายความเป็นส่วนตัวของ TalkTU'
+            : 'Certain information may be retained where reasonably necessary for safety, fraud prevention, investigation of misuse, dispute resolution, or applicable legal obligations, as described in the TalkTU Privacy Policy.'}
+        </Text>
+
+        <Text style={styles.heading}>
+          {isThai
+            ? 'การยืนยันคำขอ'
+            : 'Verification and processing'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'สำหรับคำขอที่ส่งจากภายนอกแอป TalkTU อาจขอให้ผู้ส่งคำขอยืนยันว่าเป็นเจ้าของบัญชีก่อนดำเนินการ'
+            : 'For deletion requests submitted outside the app, TalkTU may ask you to verify that you own the account before processing the request.'}
         </Text>
 
         <Text style={styles.footer}>
@@ -128,7 +239,36 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 28,
 
-    boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.08)',
+    boxShadow:
+      '0px 8px 24px rgba(0, 0, 0, 0.08)',
+  },
+
+  languageRow: {
+    flexDirection: 'row',
+    alignSelf: 'flex-end',
+    gap: 8,
+    marginBottom: 18,
+  },
+
+  languageButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: '#F3F3F3',
+  },
+
+  languageButtonActive: {
+    backgroundColor: '#FF8F8F',
+  },
+
+  languageText: {
+    color: '#666666',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  languageTextActive: {
+    color: '#FFFFFF',
   },
 
   title: {
@@ -150,6 +290,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: '#555555',
+    marginBottom: 10,
   },
 
   button: {

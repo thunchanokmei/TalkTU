@@ -81,7 +81,7 @@ Thank you.`;
             style={[
               styles.languageButton,
               isThai &&
-                styles.languageButtonActive,
+              styles.languageButtonActive,
             ]}
             onPress={() =>
               setLanguage('th')
@@ -91,7 +91,7 @@ Thank you.`;
               style={[
                 styles.languageText,
                 isThai &&
-                  styles.languageTextActive,
+                styles.languageTextActive,
               ]}
             >
               ไทย
@@ -102,7 +102,7 @@ Thank you.`;
             style={[
               styles.languageButton,
               !isThai &&
-                styles.languageButtonActive,
+              styles.languageButtonActive,
             ]}
             onPress={() =>
               setLanguage('en')
@@ -112,7 +112,7 @@ Thank you.`;
               style={[
                 styles.languageText,
                 !isThai &&
-                  styles.languageTextActive,
+                styles.languageTextActive,
               ]}
             >
               EN
@@ -160,7 +160,7 @@ Thank you.`;
           style={({ pressed }) => [
             styles.button,
             pressed &&
-              styles.buttonPressed,
+            styles.buttonPressed,
           ]}
           onPress={
             handleRequestDeletion
@@ -173,12 +173,21 @@ Thank you.`;
           </Text>
         </Pressable>
 
-        <Text style={styles.contact}>
-          {isThai
-            ? `ติดต่อ: ${SUPPORT_EMAIL}`
-            : `Contact: ${SUPPORT_EMAIL}`}
-        </Text>
+        <View style={styles.contactBlock}>
+          <Text style={styles.contact}>
+            {isThai
+              ? 'อีเมล: talktu.team@gmail.com'
+              : 'Contact email: talktu.team@gmail.com'}
+          </Text>
 
+          <Text style={styles.contact}>
+            LINE OA: @927qejxh
+          </Text>
+
+          <Text style={styles.contact}>
+            Instagram: talktu.team
+          </Text>
+        </View>
         <Text style={styles.heading}>
           {isThai
             ? 'ข้อมูลที่เกี่ยวข้องกับบัญชี'
@@ -216,7 +225,9 @@ Thank you.`;
         </Text>
 
         <Text style={styles.footer}>
-          TalkTU · {SUPPORT_EMAIL}
+          {isThai
+            ? 'TalkTU · การลบบัญชี'
+            : 'TalkTU · Account Deletion'}
         </Text>
       </View>
     </ScrollView>
@@ -312,9 +323,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  contact: {
+  contactBlock: {
     marginTop: 12,
+    alignItems: 'center',
+  },
+
+  contact: {
     fontSize: 14,
+    lineHeight: 22,
     color: '#777777',
     textAlign: 'center',
   },

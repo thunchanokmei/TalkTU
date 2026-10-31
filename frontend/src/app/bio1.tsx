@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import {
-  completeOnboarding,
-} from '@/features/onboarding/services/onboardingService';
 
 import {
   ActivityIndicator,
@@ -79,7 +76,7 @@ export default function Bio1Screen() {
     setGenderIdentity,
   ] = useState<GenderIdentityLabel | ''>('');
   const [heightCm, setHeightCm] = useState(170);
-  const [places, setPlaces] = useState<string[]>([]);
+
 
   const [genderModal, setGenderModal] = useState(false);
   const [heightModal, setHeightModal] = useState(false);
@@ -118,22 +115,6 @@ export default function Bio1Screen() {
     { length: 251 },
     (_, index) => String(index)
   );
-
-  const placeOptions = [
-    'หอสมุดป๋วย',
-    'SC3',
-    'อินเตอร์โซน',
-    'เชียงราก 1',
-    'กรีน',
-    'TU fitness',
-    'ยิม 7',
-    'หอใน',
-    'เชียงราก 2',
-    'SC1',
-    'โรงอาหาร JC',
-    'สวนป๋วย 100 ปี',
-    'ศกร.',
-];
 
   useEffect(() => {
     const loadExistingProfile =
@@ -255,81 +236,6 @@ export default function Bio1Screen() {
 
           setGenderIdentity(genderLabel ?? '');
 
-          /*
-           * Reload saved campus locations.
-           * This makes Back -> forward preserve
-           * the actual database value.
-           */
-          const {
-            data:
-            userLocationRows,
-            error:
-            userLocationsError,
-          } =
-            await supabase
-              .from(
-                'user_locations'
-              )
-              .select(
-                'location_id'
-              )
-              .eq(
-                'user_id',
-                user.id
-              );
-
-          if (
-            userLocationsError
-          ) {
-            throw userLocationsError;
-          }
-
-          const locationIds =
-            (
-              userLocationRows ??
-              []
-            ).map(
-              (row) =>
-                row.location_id
-            );
-
-          if (
-            locationIds.length > 0
-          ) {
-            const {
-              data:
-              locationRows,
-              error:
-              locationError,
-            } =
-              await supabase
-                .from(
-                  'campus_locations'
-                )
-                .select(
-                  'id, name'
-                )
-                .in(
-                  'id',
-                  locationIds
-                );
-
-            if (locationError) {
-              throw locationError;
-            }
-
-            setPlaces(
-              (
-                locationRows ??
-                []
-              ).map(
-                (row) =>
-                  row.name
-              )
-            );
-          } else {
-            setPlaces([]);
-          }
         } catch (error) {
           console.error(
             'Load existing Bio profile error:',
@@ -455,15 +361,6 @@ export default function Bio1Screen() {
     }
   };
 
-  const togglePlace = (place: string) => {
-    setPlaces((current) => {
-      if (current.includes(place)) {
-        return current.filter((item) => item !== place);
-      }
-
-      return [...current, place];
-    });
-  };
   useEffect(() => {
     if (!heightModal) return;
     requestAnimationFrame(() => {
@@ -535,64 +432,6 @@ export default function Bio1Screen() {
 
       if (profileError) {
         throw profileError;
-      }
-
-      // ------------------------------------------------------
-      // 2. Replace campus locations
-      // ------------------------------------------------------
-      const {
-        error:
-        deleteLocationsError,
-      } = await supabase
-        .from('user_locations')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (deleteLocationsError) {
-        throw deleteLocationsError;
-      }
-
-      if (places.length > 0) {
-        const {
-          data: locationRows,
-          error:
-          locationsQueryError,
-        } = await supabase
-          .from('campus_locations')
-          .select('id, name')
-          .in('name', places);
-
-        if (locationsQueryError) {
-          throw locationsQueryError;
-        }
-
-        if (
-          locationRows &&
-          locationRows.length > 0
-        ) {
-          const {
-            error:
-            insertLocationsError,
-          } = await supabase
-            .from('user_locations')
-            .insert(
-              locationRows.map(
-                (location) => ({
-                  user_id:
-                    user.id,
-
-                  location_id:
-                    location.id,
-                })
-              )
-            );
-
-          if (
-            insertLocationsError
-          ) {
-            throw insertLocationsError;
-          }
-        }
       }
 
       // ------------------------------------------------------
@@ -792,11 +631,9 @@ export default function Bio1Screen() {
       }
 
       // ------------------------------------------------------
-      // 4. Complete onboarding
+      // 4. Continue to Bio2
       // ------------------------------------------------------
-      await completeOnboarding();
-
-      router.replace('/swipe');
+      router.push('/bio2');
     } catch (error) {
       console.error(
         'Complete bio setup error:',
@@ -1011,34 +848,6 @@ export default function Bio1Screen() {
             <Ionicons name="chevron-down" size={20} color="#777777" />
           </TouchableOpacity>
 
-          <Text style={styles.sectionTitle}>You'll usually find me at..</Text>
-
-          <View style={styles.locationsContainer}>
-            {placeOptions.map((place) => {
-              const selected = places.includes(place);
-
-              return (
-                <TouchableOpacity
-                  key={place}
-                  activeOpacity={0.8}
-                  onPress={() => togglePlace(place)}
-                  style={[
-                    styles.locationChip,
-                    selected && styles.locationChipSelected,
-                  ]}
-                >
-                  <Text style={[
-                    styles.locationChipText,
-                    selected && styles.locationChipTextSelected,
-                  ]}>
-                    {selected ? '✓ ' : ''}
-                    {place}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
           {errorMessage ? (
             <Text
               style={
@@ -1051,7 +860,7 @@ export default function Bio1Screen() {
 
           {/* Shared onboarding go button */}
           <OnboardingGoButton
-            label={saving ? 'Saving...' : 'Start Now!'}
+            label={saving ? 'Saving...' : 'go!'}
             loading={saving}
             disabled={saving}
             onPress={handleStart}
@@ -1585,36 +1394,6 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
 
-  locationsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-
-  locationChip: {
-    borderWidth: 1,
-    borderColor: '#DDDDDD',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-  },
-
-  locationChipSelected: {
-    borderColor: '#F08A8E',
-    backgroundColor: '#FFF0E8',
-  },
-
-  locationChipText: {
-    fontSize: 14,
-    color: '#222222',
-  },
-
-  locationChipTextSelected: {
-    color: '#C75D70',
-    fontWeight: '600',
-  },
-
   detailsCard: {
     marginTop: 18,
     borderRadius: 24,
@@ -1733,14 +1512,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF0F2',
-  },
-
-  placesTitle: {
-    marginTop: 2,
-    marginBottom: 11,
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#583642',
   },
 
   chipsContainer: {

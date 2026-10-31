@@ -24,7 +24,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
-// ✅ 1. ลบ import BottomNavigation ออกแล้ว (bar อยู่ใน (main)/_layout.tsx)
 import { getMode } from '../../features/onboarding/services/onboardingService';
 import MatchModal from '../../components/MatchModal';
 import SettingsSheet from '../../components/SettingsSheet';
@@ -39,10 +38,8 @@ import {
 const SWIPE_OUT_DURATION = 220;
 const FETCH_LIMIT = 10;
 
-/* ธีมเดียวกับ BottomNavigation */
 const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
 
-/* พื้นที่ด้านล่างการ์ดที่เว้นไว้ไม่ให้โซนแตะทับชื่อ/ปุ่ม */
 const BOTTOM_RESERVED = 105;
 
 type SwipeMode = 'date' | 'friends';
@@ -95,14 +92,12 @@ export default function SwipeScreen() {
     screenWidth,
     screenHeight
   );
-  // ระยะขอบข้างการ์ดตาม Figma (~8.6% ของความกว้างจอ)
   const horizontalPadding = Math.max(
     2,
     screenWidth * 0.07
   );
   const cardWidth =
     screenWidth - horizontalPadding * 2;
-  // สัดส่วนการ์ดตาม Figma (สูง ≈ 1.76 เท่าของกว้าง)
   const cardHeight = Math.min(
     screenHeight * 0.8,
     cardWidth * 1.80
@@ -129,14 +124,12 @@ export default function SwipeScreen() {
     Math.min(shortSide * 0.23, 112)
   );
 
-  // ปุ่ม like ลอยมุมขวาล่างของการ์ด
   const actionButtonSize = Math.max(
     64,
     Math.min(cardWidth * 0.19, 82)
   );
   const actionIconSize = Math.round(actionButtonSize * 0.5);
 
-  // ไอคอนปุ่มดู bio ข้างชื่อ
   const bioIconSize = Math.max(
     26,
     Math.min(cardWidth * 0.07, 32)
@@ -160,7 +153,6 @@ export default function SwipeScreen() {
   useEffect(() => {
     const urls: string[] = [];
 
-    // Prefetch รูปถัดไปของ candidate ปัจจุบัน
     const currentPhotoUrls =
       currentCandidate?.photos
         ?.slice(1)
@@ -168,7 +160,6 @@ export default function SwipeScreen() {
 
     urls.push(...currentPhotoUrls);
 
-    // Prefetch รูปแรกของ candidate ถัดไป 2 คน
     const nextCandidates = candidates.slice(
       currentIndex + 1,
       currentIndex + 3
@@ -458,8 +449,6 @@ export default function SwipeScreen() {
         );
 
 
-        console.log('get_discovery_candidates data:', data);
-        console.log('get_discovery_candidates error:', rpcError);
 
         if (rpcError) {
           throw rpcError;
@@ -550,14 +539,9 @@ export default function SwipeScreen() {
   };
 
   /**
-   * บันทึก swipe
    *
    * IMPORTANT:
-   * ตอนนี้ยังไม่ใส่ supabase.rpc(...) ตรงนี้
-   * เพราะยังไม่มีชื่อ RPC/API สำหรับ record swipe
    *
-   * ห้ามเปลี่ยนเป็นการ insert table โดยตรง
-   * เพราะ backend มี RLS และคุณกำหนดให้ใช้ API/RPC ที่ backend เตรียมไว้
    */
   const saveSwipe = async (
     candidate: Candidate,
@@ -595,10 +579,8 @@ export default function SwipeScreen() {
     // Save the swipe in the background.
     saveSwipe(candidate, action)
       .then((result) => {
-        console.log('submit_swipe result:', result);
 
         if (result?.[0]?.matched) {
-          console.log('MATCH!', result[0].match_id);
           setMatchedMatchId(result[0].match_id);
           setMatchedCandidate(candidate);
           setShowMatchModal(true);
@@ -651,7 +633,6 @@ export default function SwipeScreen() {
     });
   };
 
-  /* ปัดการ์ดด้วยนิ้ว */
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => false,
 
@@ -769,7 +750,6 @@ export default function SwipeScreen() {
     currentCandidate?.photos?.[photoIndex];
 
   return (
-    // ✅ 2. เพิ่ม edges={['top']} เพราะ inset ด้านล่างย้ายไปอยู่ที่ layout แล้ว
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
 
@@ -785,16 +765,15 @@ export default function SwipeScreen() {
           ]}
         >
           <Image
-            // ✅ 3. เพิ่ม ../ อีกชั้น เพราะไฟล์ย้ายเข้า (main)
             source={require('../../../assets/images/talktu-logo2.png')}
             style={[
               styles.logo,
               {
                 width: logoWidth,
                 height: logoHeight,
-                marginLeft:-15,
-                marginTop:-20,
-                marginBottom:-15,
+                marginLeft: -15,
+                marginTop: -20,
+                marginBottom: -15,
               },
             ]}
             resizeMode="contain"
@@ -964,7 +943,7 @@ export default function SwipeScreen() {
                         style={[
                           styles.photoDash,
                           index === photoIndex &&
-                            styles.photoDashActive,
+                          styles.photoDashActive,
                         ]}
                       />
                     )
@@ -1087,7 +1066,6 @@ export default function SwipeScreen() {
                     {currentCandidate.age}
                   </Text>
 
-                  {/* ปุ่มดู bio (ข้างชื่อ) */}
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel="View bio"
@@ -1109,16 +1087,27 @@ export default function SwipeScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text
-                  style={
-                    styles.detailText
-                  }
-                  numberOfLines={1}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 5,
+                  }}
                 >
-                  {currentCandidate.department
-                    ? `${currentCandidate.department}, ${currentCandidate.faculty}`
-                    : currentCandidate.faculty}
-                </Text>
+                  {/* <Ionicons
+                    name="school-outline"
+                    size={14}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.detailText} numberOfLines={1}>
+                  {`TU${currentCandidate.tu_generation}`}
+                </Text> */}
+                  <Text style={styles.detailText} numberOfLines={1}>
+                    {currentCandidate.department
+                      ? `${currentCandidate.department}, ${currentCandidate.faculty}`
+                      : currentCandidate.faculty}
+                  </Text>
+                </View>
               </View>
 
               {/* ================= FLOATING LIKE BUTTON ================= */}
@@ -1146,9 +1135,6 @@ export default function SwipeScreen() {
             </Animated.View>
           )}
         </View>
-
-        {/* ✅ 4. ลบ <BottomNavigation activeTab="swap" /> ออกแล้ว */}
-
       </View>
 
       <MatchModal
@@ -1650,10 +1636,8 @@ export default function SwipeScreen() {
           setHasMore(true);
 
           if (newMode === mode) {
-            // โหมดเดิมแต่ตัวเลือกอาจเปลี่ยน (เช่น Men → Women) ให้โหลดการ์ดใหม่
             fetchCandidates(newMode, 0, false);
           } else {
-            // effect ของ mode จะ fetch ให้เอง
             changeMode(newMode);
           }
         }}
@@ -1890,7 +1874,7 @@ const styles = StyleSheet.create({
   photoDashes: {
     position: 'absolute',
     top: 18,
-    left: 60, // เว้นที่ให้ปุ่ม safety ทางขวาไม่ทับ และให้ขีดอยู่กึ่งกลางการ์ด
+
     right: 60,
     flexDirection: 'row',
     gap: 4,

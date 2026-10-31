@@ -44,6 +44,11 @@ type CampusLocation = {
     name: string;
 };
 
+type FavoriteFoodSpot = {
+    id: number;
+    name: string;
+};
+
 /* ช่องรูป 1 ช่อง: รูปที่บันทึกแล้ว หรือรูปใหม่ที่เพิ่งเลือก (ยังไม่อัปโหลด) */
 type SlotItem =
     | { type: 'saved'; id: string; storagePath: string }
@@ -399,6 +404,11 @@ export default function EditProfileScreen() {
     const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([]);
     const [selectedLocationIds, setSelectedLocationIds] = useState<number[]>([]);
 
+    const [afterClass, setAfterClass] = useState('');
+    const [favoriteSpot, setFavoriteSpot] = useState('');
+    const [favoriteFoodSpots, setFavoriteFoodSpots] = useState<FavoriteFoodSpot[]>([]);
+    const [selectedFoodSpotIds, setSelectedFoodSpotIds] = useState<number[]>([]);
+
     // ลากสลับตำแหน่งรูป
     const [dragFrom, setDragFrom] = useState<number | null>(null);
     const [dragOver, setDragOver] = useState<number | null>(null);
@@ -429,7 +439,7 @@ export default function EditProfileScreen() {
             // โหลด Bio เดิม
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('bio, gender_identity, height_cm')
+                .select('bio, gender_identity, height_cm, after_class, favorite_spot')
                 .eq('id', user.id)
                 .maybeSingle();
 
@@ -438,6 +448,8 @@ export default function EditProfileScreen() {
             }
 
             setBio(profile?.bio ?? '');
+            setAfterClass(profile?.after_class ?? '');
+            setFavoriteSpot(profile?.favorite_spot ?? '');
             setHeightCm(
                 typeof profile?.height_cm === 'number' && profile.height_cm > 0
                     ? profile.height_cm
@@ -479,6 +491,31 @@ export default function EditProfileScreen() {
             );
 
             // โหลดรูปเดิม
+            const { data: foodSpots, error: foodSpotsError } = await supabase
+                .from('favorite_food_spots')
+                .select('id, name')
+                .eq('is_active', true)
+                .order('id', { ascending: true });
+
+            if (foodSpotsError) {
+                throw foodSpotsError;
+            }
+
+            setFavoriteFoodSpots(foodSpots ?? []);
+
+            const { data: userFoodSpotRows, error: userFoodSpotsError } =
+                await supabase
+                    .from('user_favorite_food_spots')
+                    .select('food_spot_id')
+                    .eq('user_id', user.id);
+
+            if (userFoodSpotsError) {
+                throw userFoodSpotsError;
+            }
+
+            setSelectedFoodSpotIds(
+                (userFoodSpotRows ?? []).map((row) => row.food_spot_id)
+            );
             const { data: photoData, error: photoError } = await supabase
                 .from('profile_photos')
                 .select('id, storage_path, position')
@@ -890,6 +927,8 @@ export default function EditProfileScreen() {
                     bio: bio.trim(),
                     gender_identity: genderValue,
                     height_cm: heightCm,
+                    after_class: afterClass.trim() || null,
+                    favorite_spot: favoriteSpot.trim() || null,
                 })
                 .eq('id', user.id);
 
@@ -898,6 +937,56 @@ export default function EditProfileScreen() {
             }
 
             await saveCampusLocations(user.id);
+
+            const { data: existingFoodSpotRows, error: loadFoodSpotsError } =
+                await supabase
+                    .from('user_favorite_food_spots')
+                    .select('food_spot_id')
+                    .eq('user_id', user.id);
+
+            if (loadFoodSpotsError) {
+                throw loadFoodSpotsError;
+            }
+
+            const existingFoodSpotIds = (existingFoodSpotRows ?? []).map(
+                (row) => Number(row.food_spot_id)
+            );
+
+            const idsToDelete = existingFoodSpotIds.filter(
+                (id) => !selectedFoodSpotIds.includes(id)
+            );
+
+            const idsToInsert = selectedFoodSpotIds.filter(
+                (id) => !existingFoodSpotIds.includes(id)
+            );
+
+            if (idsToDelete.length > 0) {
+                const { error: deleteFoodSpotsError } = await supabase
+                    .from('user_favorite_food_spots')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .in('food_spot_id', idsToDelete);
+
+                if (deleteFoodSpotsError) {
+                    throw deleteFoodSpotsError;
+                }
+            }
+
+            if (idsToInsert.length > 0) {
+                const { error: insertFoodSpotsError } = await supabase
+                    .from('user_favorite_food_spots')
+                    .insert(
+                        idsToInsert.map((foodSpotId) => ({
+                            user_id: user.id,
+                            food_spot_id: foodSpotId,
+                        }))
+                    );
+
+                if (insertFoodSpotsError) {
+                    throw insertFoodSpotsError;
+                }
+            }
+
 
             await savePhotos(user.id);
 
@@ -1083,6 +1172,63 @@ export default function EditProfileScreen() {
                     </Text>
                     <Text style={styles.selectArrow}>⌄</Text>
                 </TouchableOpacity>
+                {/* ================= BIO 2 ================= */}
+
+                <Text style={styles.sectionTitle}>After Class I Go...</Text>
+
+                <View style={styles.bioBox}>
+                    <TextInput
+                        style={styles.bioInput}
+                        value={afterClass}
+                        onChangeText={setAfterClass}
+                        maxLength={150}
+                        placeholder="What do you usually do after class?"
+                        placeholderTextColor="#999999"
+                    />
+                </View>
+
+                <Text style={styles.sectionTitle}>My Favorite Spot</Text>
+
+                <View style={styles.bioBox}>
+                    <TextInput
+                        style={styles.bioInput}
+                        value={favoriteSpot}
+                        onChangeText={setFavoriteSpot}
+                        maxLength={150}
+                        placeholder="Tell us your favorite spot"
+                        placeholderTextColor="#999999"
+                    />
+                </View>
+
+                <Text style={styles.sectionTitle}>My Favorite Restaurant</Text>
+
+                <View style={styles.locationsContainer}>
+                    {favoriteFoodSpots.map((spot) => {
+                        const selected = selectedFoodSpotIds.includes(spot.id);
+
+                        return (
+                            <TouchableOpacity
+                                key={spot.id}
+                                style={[
+                                    styles.locationChip,
+                                    selected && styles.locationChipSelected,
+                                ]}
+                                onPress={() => {
+                                    setSelectedFoodSpotIds((previous) =>
+                                        previous.includes(spot.id)
+                                            ? previous.filter((id) => id !== spot.id)
+                                            : [...previous, spot.id]
+                                    );
+                                }}
+                            >
+                                <Text style={styles.locationChipText}>
+                                    {selected ? '✓ ' : ''}
+                                    {spot.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
 
                 <Text style={styles.sectionTitle}>You'll usually find me at.. </Text>
 

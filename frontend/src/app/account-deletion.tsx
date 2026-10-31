@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+import { useRouter } from 'expo-router';
+
 import {
   Linking,
   Platform,
@@ -16,10 +18,20 @@ const SUPPORT_EMAIL =
   'talktu.team@gmail.com';
 
 export default function AccountDeletionPage() {
+  const router = useRouter();
+
   const [language, setLanguage] =
     useState<Language>('en');
 
   const isThai = language === 'th';
+
+  const canGoBack = router.canGoBack();
+
+  const handleBack = () => {
+    if (canGoBack) {
+      router.back();
+    }
+  };
 
   const handleRequestDeletion = async () => {
     const subject = isThai
@@ -29,7 +41,7 @@ export default function AccountDeletionPage() {
     const body = isThai
       ? `สวัสดีทีม TalkTU
 
-ฉันต้องการลบบัญชี TalkTU และข้อมูลส่วนบุคคลที่เกี่ยวข้องอย่างถาวร
+ฉันต้องการลบบัญชี TalkTU และข้อมูลส่วนบุคคลที่เกี่ยวข้อง
 
 TU Username:
 
@@ -74,50 +86,98 @@ Thank you.`;
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.page}>
+    <ScrollView
+      contentContainerStyle={styles.page}
+    >
       <View style={styles.card}>
-        <View style={styles.languageRow}>
-          <Pressable
-            style={[
-              styles.languageButton,
-              isThai &&
-              styles.languageButtonActive,
-            ]}
-            onPress={() =>
-              setLanguage('th')
-            }
-          >
-            <Text
-              style={[
-                styles.languageText,
-                isThai &&
-                styles.languageTextActive,
+        {/* Top navigation */}
+        <View style={styles.topRow}>
+          {canGoBack ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed &&
+                  styles.backButtonPressed,
               ]}
+              onPress={handleBack}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isThai
+                  ? 'ย้อนกลับ'
+                  : 'Go back'
+              }
             >
-              ไทย
-            </Text>
-          </Pressable>
+              <Text
+                style={styles.backButtonText}
+              >
+                ‹{' '}
+                {isThai
+                  ? 'ย้อนกลับ'
+                  : 'Back'}
+              </Text>
+            </Pressable>
+          ) : (
+            <View />
+          )}
 
-          <Pressable
-            style={[
-              styles.languageButton,
-              !isThai &&
-              styles.languageButtonActive,
-            ]}
-            onPress={() =>
-              setLanguage('en')
-            }
-          >
-            <Text
-              style={[
-                styles.languageText,
-                !isThai &&
-                styles.languageTextActive,
+          {/* Language switch */}
+          <View style={styles.languageRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.languageButton,
+
+                isThai &&
+                  styles.languageButtonActive,
+
+                pressed &&
+                  styles.languageButtonPressed,
               ]}
+              onPress={() =>
+                setLanguage('th')
+              }
+              accessibilityRole="button"
+              accessibilityLabel="ภาษาไทย"
             >
-              EN
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.languageText,
+
+                  isThai &&
+                    styles.languageTextActive,
+                ]}
+              >
+                ไทย
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.languageButton,
+
+                !isThai &&
+                  styles.languageButtonActive,
+
+                pressed &&
+                  styles.languageButtonPressed,
+              ]}
+              onPress={() =>
+                setLanguage('en')
+              }
+              accessibilityRole="button"
+              accessibilityLabel="English"
+            >
+              <Text
+                style={[
+                  styles.languageText,
+
+                  !isThai &&
+                    styles.languageTextActive,
+                ]}
+              >
+                EN
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <Text style={styles.title}>
@@ -128,10 +188,11 @@ Thank you.`;
 
         <Text style={styles.text}>
           {isThai
-            ? 'ผู้ใช้ TalkTU สามารถขอลบบัญชีและข้อมูลส่วนบุคคลที่เกี่ยวข้องอย่างถาวรได้'
-            : 'TalkTU users can request permanent deletion of their account and associated personal data.'}
+            ? 'ผู้ใช้ TalkTU สามารถขอลบบัญชีและข้อมูลส่วนบุคคลที่เกี่ยวข้องได้ การลบบัญชีเป็นการดำเนินการถาวรและไม่สามารถย้อนกลับได้เมื่อกระบวนการเสร็จสมบูรณ์'
+            : 'TalkTU users can request deletion of their account and associated personal data. Account deletion is permanent and cannot be reversed once the process is completed.'}
         </Text>
 
+        {/* Delete inside app */}
         <Text style={styles.heading}>
           {isThai
             ? 'ลบบัญชีผ่านแอป TalkTU'
@@ -140,10 +201,17 @@ Thank you.`;
 
         <Text style={styles.text}>
           {isThai
-            ? 'เปิด TalkTU แล้วไปที่ Profile → Account Settings → Delete Account จากนั้นยืนยันคำขอลบบัญชี'
-            : 'Open TalkTU, go to Profile → Account Settings → Delete Account, then confirm the deletion request.'}
+            ? 'หากยังสามารถเข้าใช้งาน TalkTU ได้ ให้เปิดแอปและไปที่ Profile → Account Settings → Delete Account จากนั้นตรวจสอบข้อมูลและยืนยันคำขอลบบัญชี'
+            : 'If you still have access to TalkTU, open the app and go to Profile → Account Settings → Delete Account, then review the information and confirm the deletion request.'}
         </Text>
 
+        <Text style={styles.text}>
+          {isThai
+            ? 'การลบบัญชีผ่านฟังก์ชันภายในแอปเป็นวิธีหลักในการลบบัญชี TalkTU'
+            : 'Using the in-app Delete Account feature is the primary method for deleting a TalkTU account.'}
+        </Text>
+
+        {/* Delete outside app */}
         <Text style={styles.heading}>
           {isThai
             ? 'ขอลบบัญชีเมื่อไม่สามารถเข้าแอปได้'
@@ -152,18 +220,31 @@ Thank you.`;
 
         <Text style={styles.text}>
           {isThai
-            ? 'หากไม่สามารถเข้าถึงแอป TalkTU ได้ สามารถส่งคำขอลบบัญชีโดยติดต่อทีม TalkTU'
-            : 'If you no longer have access to the TalkTU app, you can request account deletion by contacting the TalkTU team.'}
+            ? 'หากไม่สามารถเข้าถึงแอป TalkTU ได้ เช่น ลบแอปออกจากอุปกรณ์หรือไม่สามารถเข้าสู่บัญชีได้ สามารถส่งคำขอลบบัญชีจากหน้านี้ได้'
+            : 'If you no longer have access to the TalkTU app, for example because the app has been removed from your device or you cannot access your account, you may submit an account-deletion request from this page.'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'กดปุ่มด้านล่างเพื่อเปิดอีเมลสำหรับส่งคำขอไปยังทีม TalkTU'
+            : 'Use the button below to open an email and send your request to the TalkTU team.'}
         </Text>
 
         <Pressable
           style={({ pressed }) => [
             styles.button,
+
             pressed &&
-            styles.buttonPressed,
+              styles.buttonPressed,
           ]}
           onPress={
             handleRequestDeletion
+          }
+          accessibilityRole="button"
+          accessibilityLabel={
+            isThai
+              ? 'ส่งคำขอลบบัญชี'
+              : 'Request account deletion'
           }
         >
           <Text style={styles.buttonText}>
@@ -173,7 +254,14 @@ Thank you.`;
           </Text>
         </Pressable>
 
+        {/* Contact */}
         <View style={styles.contactBlock}>
+          <Text style={styles.contactTitle}>
+            {isThai
+              ? 'ช่องทางติดต่อ'
+              : 'Contact'}
+          </Text>
+
           <Text style={styles.contact}>
             {isThai
               ? 'อีเมล: talktu.team@gmail.com'
@@ -188,6 +276,8 @@ Thank you.`;
             Instagram: talktu.team
           </Text>
         </View>
+
+        {/* Data removed */}
         <Text style={styles.heading}>
           {isThai
             ? 'ข้อมูลที่เกี่ยวข้องกับบัญชี'
@@ -196,10 +286,17 @@ Thank you.`;
 
         <Text style={styles.text}>
           {isThai
-            ? 'เมื่อกระบวนการลบบัญชีเสร็จสมบูรณ์ TalkTU จะลบบัญชีและข้อมูลที่เชื่อมโยงกับบัญชีออกจากระบบที่ใช้งานอยู่ตามกระบวนการของระบบ ซึ่งอาจรวมถึงข้อมูลโปรไฟล์ รูปภาพ การตั้งค่า โพสต์ ความคิดเห็น การตอบกลับ Likes, Swipes, Matches, ข้อความ และข้อมูลบัญชีอื่นที่เกี่ยวข้อง'
-            : 'When account deletion is completed, TalkTU removes the account and information associated with the account from its active systems in accordance with the deletion process. This may include profile information, photos, preferences, posts, comments, replies, Likes, Swipes, Matches, messages, and other account-related information.'}
+            ? 'เมื่อกระบวนการลบบัญชีเสร็จสมบูรณ์ TalkTU จะลบบัญชีและข้อมูลที่เชื่อมโยงกับบัญชีออกจากระบบที่ใช้งานอยู่ตามกระบวนการของระบบ'
+            : 'When account deletion is completed, TalkTU removes the account and information associated with the account from its active systems in accordance with the account-deletion process.'}
         </Text>
 
+        <Text style={styles.text}>
+          {isThai
+            ? 'ข้อมูลดังกล่าวอาจรวมถึงข้อมูลโปรไฟล์ รูปภาพ ข้อมูลและความชอบที่ผู้ใช้ให้ไว้ โพสต์ ความคิดเห็น การตอบกลับ การกด Like การ Swipe การจับคู่ ข้อความ และข้อมูลบัญชีอื่นที่เกี่ยวข้อง'
+            : 'This may include profile information, photos, information and preferences provided by the user, posts, comments, replies, Likes, swipes, matches, messages, and other account-related information.'}
+        </Text>
+
+        {/* Possible retention */}
         <Text style={styles.heading}>
           {isThai
             ? 'ข้อมูลบางประเภทที่อาจต้องเก็บรักษา'
@@ -208,20 +305,46 @@ Thank you.`;
 
         <Text style={styles.text}>
           {isThai
-            ? 'ข้อมูลบางประเภทอาจได้รับการเก็บรักษาไว้เท่าที่จำเป็นเพื่อความปลอดภัย การป้องกันการทุจริต การตรวจสอบการใช้งานในทางที่ผิด การจัดการข้อพิพาท หรือหน้าที่ตามกฎหมาย ตามที่อธิบายไว้ในนโยบายความเป็นส่วนตัวของ TalkTU'
-            : 'Certain information may be retained where reasonably necessary for safety, fraud prevention, investigation of misuse, dispute resolution, or applicable legal obligations, as described in the TalkTU Privacy Policy.'}
-        </Text>
-
-        <Text style={styles.heading}>
-          {isThai
-            ? 'การยืนยันคำขอ'
-            : 'Verification and processing'}
+            ? 'ข้อมูลบางประเภทอาจได้รับการเก็บรักษาไว้เท่าที่จำเป็นเพื่อความปลอดภัย การป้องกันการทุจริต การตรวจสอบการใช้งานในทางที่ผิด การจัดการข้อพิพาท การใช้สิทธิเรียกร้อง หรือหน้าที่ตามกฎหมาย ตามที่อธิบายไว้ในนโยบายความเป็นส่วนตัวของ TalkTU'
+            : 'Certain information may be retained where reasonably necessary for safety, fraud prevention, investigation of misuse, dispute resolution, the establishment or defense of legal claims, or applicable legal obligations, as described in the TalkTU Privacy Policy.'}
         </Text>
 
         <Text style={styles.text}>
           {isThai
-            ? 'สำหรับคำขอที่ส่งจากภายนอกแอป TalkTU อาจขอให้ผู้ส่งคำขอยืนยันว่าเป็นเจ้าของบัญชีก่อนดำเนินการ'
-            : 'For deletion requests submitted outside the app, TalkTU may ask you to verify that you own the account before processing the request.'}
+            ? 'ข้อมูลที่อยู่ในระบบสำรองของผู้ให้บริการอาจคงอยู่ตามรอบระยะเวลาและกระบวนการของผู้ให้บริการ ก่อนที่จะถูกลบตามวงจรการทำงานปกติของระบบดังกล่าว'
+            : "Information contained in service-provider backup systems may remain for the period required by the provider's backup and deletion processes before being removed through the normal lifecycle of those systems."}
+        </Text>
+
+        {/* Verification */}
+        <Text style={styles.heading}>
+          {isThai
+            ? 'การยืนยันคำขอ'
+            : 'Verification of deletion requests'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'สำหรับคำขอที่ส่งจากภายนอกแอป TalkTU อาจขอข้อมูลเพิ่มเติมเท่าที่จำเป็นเพื่อยืนยันว่าผู้ส่งคำขอเป็นเจ้าของบัญชี ก่อนดำเนินการลบบัญชี'
+            : 'For deletion requests submitted outside the app, TalkTU may request additional information where reasonably necessary to verify that the requester owns the account before processing the deletion request.'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'ทีม TalkTU จะไม่ขอรหัสผ่านบัญชี TU ผ่านอีเมล LINE OA หรือ Instagram'
+            : 'The TalkTU team will not ask for your TU account password through email, LINE OA, or Instagram.'}
+        </Text>
+
+        {/* Permanent action */}
+        <Text style={styles.heading}>
+          {isThai
+            ? 'การลบบัญชีเป็นการดำเนินการถาวร'
+            : 'Account deletion is permanent'}
+        </Text>
+
+        <Text style={styles.text}>
+          {isThai
+            ? 'หลังจากกระบวนการลบบัญชีเสร็จสมบูรณ์ ผู้ใช้อาจไม่สามารถกู้คืนบัญชี โปรไฟล์ การจับคู่ ข้อความ หรือข้อมูลอื่นที่ถูกลบไปแล้วได้'
+            : 'After the account-deletion process is completed, you may not be able to recover your account, profile, matches, messages, or other information that has been deleted.'}
         </Text>
 
         <Text style={styles.footer}>
@@ -237,39 +360,87 @@ Thank you.`;
 const styles = StyleSheet.create({
   page: {
     flexGrow: 1,
+
     backgroundColor: '#FFF5F0',
+
     paddingHorizontal: 20,
     paddingVertical: 48,
+
     alignItems: 'center',
   },
 
   card: {
     width: '100%',
     maxWidth: 720,
+
     backgroundColor: '#FFFFFF',
+
     borderRadius: 24,
+
     padding: 28,
 
     boxShadow:
       '0px 8px 24px rgba(0, 0, 0, 0.08)',
   },
 
+  /* TOP BAR */
+
+  topRow: {
+    flexDirection: 'row',
+
+    alignItems: 'center',
+    justifyContent: 'space-between',
+
+    marginBottom: 20,
+  },
+
+  backButton: {
+    minHeight: 36,
+
+    justifyContent: 'center',
+
+    paddingVertical: 7,
+    paddingRight: 12,
+  },
+
+  backButtonPressed: {
+    opacity: 0.6,
+  },
+
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+
+    color: '#777777',
+  },
+
+  /* LANGUAGE */
+
   languageRow: {
     flexDirection: 'row',
-    alignSelf: 'flex-end',
     gap: 8,
-    marginBottom: 18,
   },
 
   languageButton: {
+    minWidth: 48,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
     paddingHorizontal: 14,
     paddingVertical: 7,
+
     borderRadius: 999,
+
     backgroundColor: '#F3F3F3',
   },
 
   languageButtonActive: {
     backgroundColor: '#FF8F8F',
+  },
+
+  languageButtonPressed: {
+    opacity: 0.75,
   },
 
   languageText: {
@@ -282,17 +453,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
+  /* CONTENT */
+
   title: {
     fontSize: 28,
     fontWeight: '700',
+
+    lineHeight: 36,
+
     color: '#2B2B2B',
+
     marginBottom: 18,
   },
 
   heading: {
     fontSize: 18,
     fontWeight: '700',
+
+    lineHeight: 25,
+
     color: '#2B2B2B',
+
     marginTop: 26,
     marginBottom: 8,
   },
@@ -300,16 +481,24 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 15,
     lineHeight: 23,
+
     color: '#555555',
+
     marginBottom: 10,
   },
 
+  /* DELETION BUTTON */
+
   button: {
-    marginTop: 20,
+    marginTop: 16,
+
     backgroundColor: '#FF8F8F',
+
     borderRadius: 16,
+
     paddingVertical: 14,
     paddingHorizontal: 20,
+
     alignItems: 'center',
   },
 
@@ -319,26 +508,52 @@ const styles = StyleSheet.create({
 
   buttonText: {
     color: '#FFFFFF',
+
     fontSize: 16,
     fontWeight: '700',
   },
 
+  /* CONTACT */
+
   contactBlock: {
-    marginTop: 12,
+    marginTop: 20,
+
+    padding: 16,
+
+    borderRadius: 16,
+
+    backgroundColor: '#FFF8F5',
+
     alignItems: 'center',
+  },
+
+  contactTitle: {
+    marginBottom: 8,
+
+    fontSize: 15,
+    fontWeight: '700',
+
+    color: '#555555',
   },
 
   contact: {
     fontSize: 14,
     lineHeight: 22,
+
     color: '#777777',
+
     textAlign: 'center',
   },
 
+  /* FOOTER */
+
   footer: {
     marginTop: 36,
+
     fontSize: 13,
+
     color: '#999999',
+
     textAlign: 'center',
   },
 });

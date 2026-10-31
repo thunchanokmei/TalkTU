@@ -1,22 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Animated,
     KeyboardAvoidingView,
     Platform,
+    Pressable,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
     useWindowDimensions,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { supabase } from '@/lib/supabase';
-import OnboardingBackButton from '../components/navigation/OnboardingBackButton';
 import OnboardingGoButton from '../components/navigation/OnboardingGoButton';
 import { completeOnboarding } from '../features/onboarding/services/onboardingService';
 
@@ -27,6 +29,7 @@ type FavoriteFoodSpot = {
     name: string;
     category: FoodSpotCategory;
 };
+
 type CampusLocation = {
     id: number;
     name: string;
@@ -48,18 +51,102 @@ const placeOptions = [
     'ศกร.',
 ];
 
-const BACK_BUTTON_OFFSET_TOP = 50;
-const BACK_BUTTON_HEIGHT = 55;
+const THEME_GRADIENT = ['#FF8D88', '#FFAF79', '#FFD86E'] as const;
+const TITLE_PINK = '#F08A8E';
+
+function FadeInView({
+    children,
+    delay = 0,
+    style,
+}: {
+    children: React.ReactNode;
+    delay?: number;
+    style?: any;
+}) {
+    const opacity = useRef(new Animated.Value(0)).current;
+    const translateY = useRef(new Animated.Value(16)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(opacity, {
+                toValue: 1,
+                duration: 420,
+                delay,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: 0,
+                duration: 420,
+                delay,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, [delay, opacity, translateY]);
+
+    return (
+        <Animated.View
+            style={[
+                style,
+                {
+                    opacity,
+                    transform: [{ translateY }],
+                },
+            ]}
+        >
+            {children}
+        </Animated.View>
+    );
+}
+
+function SelectableChip({
+    label,
+    selected,
+    onPress,
+}: {
+    label: string;
+    selected: boolean;
+    onPress: () => void;
+}) {
+    const scale = useRef(new Animated.Value(1)).current;
+
+    function animateScale(toValue: number) {
+        Animated.spring(scale, {
+            toValue,
+            useNativeDriver: true,
+            speed: 30,
+            bounciness: 5,
+        }).start();
+    }
+
+    return (
+        <Animated.View style={{ transform: [{ scale }] }}>
+            <Pressable
+                style={[
+                    styles.chip,
+                    selected && styles.chipSelected,
+                ]}
+                onPress={onPress}
+                onPressIn={() => animateScale(0.95)}
+                onPressOut={() => animateScale(1)}
+            >
+                <Text
+                    style={[
+                        styles.chipText,
+                        selected && styles.chipTextSelected,
+                    ]}
+                >
+                    {label}
+                </Text>
+            </Pressable>
+        </Animated.View>
+    );
+}
 
 export default function Bio2Screen() {
     const router = useRouter();
-    const { width, height: screenHeight } = useWindowDimensions();
+    const { width } = useWindowDimensions();
 
     const pagePadding = Math.max(14, Math.min(width * 0.045, 24));
-    const backTop = Math.max(20, screenHeight * 0.04);
-    const backLeft = Math.max(20, width * 0.07);
-    const backButtonSpace =
-        backTop + BACK_BUTTON_OFFSET_TOP + BACK_BUTTON_HEIGHT - 30;
 
     const [afterClass, setAfterClass] = useState('');
     const [favoriteSpot, setFavoriteSpot] = useState('');
@@ -110,10 +197,12 @@ export default function Bio2Screen() {
                     .from('user_favorite_food_spots')
                     .select('food_spot_id')
                     .eq('user_id', user.id),
+
                 supabase
                     .from('campus_locations')
                     .select('id, name')
                     .in('name', placeOptions),
+
                 supabase
                     .from('user_locations')
                     .select('location_id')
@@ -129,10 +218,13 @@ export default function Bio2Screen() {
             setAfterClass(profile?.after_class ?? '');
             setFavoriteSpot(profile?.favorite_spot ?? '');
             setFoodSpots(catalog ?? []);
+
             setSelectedFoodSpotIds(
                 (selectedRows ?? []).map((row) => Number(row.food_spot_id)),
             );
+
             setCampusLocations(locationCatalog ?? []);
+
             setSelectedLocationIds(
                 (selectedLocationRows ?? []).map((row) => Number(row.location_id)),
             );
@@ -153,6 +245,7 @@ export default function Bio2Screen() {
                 : [...currentIds, id],
         );
     }
+
     function toggleLocation(id: number) {
         setSelectedLocationIds((currentIds) =>
             currentIds.includes(id)
@@ -275,7 +368,6 @@ export default function Bio2Screen() {
             if (userError) throw userError;
             if (!user) throw new Error('Please sign in again.');
 
-            // Save the two optional text fields.
             const { error: profileError } = await supabase
                 .from('profiles')
                 .update({
@@ -286,13 +378,9 @@ export default function Bio2Screen() {
 
             if (profileError) throw profileError;
 
-            // Save favorite food spots.
             await saveFavoriteFoodSpots(user.id);
-
-            // Save selected campus locations.
             await saveLocations(user.id);
 
-            // Complete onboarding only after all Bio2 data has been saved.
             await completeOnboarding();
 
             router.replace('/swipe');
@@ -308,11 +396,32 @@ export default function Bio2Screen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <OnboardingBackButton
-                top={backTop}
-                left={backLeft}
-                onPress={() => router.replace('/bio1')}
-            />
+            {/* Header */}
+            <View style={styles.header}>
+                <Pressable
+                    onPress={() => router.replace('/bio1')}
+                    style={styles.backButtonWrapper}
+                    accessibilityRole="button"
+                    accessibilityLabel="Go back"
+                >
+                    <LinearGradient
+                        colors={THEME_GRADIENT}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.backButton}
+                    >
+                        <Ionicons
+                            name="chevron-back"
+                            size={25}
+                            color="#FFFFFF"
+                        />
+                    </LinearGradient>
+                </Pressable>
+
+                <Text style={styles.headerTitle}>YOUR PROFILE</Text>
+
+                <View style={styles.headerRightSpace} />
+            </View>
 
             <KeyboardAvoidingView
                 style={styles.keyboardView}
@@ -326,15 +435,21 @@ export default function Bio2Screen() {
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <View style={{ height: backButtonSpace }} />
+                    <FadeInView delay={50}>
+                        <Text style={styles.title}>
+                            A little more about you
+                        </Text>
 
-                    <Text style={styles.title}>A little more about you</Text>
-                    <Text style={styles.subtitle}>
-                        Share a few more things so people can get to know you better.
-                    </Text>
+                        <Text style={styles.subtitle}>
+                            Share a few more things so people can get to know you better.
+                        </Text>
+                    </FadeInView>
 
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>After Class I Go...</Text>
+                    <FadeInView delay={120} style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            After Class I Go...
+                        </Text>
+
                         <TextInput
                             style={styles.textInput}
                             value={afterClass}
@@ -345,10 +460,13 @@ export default function Bio2Screen() {
                             textAlignVertical="top"
                             maxLength={300}
                         />
-                    </View>
+                    </FadeInView>
 
-                    <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>My Favorite Spot</Text>
+                    <FadeInView delay={180} style={styles.section}>
+                        <Text style={styles.sectionTitle}>
+                            My Favorite Spot
+                        </Text>
+
                         <TextInput
                             style={styles.textInput}
                             value={favoriteSpot}
@@ -359,9 +477,9 @@ export default function Bio2Screen() {
                             textAlignVertical="top"
                             maxLength={300}
                         />
-                    </View>
+                    </FadeInView>
 
-                    <View style={styles.section}>
+                    <FadeInView delay={240} style={styles.section}>
                         <Text style={styles.sectionTitle}>
                             My Favorite Restaurant
                         </Text>
@@ -369,7 +487,7 @@ export default function Bio2Screen() {
                         {loading ? (
                             <ActivityIndicator
                                 size="small"
-                                color="#7B263D"
+                                color={TITLE_PINK}
                                 style={styles.loader}
                             />
                         ) : foodSpots.length === 0 ? (
@@ -377,58 +495,20 @@ export default function Bio2Screen() {
                                 No food spots are available right now.
                             </Text>
                         ) : (
-                            <View style={styles.categoryContainer}>
-                                {(
-                                    [
-                                        { key: 'cafeteria', title: 'โรงอาหาร' },
-                                        { key: 'savory', title: 'ร้านของคาว' },
-                                        { key: 'dessert_drink', title: 'ร้านของหวานและเครื่องดื่ม' },
-                                    ] as const
-                                ).map((category) => {
-                                    const categorySpots = foodSpots.filter(
-                                        (spot) => spot.category === category.key,
-                                    );
-
-                                    return (
-                                        <View key={category.key} style={styles.categorySection}>
-                                            {category.key !== 'cafeteria' && (
-                                                <View style={styles.categoryDivider} />
-                                            )}
-
-                                            <View style={styles.chipContainer}>
-                                                {categorySpots.map((spot) => {
-                                                    const isSelected = selectedFoodSpotIds.includes(spot.id);
-
-                                                    return (
-                                                        <TouchableOpacity
-                                                            key={spot.id}
-                                                            style={[
-                                                                styles.chip,
-                                                                isSelected && styles.chipSelected,
-                                                            ]}
-                                                            onPress={() => toggleFoodSpot(spot.id)}
-                                                            activeOpacity={0.8}
-                                                        >
-                                                            <Text
-                                                                style={[
-                                                                    styles.chipText,
-                                                                    isSelected && styles.chipTextSelected,
-                                                                ]}
-                                                            >
-                                                                {spot.name}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    );
-                                                })}
-                                            </View>
-                                        </View>
-                                    );
-                                })}
+                            <View style={styles.chipContainer}>
+                                {foodSpots.map((spot) => (
+                                    <SelectableChip
+                                        key={spot.id}
+                                        label={spot.name}
+                                        selected={selectedFoodSpotIds.includes(spot.id)}
+                                        onPress={() => toggleFoodSpot(spot.id)}
+                                    />
+                                ))}
                             </View>
                         )}
-                    </View>
+                    </FadeInView>
 
-                    <View style={styles.section}>
+                    <FadeInView delay={300} style={styles.section}>
                         <Text style={styles.sectionTitle}>
                             You'll usually find me at..
                         </Text>
@@ -436,7 +516,7 @@ export default function Bio2Screen() {
                         {loading ? (
                             <ActivityIndicator
                                 size="small"
-                                color="#7B263D"
+                                color={TITLE_PINK}
                                 style={styles.loader}
                             />
                         ) : campusLocations.length === 0 ? (
@@ -445,37 +525,21 @@ export default function Bio2Screen() {
                             </Text>
                         ) : (
                             <View style={styles.chipContainer}>
-                                {campusLocations.map((location) => {
-                                    const isSelected = selectedLocationIds.includes(location.id);
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={location.id}
-                                            style={[
-                                                styles.chip,
-                                                isSelected && styles.chipSelected,
-                                            ]}
-                                            onPress={() => toggleLocation(location.id)}
-                                            activeOpacity={0.8}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.chipText,
-                                                    isSelected && styles.chipTextSelected,
-                                                ]}
-                                            >
-                                                {location.name}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
+                                {campusLocations.map((location) => (
+                                    <SelectableChip
+                                        key={location.id}
+                                        label={location.name}
+                                        selected={selectedLocationIds.includes(location.id)}
+                                        onPress={() => toggleLocation(location.id)}
+                                    />
+                                ))}
                             </View>
                         )}
-                    </View>
+                    </FadeInView>
 
                     <View style={styles.footer}>
                         <OnboardingGoButton
-                            label={saving ? 'Saving...' : "Start Now!"}
+                            label={saving ? 'Saving...' : 'Start Now!'}
                             loading={saving}
                             disabled={saving || loading}
                             onPress={handleSave}
@@ -490,19 +554,56 @@ export default function Bio2Screen() {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: '#FFFDFB',
+        backgroundColor: '#FFFFFF',
+    },
+    header: {
+        height: 72,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        backgroundColor: '#FFFFFF',
+        zIndex: 1,
+    },
+    backButtonWrapper: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        shadowColor: '#D98A83',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    backButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTitle: {
+        color: TITLE_PINK,
+        fontSize: 22,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    headerRightSpace: {
+        width: 48,
+        height: 48,
     },
     keyboardView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 32,
+        paddingTop: 8,
+        paddingBottom: 48,
     },
     title: {
-        color: '#3D2630',
+        color: TITLE_PINK,
         fontSize: 28,
-        fontWeight: '700',
+        fontWeight: '800',
         marginBottom: 8,
     },
     subtitle: {
@@ -512,7 +613,25 @@ const styles = StyleSheet.create({
         marginBottom: 28,
     },
     section: {
-        marginBottom: 25,
+        marginBottom: 26,
+    },
+    sectionTitle: {
+        color: TITLE_PINK,
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 12,
+    },
+    textInput: {
+        minHeight: 105,
+        borderWidth: 1,
+        borderColor: '#F4DDE2',
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 15,
+        paddingVertical: 13,
+        color: '#3D2630',
+        fontSize: 15,
+        lineHeight: 22,
     },
     categoryContainer: {
         gap: 20,
@@ -521,39 +640,10 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     categoryTitle: {
-        color: '#3D2630',
-        fontSize: 16,
-        fontWeight: '600',
-        marginBottom: 9,
-    },
-    categoryDivider: {
-        height: 1,
-        backgroundColor: '#E7DDE0',
-        marginBottom: 12,
-    },
-    sectionTitle: {
-        color: '#3D2630',
-        fontSize: 18,
-        fontWeight: '700',
-        marginBottom: 12,
-    },
-    textInput: {
-        minHeight: 105,
-        borderWidth: 1,
-        borderColor: '#E7DDE0',
-        borderRadius: 14,
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 15,
-        paddingVertical: 13,
-        color: '#3D2630',
+        color: '#C97983',
         fontSize: 15,
-        lineHeight: 22,
-    },
-    helperText: {
-        color: '#81767A',
-        fontSize: 14,
-        lineHeight: 20,
-        marginBottom: 14,
+        fontWeight: '700',
+        marginBottom: 10,
     },
     loader: {
         marginVertical: 20,
@@ -569,23 +659,23 @@ const styles = StyleSheet.create({
     },
     chip: {
         borderWidth: 1,
-        borderColor: '#E5D8DC',
+        borderColor: '#F1D9DE',
         borderRadius: 22,
         backgroundColor: '#FFFFFF',
         paddingHorizontal: 15,
         paddingVertical: 10,
     },
     chipSelected: {
-        backgroundColor: '#7B263D',
-        borderColor: '#7B263D',
+        backgroundColor: '#FFF0E8',
+        borderColor: '#F08A8E',
     },
     chipText: {
-        color: '#5F5055',
+        color: '#6D5B60',
         fontSize: 14,
     },
     chipTextSelected: {
-        color: '#FFFFFF',
-        fontWeight: '600',
+        color: '#C75D70',
+        fontWeight: '700',
     },
     footer: {
         marginTop: 12,

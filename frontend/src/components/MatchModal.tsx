@@ -46,23 +46,23 @@ export default function MatchModal({
   matchAnim.setValue(0);
 
   Animated.sequence([
-    // การ์ดสองใบวิ่งเข้าหากัน
+    // การ์ดสองฝั่งวิ่งเข้าหากัน
     Animated.parallel([
       Animated.spring(leftCardAnim, {
         toValue: 1,
-        speed: 8,
-        bounciness: 10,
+        speed: 7,
+        bounciness: 8,
         useNativeDriver: true,
       }),
       Animated.spring(rightCardAnim, {
         toValue: 1,
-        speed: 8,
-        bounciness: 10,
+        speed: 7,
+        bounciness: 8,
         useNativeDriver: true,
       }),
     ]),
 
-    // โลโก้เด้งขึ้นหลังการ์ดเข้าหากัน
+    // โลโก้ MATCH เด้งขึ้นมา
     Animated.sequence([
       Animated.timing(matchAnim, {
         toValue: 0.8,
@@ -285,7 +285,25 @@ export default function MatchModal({
 
         <View style={styles.centerArea}>
           <View style={styles.photoArea}>
-            <View style={[styles.photoCard, styles.leftPhoto]}>
+
+            {/* Left Card */}
+            <Animated.View
+              style={[
+                styles.photoCard,
+                styles.leftPhoto,
+                {
+                  transform: [
+                    {
+                      translateX: leftCardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-280, 0],
+                      }),
+                    },
+                    { rotate: '-13deg' },
+                  ],
+                },
+              ]}
+            >
               {candidateImageUrl ? (
                 <Image
                   source={{ uri: candidateImageUrl }}
@@ -297,9 +315,26 @@ export default function MatchModal({
               ) : (
                 <Text style={styles.photoPlaceholder}>♡</Text>
               )}
-            </View>
+            </Animated.View>
 
-            <View style={[styles.photoCard, styles.rightPhoto]}>
+            {/* Right Card */}
+            <Animated.View
+              style={[
+                styles.photoCard,
+                styles.rightPhoto,
+                {
+                  transform: [
+                    {
+                      translateX: rightCardAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [280, 0],
+                      }),
+                    },
+                    { rotate: '13deg' },
+                  ],
+                },
+              ]}
+            >
               {myImageUrl ? (
                 <Image
                   source={{ uri: myImageUrl }}
@@ -309,8 +344,9 @@ export default function MatchModal({
               ) : (
                 <Text style={styles.photoPlaceholder}>♡</Text>
               )}
-            </View>
+            </Animated.View>
 
+            {/* MATCH Logo */}
             <Animated.Image
               source={matchLogo}
               resizeMode="contain"
@@ -319,12 +355,6 @@ export default function MatchModal({
                 {
                   opacity: matchAnim,
                   transform: [
-                    {
-                      translateX: matchAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 0],
-                      }),
-                    },
                     {
                       scale: matchAnim.interpolate({
                         inputRange: [0, 0.65, 0.85, 1],
@@ -335,62 +365,67 @@ export default function MatchModal({
                 },
               ]}
             />
+
           </View>
+
+          
+            
         </View>
+      
 
-        {toastMessage !== '' && (
-          <View style={styles.toastContainer}>
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        )}
+      {toastMessage !== '' && (
+        <View style={styles.toastContainer}>
+          <Text style={styles.toastText}>{toastMessage}</Text>
+        </View>
+      )}
 
-        <View style={styles.bottomArea}>
-          <View style={styles.messageRow}>
-            <TextInput
-              placeholder={`Say something to ${displayName}`}
-              placeholderTextColor="#999999"
-              style={[
-                styles.messageInput,
-                Platform.OS === 'web' && ({ outline: 'none' } as any),
-              ]}
-              value={message}
-              onChangeText={setMessage}
-              editable={!sending && !sendSucceeded}
-              maxLength={5000}
-            />
+      <View style={styles.bottomArea}>
+        <View style={styles.messageRow}>
+          <TextInput
+            placeholder={`Say something to ${displayName}`}
+            placeholderTextColor="#999999"
+            style={[
+              styles.messageInput,
+              Platform.OS === 'web' && ({ outline: 'none' } as any),
+            ]}
+            value={message}
+            onChangeText={setMessage}
+            editable={!sending && !sendSucceeded}
+            maxLength={5000}
+          />
 
-            {message.trim().length > 0 && (
-              <TouchableOpacity
-                style={styles.sendButton}
-                onPress={handleSendMessage}
-                disabled={sending || sendSucceeded}
-                activeOpacity={0.7}
-              >
-                {sending ? (
-                  <ActivityIndicator color="#FF7885" size="small" />
-                ) : (
-                  <Ionicons name="arrow-up" size={20} color="#FF7885" />
-                )}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={onContinue}
-          >
-            <LinearGradient
-              colors={['#FF7885', '#FFD17A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.doneButton}
+          {message.trim().length > 0 && (
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleSendMessage}
+              disabled={sending || sendSucceeded}
+              activeOpacity={0.7}
             >
-              <Text style={styles.doneText}>Done</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              {sending ? (
+                <ActivityIndicator color="#FF7885" size="small" />
+              ) : (
+                <Ionicons name="arrow-up" size={20} color="#FF7885" />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
-      </LinearGradient>
-    </Modal>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onContinue}
+        >
+          <LinearGradient
+            colors={['#FF7885', '#FFD17A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.doneButton}
+          >
+            <Text style={styles.doneText}>Done</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
+    </Modal >
   );
 }
 
@@ -435,13 +470,13 @@ const styles = StyleSheet.create({
   leftPhoto: {
     top: 15,
     left: '5%',
-    transform: [{ rotate: '-13deg' }],
+    
   },
 
   rightPhoto: {
     bottom: 10,
     right: '5%',
-    transform: [{ rotate: '13deg' }],
+   
   },
 
   photoPlaceholder: {

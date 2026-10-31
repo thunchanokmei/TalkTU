@@ -257,7 +257,7 @@ function AccountSettingsContent() {
                         <Text style={styles.settingText}>Account Deletion Information</Text>
                     </TouchableOpacity>
                 </View>
-
+                <View style={styles.logoutDivider} />
                 <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleLogout}
@@ -267,18 +267,13 @@ function AccountSettingsContent() {
                     <Text style={styles.chevron}>›</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handleDeleteAccount}
-                    accessibilityRole="button"
-                >
-                    <Text style={styles.deleteText}>Delete Account</Text>
-                    <Text style={styles.chevron}>›</Text>
-                </TouchableOpacity>
 
-                <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>Contact us</Text>
+
+
+                <Text style={[styles.sectionTitle, styles.contactTitle]}>
+                    Contact us
+                </Text>
                 <Text style={styles.description}>
                     Questions, feedback, or support? Reach out to us!
                 </Text>
@@ -309,8 +304,19 @@ function AccountSettingsContent() {
                                 {copiedValue === contact.value ? '✓ Copied!' : 'Copy'}
                             </Text>
                         </TouchableOpacity>
+
                     </View>
+
                 ))}
+                <View style={styles.deleteDivider} />
+                <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleDeleteAccount}
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.deleteText}>Delete Account</Text>
+                    <Text style={styles.chevron}>›</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );
@@ -379,9 +385,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#222',
     },
+    deleteDivider: {
+        height: 1,
+        backgroundColor: '#DDDDDD',
+        marginTop: 12,
+    },
     deleteText: {
         fontSize: 16,
-        color: '#d33',
+        fontWeight: '700',
+        color: '#FF3B30',
+    },
+    deleteChevron: {
+        color: '#000000',
     },
     chevron: {
         fontSize: 24,
@@ -392,6 +407,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#eee',
         marginVertical: 28,
     },
+
+    logoutDivider: {
+        height: 1,
+        backgroundColor: '#DDDDDD',
+        marginBottom: 0,
+    },
+
     description: {
         color: '#777',
         marginBottom: 16,
@@ -404,6 +426,9 @@ const styles = StyleSheet.create({
     },
     contactInfo: {
         flex: 1,
+    },
+    contactTitle: {
+        marginTop: 24,
     },
     contactLabel: {
         fontWeight: '600',

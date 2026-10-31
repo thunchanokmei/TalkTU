@@ -150,7 +150,7 @@ export default function LikeScreen() {
         </View>
       ) : likes.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="heart-outline" size={48} color="#C9C9C9" />
+          <Ionicons name="heart-outline" size={48} color="#FF9A82" />
 
           <Text style={styles.emptyTitle}>No likes yet</Text>
 

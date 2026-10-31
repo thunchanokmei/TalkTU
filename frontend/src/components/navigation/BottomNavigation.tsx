@@ -34,12 +34,12 @@ const NAV_ITEMS: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-  { key: 'swap', label: 'Swap', icon: 'happy' },
-  { key: 'like', label: 'Like', icon: 'heart' },
-  { key: 'board', label: 'Board', icon: 'albums-outline' },
-  { key: 'chat', label: 'Chat', icon: 'chatbubble-ellipses' },
-  { key: 'profile', label: 'Profile', icon: 'person' },
-];
+    { key: 'swap', label: 'Swap', icon: 'happy' },
+    { key: 'like', label: 'Like', icon: 'heart' },
+    { key: 'board', label: 'Board', icon: 'albums-outline' },
+    { key: 'chat', label: 'Chat', icon: 'chatbubble-ellipses' },
+    { key: 'profile', label: 'Profile', icon: 'person' },
+  ];
 
 const ROUTES = {
   swap: '/swipe',
@@ -116,9 +116,6 @@ export default function BottomNavigation({
           void loadTotalUnread();
         }
       )
-      .subscribe((status) => {
-        console.log('BOTTOM NAV REALTIME:', status);
-      });
 
     return () => {
       mounted = false;
@@ -560,7 +557,11 @@ const styles = StyleSheet.create({
   },
 
   background: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     borderRadius: 999,
   },
 

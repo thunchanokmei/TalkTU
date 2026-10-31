@@ -138,17 +138,12 @@ React.useEffect(() => {
   let cancelled = false;
 
   const loadProfile = async () => {
-    console.log('LOAD CHAT PROFILE RPC:', userId);
     setFetching(true);
-
     try {
       const { data, error } = await supabase.rpc(
         'get_chat_user_profile',
         { p_user_id: userId }
       );
-
-      console.log('CHAT PROFILE RPC RESULT:', { data, error });
-
       if (error) throw error;
       if (!data) throw new Error('Profile data is empty');
       if (cancelled) return;

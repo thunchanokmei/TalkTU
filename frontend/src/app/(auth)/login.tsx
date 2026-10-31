@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { hasAcceptedCurrentPolicies } from '../../constants/policies';
-
 import {
   Image,
   KeyboardAvoidingView,
@@ -77,9 +75,7 @@ export default function LoginScreen() {
         setErrorMessage(result.message);
         return;
       }
-
-      console.log('TU login successful');
-
+      
       const {
         data: { user },
         error: userError,

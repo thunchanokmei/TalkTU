@@ -23,7 +23,6 @@ export async function loginWithTu(
   }
 
   try {
-    // Call Supabase Edge Function: tu-login
     const { data, error } = await supabase.functions.invoke('tu-login', {
       body: {
         username: cleanUsername,
@@ -32,8 +31,6 @@ export async function loginWithTu(
     });
 
     if (error) {
-      //console.error('TU login function error:', error);
-
       const functionError = error as {
         message?: string;
         context?: Response;
@@ -42,9 +39,6 @@ export async function loginWithTu(
       if (functionError.context) {
         try {
           const errorBody = await functionError.context.json();
-
-          //console.error('TU login response body:', errorBody);
-
           if (errorBody?.message) {
             return {
               success: false,
@@ -53,7 +47,6 @@ export async function loginWithTu(
           }
         } catch (readError) {
           console.warn('Unable to read TU login error body:', readError);
-          //console.error('Unable to read TU login error body:', readError);
         }
       }
 
@@ -103,12 +96,6 @@ export async function loginWithTu(
           verifyError.message || 'Unable to create Supabase session.',
       };
     }
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    console.log('Supabase session exists:', !!session);
-    console.log('Supabase user id:', session?.user.id);
 
     return {
       success: true,

@@ -22,16 +22,6 @@ export type FeedPost = {
   is_mine: boolean;
 };
 
-export type FeedComment = {
-  comment_id: string;
-
-  content: string;
-
-  created_at: string;
-
-  is_mine: boolean;
-};
-
 export type ToggleLikeResult = {
   liked: boolean;
 

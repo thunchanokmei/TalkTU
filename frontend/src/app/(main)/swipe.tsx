@@ -457,11 +457,6 @@ export default function SwipeScreen() {
             p_offset: offset,
           }
         );
-
-
-        console.log('get_discovery_candidates data:', data);
-        console.log('get_discovery_candidates error:', rpcError);
-
         if (rpcError) {
           throw rpcError;
         }
@@ -549,17 +544,6 @@ export default function SwipeScreen() {
         : 0
     );
   };
-
-  /**
-   * บันทึก swipe
-   *
-   * IMPORTANT:
-   * ตอนนี้ยังไม่ใส่ supabase.rpc(...) ตรงนี้
-   * เพราะยังไม่มีชื่อ RPC/API สำหรับ record swipe
-   *
-   * ห้ามเปลี่ยนเป็นการ insert table โดยตรง
-   * เพราะ backend มี RLS และคุณกำหนดให้ใช้ API/RPC ที่ backend เตรียมไว้
-   */
   const saveSwipe = async (
     candidate: Candidate,
     action: SwipeAction
@@ -582,7 +566,6 @@ export default function SwipeScreen() {
     candidate: Candidate,
     action: SwipeAction
   ) => {
-    // Move to the next card immediately. Do not wait for Supabase.
     setCurrentIndex((previous) => previous + 1);
     setPhotoIndex(0);
 
@@ -593,13 +576,9 @@ export default function SwipeScreen() {
 
     isSwiping.current = false;
 
-    // Save the swipe in the background.
     saveSwipe(candidate, action)
       .then((result) => {
-        console.log('submit_swipe result:', result);
-
         if (result?.[0]?.matched) {
-          console.log('MATCH!', result[0].match_id);
           setMatchedMatchId(result[0].match_id);
           setMatchedCandidate(candidate);
           setShowMatchModal(true);
@@ -652,12 +631,9 @@ export default function SwipeScreen() {
     });
   };
 
-  /* ปัดการ์ดด้วยนิ้ว */
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => false,
 
-    // Let buttons/tap zones receive a normal tap, but capture the gesture
-    // as soon as the finger actually starts moving horizontally.
     onMoveShouldSetPanResponder: (_, gesture) => {
       const horizontal = Math.abs(gesture.dx);
       const vertical = Math.abs(gesture.dy);
@@ -770,7 +746,6 @@ export default function SwipeScreen() {
     currentCandidate?.photos?.[photoIndex];
 
   return (
-    // ✅ 2. เพิ่ม edges={['top']} เพราะ inset ด้านล่างย้ายไปอยู่ที่ layout แล้ว
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.container}>
 
@@ -786,7 +761,6 @@ export default function SwipeScreen() {
           ]}
         >
           <Image
-            // ✅ 3. เพิ่ม ../ อีกชั้น เพราะไฟล์ย้ายเข้า (main)
             source={require('../../../assets/images/talktu-logo2.png')}
             style={[
               styles.logo,
@@ -1147,9 +1121,6 @@ export default function SwipeScreen() {
             </Animated.View>
           )}
         </View>
-
-        {/* ✅ 4. ลบ <BottomNavigation activeTab="swap" /> ออกแล้ว */}
-
       </View>
 
       <MatchModal

@@ -67,15 +67,12 @@ export default function ChatPage() {
     for (const item of result.data) {
       counts[item.match_id] = item.unread_count;
     }
-    console.log('UNREAD COUNTS:', counts);
-
     setUnreadCounts(counts);
   }, []);
 
 
   const loadChats = useCallback(
     async (showLoading = false) => {
-      console.log('LOAD CHATS RUNNING');
 
       if (showLoading) {
         setLoading(true);
@@ -92,11 +89,6 @@ export default function ChatPage() {
         );
         setChats([]);
       } else {
-        console.log(
-          'CHAT LIST DATA:',
-          JSON.stringify(result.data, null, 2)
-        );
-
         setChats(result.data ?? []);
       }
 
@@ -140,12 +132,13 @@ export default function ChatPage() {
           void loadChats(false);
         }
       )
-      .subscribe((status, error) => {
-        console.log(
-          'CHAT LIST REALTIME:',
-          status,
-          error ?? ''
-        );
+      .subscribe((_status, error) => {
+        if (error) {
+          console.error(
+            'CHAT LIST REALTIME ERROR:',
+            error
+          );
+        }
       });
 
     return () => {
@@ -168,7 +161,6 @@ export default function ChatPage() {
   };
 
   const openChat = (item: ChatListItem) => {
-    console.log('BEFORE PUSH:', item.match_id);
     router.push({
       pathname: '/chat/[matchId]',
       params: {
@@ -315,7 +307,6 @@ export default function ChatPage() {
                     key={item.match_id}
                     activeOpacity={0.82}
                     onPress={() => {
-                      console.log('CHAT CARD TAPPED');
                       openChat(item)
                     }}
                     style={styles.chatCard}

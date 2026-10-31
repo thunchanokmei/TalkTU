@@ -26,7 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
-import {useLocalSearchParams,usePathname,useRouter} from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 
 import { supabase } from '../../../lib/supabase';
@@ -55,7 +55,7 @@ export default function ChatRoom() {
       image?: string;
     }>();
   const router = useRouter();
- const { width, height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
 
   const matchId =
     typeof params.matchId === 'string'
@@ -132,17 +132,6 @@ export default function ChatRoom() {
   const [inputFocused, setInputFocused] = useState(false);
   const didInitialScroll = useRef(false);
 
-const pathname = usePathname();
-useEffect(() => {
-  console.log('PATH NOW ->', pathname);
-}, [pathname]);
-
-useEffect(() => {
-  console.log('CHAT ROOM MOUNTED', matchId);
-  return () => console.log('CHAT ROOM UNMOUNTED', matchId);
-}, [matchId]);
-
-
   useEffect(() => {
     if (loading || error || messages.length === 0) return;
     if (didInitialScroll.current) return;
@@ -203,7 +192,7 @@ useEffect(() => {
   const pageRef = useRef(0);
   const isNearBottomRef = useRef(true);
   const stickToBottomRef = useRef(false);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<React.ElementRef<typeof TextInput>>(null);
 
   /* ================= CURRENT USER ================= */
 
@@ -305,16 +294,12 @@ useEffect(() => {
           }
         }
       )
-      .subscribe((status) => {
-        console.log('REALTIME STATUS:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [matchId]);
-  /* ================= OLDER ================= */
-
 
   const loadOlderMessages = async () => {
     if (
@@ -395,8 +380,8 @@ useEffect(() => {
     }
 
 
-  setSending(true);
-  stickToBottomRef.current = true;
+    setSending(true);
+    stickToBottomRef.current = true;
 
 
     const result = await sendMessage(matchId, content);
@@ -406,53 +391,46 @@ useEffect(() => {
       setSending(false);
       return;
     }
-
-    console.log('SEND RESULT:', JSON.stringify(result));
-
     setInput('');
     setSending(false);
 
-  console.log('SEND RESULT:', JSON.stringify(result));
+    inputRef.current?.focus();
 
-  setInput('');
-  setSending(false);
-  inputRef.current?.focus();
-
-  setTimeout(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, 100);
-};
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
 
   /* ================= SCROLL ================= */
 
   const handleScroll = (event: any) => {
-  const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-  const y = contentOffset.y;
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    const y = contentOffset.y;
 
-  isNearBottomRef.current =
-    contentSize.height - (y + layoutMeasurement.height) < 80;
+    isNearBottomRef.current =
+      contentSize.height - (y + layoutMeasurement.height) < 80;
 
-  if (y <= 30 && !loadingOlder && hasMore) {
-    void loadOlderMessages();
-  }
-};
+    if (y <= 30 && !loadingOlder && hasMore) {
+      void loadOlderMessages();
+    }
+  };
 
 
   /* ================= SAFETY ================= */
 
- const closeSafety = () => {
-  if (safetyBusy) return;
+  const closeSafety = () => {
+    if (safetyBusy) return;
 
-  if (safetyView === 'success') {
-    router.dismissTo('/chat'); // ถอยกลับไปหน้า Chat List ที่อยู่ใน Stack แล้ว ทิ้งทุกหน้าที่ซ้อนอยู่ด้านบน
-    return;
-  }
+    if (safetyView === 'success') {
+      router.dismissTo('/chat'); // ถอยกลับไปหน้า Chat List ที่อยู่ใน Stack แล้ว ทิ้งทุกหน้าที่ซ้อนอยู่ด้านบน
+      return;
+    }
 
-  setShowSafety(false);
-  setSafetyView('menu');
-  setReportReason('');
-  setReportDetails('');
-};
+    setShowSafety(false);
+    setSafetyView('menu');
+    setReportReason('');
+    setReportDetails('');
+  };
 
   const openSafety = () => {
     setSafetyView('menu');
@@ -651,7 +629,7 @@ useEffect(() => {
       setSafetyBusy(false);
     }
   };
-    const scrollToLatest = (animated = false) => {
+  const scrollToLatest = (animated = false) => {
     requestAnimationFrame(() => {
       scrollRef.current?.scrollToEnd({ animated });
     });
@@ -828,297 +806,294 @@ useEffect(() => {
             onPress={closeSafety}
           >
             <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    keyboardVerticalOffset={0}
-    style={{
-      flex: 1,
-      width: '100%',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-    }}
-  >
-            <Pressable
-              style={[
-                styles.safetyModal,
-                {
-                  width:
-                    width >= 768
-                      ? 420
-                      : width - 40,
-                },
-              ]}
-              onPress={(event) => { event.stopPropagation(); }}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+              style={{
+                flex: 1,
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+              }}
             >
-              {/* MODAL HEADER */}
+              <Pressable
+                style={[
+                  styles.safetyModal,
+                  {
+                    width:
+                      width >= 768
+                        ? 420
+                        : width - 40,
+                  },
+                ]}
+                onPress={(event) => { event.stopPropagation(); }}
+              >
+                {/* MODAL HEADER */}
 
 
-              <View style={styles.modalHeader}>
-                <TouchableOpacity
-                  style={styles.modalClose}
-                  onPress={
-                    safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt'
-                      ? closeSafety
-                      : () => setSafetyView('menu')
-                  }
-                  disabled={safetyBusy}
-                >
-                  <Text style={styles.modalCloseText}>
-                    {safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt' ? '×' : '‹'}
-                  </Text>
-                </TouchableOpacity>
-
-                <Text style={styles.modalTitle}>
-                  {safetyView === 'menu' && 'Safety Tools'}
-                  {safetyView === 'unmatchConfirm' && 'Unmatch'}
-                  {safetyView === 'blockConfirm' && 'Block User'}
-                  {safetyView === 'reportForm' && 'Report User'}
-                  {safetyView === 'reportBlockPrompt' && 'Report Submitted'}
-                  {safetyView === 'success' && 'Success'}
-                </Text>
-
-                <View style={styles.headerSpacer} />
-              </View>
-
-              {safetyView === 'menu' && (
-                <>
-                  <TouchableOpacity style={styles.safetyOption} onPress={unmatch}>
-                    <Ionicons name="heart-dislike-outline" size={17} color="#333333" />
-                    <Text style={styles.safetyText}>Unmatch {name}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.safetyOption} onPress={block}>
-                    <Ionicons name="ban-outline" size={17} color="#333333" />
-                    <Text style={styles.safetyText}>Block {name}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity style={styles.safetyOption} onPress={report}>
-                    <Ionicons name="flag-outline" size={17} color="#333333" />
-                    <Text style={styles.safetyText}>Report {name}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {(safetyView === 'unmatchConfirm' || safetyView === 'blockConfirm') && (
-                <>
-                  <Text style={styles.safetyBody}>
-                    {safetyView === 'unmatchConfirm'
-                      ? `Are you sure you want to unmatch ${name}?`
-                      : `Are you sure you want to block ${name}?`}
-                  </Text>
-
-                  <View style={styles.safetyActions}>
-                    <TouchableOpacity
-                      style={styles.safetyCancel}
-                      onPress={() => setSafetyView('menu')}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyCancelText}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.safetyConfirm}
-                      onPress={safetyView === 'unmatchConfirm' ? confirmUnmatch : confirmBlock}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyConfirmText}>
-                        {safetyBusy ? 'Please wait...' : 'Confirm'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-
-              {safetyView === 'reportForm' && (
-                <>
-                  <Text style={styles.safetyBody}>Why are you reporting {name}?</Text>
-
-                  {([
-                    {
-                      label:
-                        'Harassment or unwanted contact',
-                      value:
-                        'harassment',
-                    },
-                    {
-                      label:
-                        'Violence, hate, or exploitation',
-                      value:
-                        'violence_or_hate',
-                    },
-                    {
-                      label:
-                        'Self-harm or risky behavior',
-                      value:
-                        'self_harm',
-                    },
-                    {
-                      label:
-                        'Sexual content',
-                      value:
-                        'sexual_content',
-                    },
-                    {
-                      label:
-                        'Fraud or scam',
-                      value:
-                        'scam',
-                    },
-                    {
-                      label:
-                        'Impersonation',
-                      value:
-                        'impersonation',
-                    },
-                    {
-                      label:
-                        'False information or spam',
-                      value:
-                        'spam_or_false_information',
-                    },
-                    {
-                      label:
-                        'Prohibited sales or promotion',
-                      value:
-                        'illegal_goods',
-                    },
-                    {
-                      label:
-                        'Intellectual property',
-                      value:
-                        'intellectual_property',
-                    },
-                    {
-                      label:
-                        'Other',
-                      value:
-                        'other',
-                    },
-                  ] as const).map((reason) => (
-                    <TouchableOpacity
-                      key={reason.value}
-                      style={[
-                        styles.reportReason,
-                        reportReason === reason.value && {
-                          backgroundColor: '#FFF0E3',
-                          borderWidth: 1,
-                          borderColor: '#E88A43',
-                        },
-                      ]}
-                      onPress={() => setReportReason(reason.value)}
-                    >
-                      <Ionicons
-                        name={reportReason === reason.value ? 'radio-button-on' : 'radio-button-off'}
-                        size={17}
-                        color={reportReason === reason.value ? '#E88A43' : '#666666'}
-                      />
-                      <Text style={styles.safetyText}>{reason.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-
-                  <TextInput
-                    style={styles.reportDetails}
-                    placeholder="Additional details (optional)"
-                    placeholderTextColor="#888888"
-                    multiline
-                    maxLength={1000}
-                    value={reportDetails}
-                    onChangeText={setReportDetails}
-                    textAlignVertical="top"
-                  />
-
-                  <View style={styles.safetyActions}>
-                    <TouchableOpacity
-                      style={styles.safetyCancel}
-                      onPress={() => setSafetyView('menu')}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyCancelText}>Cancel</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.safetyConfirm}
-                      onPress={submitReport}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyConfirmText}>
-                        {safetyBusy ? 'Submitting...' : 'Submit Report'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-
-              {safetyView === 'reportBlockPrompt' && (
-                <>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={42}
-                    color="#E88A43"
-                    style={{
-                      alignSelf: 'center',
-                      marginVertical: 12,
-                    }}
-                  />
-
-                  <Text style={styles.safetyBody}>
-                    Your report has been submitted.
-                    {'\n\n'}
-                    Would you also like to block {name}?
-                  </Text>
-
-                  <View style={styles.safetyActions}>
-                    <TouchableOpacity
-                      style={styles.safetyCancel}
-                      onPress={closeSafety}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyCancelText}>
-                        Not now
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.safetyConfirm}
-                      onPress={confirmBlock}
-                      disabled={safetyBusy}
-                    >
-                      <Text style={styles.safetyConfirmText}>
-                        {safetyBusy
-                          ? 'Blocking...'
-                          : `Block ${name}`}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-
-              {safetyView === 'success' && (
-                <>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={42}
-                    color="#E88A43"
-                    style={{ alignSelf: 'center', marginVertical: 12 }}
-                  />
-
-                  <Text style={styles.safetyBody}>{safetySuccessMessage}</Text>
-
+                <View style={styles.modalHeader}>
                   <TouchableOpacity
-  style={styles.safetyConfirm}
-  onPress={() => {
-  console.log('CLOSE PRESSED');
-  closeSafety();
-  router.replace('/chat');
-  console.log('AFTER NAVIGATE');
-}}
->
-  <Text style={styles.safetyConfirmText}>Close</Text>
-</TouchableOpacity>
-                </>
-              )}
+                    style={styles.modalClose}
+                    onPress={
+                      safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt'
+                        ? closeSafety
+                        : () => setSafetyView('menu')
+                    }
+                    disabled={safetyBusy}
+                  >
+                    <Text style={styles.modalCloseText}>
+                      {safetyView === 'menu' || safetyView === 'success' || safetyView === 'reportBlockPrompt' ? '×' : '‹'}
+                    </Text>
+                  </TouchableOpacity>
 
-            </Pressable>
+                  <Text style={styles.modalTitle}>
+                    {safetyView === 'menu' && 'Safety Tools'}
+                    {safetyView === 'unmatchConfirm' && 'Unmatch'}
+                    {safetyView === 'blockConfirm' && 'Block User'}
+                    {safetyView === 'reportForm' && 'Report User'}
+                    {safetyView === 'reportBlockPrompt' && 'Report Submitted'}
+                    {safetyView === 'success' && 'Success'}
+                  </Text>
+
+                  <View style={styles.headerSpacer} />
+                </View>
+
+                {safetyView === 'menu' && (
+                  <>
+                    <TouchableOpacity style={styles.safetyOption} onPress={unmatch}>
+                      <Ionicons name="heart-dislike-outline" size={17} color="#333333" />
+                      <Text style={styles.safetyText}>Unmatch {name}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.safetyOption} onPress={block}>
+                      <Ionicons name="ban-outline" size={17} color="#333333" />
+                      <Text style={styles.safetyText}>Block {name}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.safetyOption} onPress={report}>
+                      <Ionicons name="flag-outline" size={17} color="#333333" />
+                      <Text style={styles.safetyText}>Report {name}</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {(safetyView === 'unmatchConfirm' || safetyView === 'blockConfirm') && (
+                  <>
+                    <Text style={styles.safetyBody}>
+                      {safetyView === 'unmatchConfirm'
+                        ? `Are you sure you want to unmatch ${name}?`
+                        : `Are you sure you want to block ${name}?`}
+                    </Text>
+
+                    <View style={styles.safetyActions}>
+                      <TouchableOpacity
+                        style={styles.safetyCancel}
+                        onPress={() => setSafetyView('menu')}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.safetyConfirm}
+                        onPress={safetyView === 'unmatchConfirm' ? confirmUnmatch : confirmBlock}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyConfirmText}>
+                          {safetyBusy ? 'Please wait...' : 'Confirm'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {safetyView === 'reportForm' && (
+                  <>
+                    <Text style={styles.safetyBody}>Why are you reporting {name}?</Text>
+
+                    {([
+                      {
+                        label:
+                          'Harassment or unwanted contact',
+                        value:
+                          'harassment',
+                      },
+                      {
+                        label:
+                          'Violence, hate, or exploitation',
+                        value:
+                          'violence_or_hate',
+                      },
+                      {
+                        label:
+                          'Self-harm or risky behavior',
+                        value:
+                          'self_harm',
+                      },
+                      {
+                        label:
+                          'Sexual content',
+                        value:
+                          'sexual_content',
+                      },
+                      {
+                        label:
+                          'Fraud or scam',
+                        value:
+                          'scam',
+                      },
+                      {
+                        label:
+                          'Impersonation',
+                        value:
+                          'impersonation',
+                      },
+                      {
+                        label:
+                          'False information or spam',
+                        value:
+                          'spam_or_false_information',
+                      },
+                      {
+                        label:
+                          'Prohibited sales or promotion',
+                        value:
+                          'illegal_goods',
+                      },
+                      {
+                        label:
+                          'Intellectual property',
+                        value:
+                          'intellectual_property',
+                      },
+                      {
+                        label:
+                          'Other',
+                        value:
+                          'other',
+                      },
+                    ] as const).map((reason) => (
+                      <TouchableOpacity
+                        key={reason.value}
+                        style={[
+                          styles.reportReason,
+                          reportReason === reason.value && {
+                            backgroundColor: '#FFF0E3',
+                            borderWidth: 1,
+                            borderColor: '#E88A43',
+                          },
+                        ]}
+                        onPress={() => setReportReason(reason.value)}
+                      >
+                        <Ionicons
+                          name={reportReason === reason.value ? 'radio-button-on' : 'radio-button-off'}
+                          size={17}
+                          color={reportReason === reason.value ? '#E88A43' : '#666666'}
+                        />
+                        <Text style={styles.safetyText}>{reason.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    <TextInput
+                      style={styles.reportDetails}
+                      placeholder="Additional details (optional)"
+                      placeholderTextColor="#888888"
+                      multiline
+                      maxLength={1000}
+                      value={reportDetails}
+                      onChangeText={setReportDetails}
+                      textAlignVertical="top"
+                    />
+
+                    <View style={styles.safetyActions}>
+                      <TouchableOpacity
+                        style={styles.safetyCancel}
+                        onPress={() => setSafetyView('menu')}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.safetyConfirm}
+                        onPress={submitReport}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyConfirmText}>
+                          {safetyBusy ? 'Submitting...' : 'Submit Report'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {safetyView === 'reportBlockPrompt' && (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={42}
+                      color="#E88A43"
+                      style={{
+                        alignSelf: 'center',
+                        marginVertical: 12,
+                      }}
+                    />
+
+                    <Text style={styles.safetyBody}>
+                      Your report has been submitted.
+                      {'\n\n'}
+                      Would you also like to block {name}?
+                    </Text>
+
+                    <View style={styles.safetyActions}>
+                      <TouchableOpacity
+                        style={styles.safetyCancel}
+                        onPress={closeSafety}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyCancelText}>
+                          Not now
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.safetyConfirm}
+                        onPress={confirmBlock}
+                        disabled={safetyBusy}
+                      >
+                        <Text style={styles.safetyConfirmText}>
+                          {safetyBusy
+                            ? 'Blocking...'
+                            : `Block ${name}`}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+                {safetyView === 'success' && (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={42}
+                      color="#E88A43"
+                      style={{ alignSelf: 'center', marginVertical: 12 }}
+                    />
+
+                    <Text style={styles.safetyBody}>{safetySuccessMessage}</Text>
+
+                    <TouchableOpacity
+                      style={styles.safetyConfirm}
+                      onPress={() => {
+                        closeSafety();
+                      }}
+                    >
+                      <Text style={styles.safetyConfirmText}>Close</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+
+              </Pressable>
             </KeyboardAvoidingView>
           </Pressable>
         </Modal>
@@ -1207,31 +1182,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-container: {
-  flex: 1,
-  alignItems: 'center',
-  width: '100%',
-  minHeight: 0,
-},
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 0,
+  },
 
 
   /* CHAT */
-chatArea: {
-  flex: 1,
-  minHeight: 0,
-  marginTop: 14,
-  marginBottom: 14,
-  borderRadius: 22,
-  overflow: 'hidden',
-  position: 'relative',
-  flexDirection: 'column',
-  backgroundColor: '#f3f3f3',
-},
+  chatArea: {
+    flex: 1,
+    minHeight: 0,
+    marginTop: 14,
+    marginBottom: 14,
+    borderRadius: 22,
+    overflow: 'hidden',
+    position: 'relative',
+    flexDirection: 'column',
+    backgroundColor: '#f3f3f3',
+  },
 
-messages: {
-  flex: 1,
-  minHeight: 0,
-},
+  messages: {
+    flex: 1,
+    minHeight: 0,
+  },
 
   messageContent: {
     paddingHorizontal: 10,
@@ -1324,7 +1299,7 @@ messages: {
   },
   otherBubbleText: {
     color: '#2a2929',
-     fontSize:16,
+    fontSize: 16,
   },
 
   myBubble: {
@@ -1335,7 +1310,7 @@ messages: {
     shadowRadius: 3,
   },
   myBubbleText: {
-    fontSize:16,
+    fontSize: 16,
     color: '#FFFFFF',
   },
 
@@ -1355,26 +1330,26 @@ messages: {
 
   /* INPUT */
 
-inputBar: {
-  position: 'relative',
-  left: undefined,
-  right: undefined,
-  bottom: undefined,
-  marginHorizontal: 10,
-  marginBottom: 12,
-  minHeight: 45,
-  backgroundColor: '#FFFFFF',
-  borderRadius: 23,
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingLeft: 15,
-  paddingRight: 5,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.15,
-  shadowRadius: 4,
-  elevation: 4,
-},
+  inputBar: {
+    position: 'relative',
+    left: undefined,
+    right: undefined,
+    bottom: undefined,
+    marginHorizontal: 10,
+    marginBottom: 12,
+    minHeight: 45,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 23,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 15,
+    paddingRight: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
 
   input: {
     flex: 1,

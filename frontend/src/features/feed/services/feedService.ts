@@ -123,28 +123,6 @@ export async function createPost(
                     }
                 );
 
-
-            console.log(
-                'Feed image prepared:',
-                {
-                    before:
-                        image.uri,
-
-                    afterSizeKB:
-                        Math.round(
-                            prepared.sizeBytes /
-                            1024
-                        ),
-
-                    width:
-                        prepared.width,
-
-                    height:
-                        prepared.height,
-                }
-            );
-
-
             const randomPart =
                 Math.random()
                     .toString(36)

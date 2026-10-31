@@ -30,7 +30,6 @@ export default function StudyScreen() {
   const { name } = useLocalSearchParams<{
     name?: string;
   }>();
-  console.log('STUDY NAME:', name);
 
   const [faculty, setFaculty] = useState('Loading...');
   const [generations, setGenerations] = useState<number[]>([]);
@@ -136,12 +135,6 @@ export default function StudyScreen() {
       await saveTuGeneration(
         generation
       );
-
-      console.log(
-        'TU generation saved:',
-        generation
-      );
-
       router.push('/gender');
     } catch (error) {
       console.error(

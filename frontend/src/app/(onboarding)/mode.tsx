@@ -121,11 +121,6 @@ const handleContinue = async () => {
   try {
     await saveMode(mode);
 
-    console.log(
-      'Mode saved:',
-      mode
-    );
-
     if (mode === 'date') {
       router.push({
         pathname: '/interested-in',

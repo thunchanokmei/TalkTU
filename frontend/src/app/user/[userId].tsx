@@ -92,14 +92,14 @@ export default function UserProfileScreen() {
   }>();
 
   const handleBack = () => {
-  if (router.canGoBack()) {
-    router.back();
-  } else if (source === 'chat') {
-    router.replace('/swipe' as any);
-  } else {
-    router.replace('/swipe' as any);
-  }
-};
+    if (router.canGoBack()) {
+      router.back();
+    } else if (source === 'chat') {
+      router.replace('/swipe' as any);
+    } else {
+      router.replace('/swipe' as any);
+    }
+  };
 
   const { width } = useWindowDimensions();
 
@@ -132,10 +132,10 @@ export default function UserProfileScreen() {
   const [fetching, setFetching] = useState(false);
 
 
-React.useEffect(() => {
-  if (parsedCandidate || !userId) return;
+  React.useEffect(() => {
+    if (parsedCandidate || !userId) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
   const loadProfile = async () => {
     setFetching(true);
@@ -148,51 +148,122 @@ React.useEffect(() => {
       if (!data) throw new Error('Profile data is empty');
       if (cancelled) return;
 
-      const result = data as {
-        user_id: string;
-        display_name: string;
-        age: number | null;
-        tu_generation: number | null;
-        bio: string | null;
-        height_cm: number | null;
-        gender_identity: Candidate['gender_identity'];
-        faculty: string | null;
-        department: string | null;
-        photos: CandidatePhoto[];
-        interests: CandidateInterest[];
-        locations: { id: number; name: string }[];
-      };
+        const result = data as {
+          user_id: string;
+          display_name: string;
+          age: number | null;
+          tu_generation: number | null;
+          bio: string | null;
+          height_cm: number | null;
+          gender_identity: Candidate['gender_identity'];
+          faculty: string | null;
+          department: string | null;
+          photos: CandidatePhoto[];
+          interests: CandidateInterest[];
+          locations: { id: number; name: string }[];
+        };
 
-      setFetchedProfile({
-        user_id: result.user_id,
-        display_name: result.display_name || 'User',
-        age: result.age ?? 0,
-        tu_generation: result.tu_generation ?? 0,
-        bio: result.bio,
-        height_cm: result.height_cm,
-        gender_identity: result.gender_identity,
-        faculty: result.faculty ?? '',
-        department: result.department ?? null,
-        photos: result.photos ?? [],
-        interests: result.interests ?? [],
-        locations: result.locations ?? [],
-      });
-    } catch (error) {
-      console.error('Load profile from chat RPC error:', error);
-    } finally {
-      if (!cancelled) setFetching(false);
-    }
-  };
+        setFetchedProfile({
+          user_id: result.user_id,
+          display_name: result.display_name || 'User',
+          age: result.age ?? 0,
+          tu_generation: result.tu_generation ?? 0,
+          bio: result.bio,
+          height_cm: result.height_cm,
+          gender_identity: result.gender_identity,
+          faculty: result.faculty ?? '',
+          department: result.department ?? null,
+          photos: result.photos ?? [],
+          interests: result.interests ?? [],
+          locations: result.locations ?? [],
+        });
+      } catch (error) {
+        console.error('Load profile from chat RPC error:', error);
+      } finally {
+        if (!cancelled) setFetching(false);
+      }
+    };
 
-  void loadProfile();
+    void loadProfile();
 
-  return () => {
-    cancelled = true;
-  };
-}, [parsedCandidate, userId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [parsedCandidate, userId]);
 
   const profile = parsedCandidate ?? fetchedProfile;
   const fromChat = !parsedCandidate;
+
+  const [afterClass, setAfterClass] = useState<string | null>(null);
+  const [favoriteSpot, setFavoriteSpot] = useState<string | null>(null);
+  const [favoriteRestaurants, setFavoriteRestaurants] = useState<
+    { id: number; name: string }[]
+  >([]);
+
+  React.useEffect(() => {
+    if (!profile?.user_id) return;
+
+    let cancelled = false;
+
+    const loadBio2 = async () => {
+      setAfterClass(null);
+      setFavoriteSpot(null);
+      setFavoriteRestaurants([]);
+
+
+      try {
+        const [profileResult, foodSpotResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('after_class, favorite_spot')
+            .eq('id', profile.user_id)
+            .maybeSingle(),
+
+          supabase
+            .from('user_favorite_food_spots')
+            .select('food_spot_id')
+            .eq('user_id', profile.user_id),
+        ]);
+
+
+        if (profileResult.error) throw profileResult.error;
+        if (foodSpotResult.error) throw foodSpotResult.error;
+
+        const foodSpotIds = (foodSpotResult.data ?? [])
+          .map((row) => row.food_spot_id)
+          .filter((id): id is number => id !== null);
+
+
+        let restaurantData: { id: number; name: string }[] = [];
+
+        if (foodSpotIds.length > 0) {
+          const result = await supabase
+            .from('favorite_food_spots')
+            .select('id, name')
+            .in('id', foodSpotIds)
+            .eq('is_active', true);
+
+
+          if (result.error) throw result.error;
+          restaurantData = result.data ?? [];
+        }
+
+        if (cancelled) return;
+
+        setAfterClass(profileResult.data?.after_class ?? null);
+        setFavoriteSpot(profileResult.data?.favorite_spot ?? null);
+        setFavoriteRestaurants(restaurantData);
+      } catch (error) {
+        console.error('Load Bio2 error:', error);
+      }
+    };
+
+    void loadBio2();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.user_id]);
 
   if (!profile && fetching) {
     return (
@@ -215,7 +286,7 @@ React.useEffect(() => {
           </Text>
 
           <TouchableOpacity
-onPress={handleBack}
+            onPress={handleBack}
             style={styles.backFallbackButton}
           >
             <Text style={styles.backFallbackText}>Go back</Text>
@@ -522,27 +593,49 @@ onPress={handleBack}
           />
         </LinearGradient>
 
-        {/* INTERESTS */}
+        {/* BIO 2 */}
 
-        {profile.interests?.length > 0 ? (
+        {afterClass?.trim() ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              Interests
+              After Class I Go...
+            </Text>
+
+            <Text style={styles.bioText}>
+              {afterClass.trim()}
+            </Text>
+          </View>
+        ) : null}
+
+        {favoriteSpot?.trim() ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              My Favorite Spot
+            </Text>
+
+            <Text style={styles.bioText}>
+              {favoriteSpot.trim()}
+            </Text>
+          </View>
+        ) : null}
+
+        {favoriteRestaurants.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              My Favorite Restaurant
             </Text>
 
             <View style={styles.chipWrap}>
-              {profile.interests.map(
-                (interest) => (
-                  <View
-                    key={interest.id}
-                    style={styles.chip}
-                  >
-                    <Text style={styles.chipText}>
-                      {interest.name}
-                    </Text>
-                  </View>
-                )
-              )}
+              {favoriteRestaurants.map((restaurant) => (
+                <View
+                  key={restaurant.id}
+                  style={styles.chip}
+                >
+                  <Text style={styles.chipText}>
+                    {restaurant.name}
+                  </Text>
+                </View>
+              ))}
             </View>
           </View>
         ) : null}
@@ -573,6 +666,31 @@ onPress={handleBack}
           </View>
         ) : null}
 
+        {/* INTERESTS */}
+
+        {profile.interests?.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              Interests
+            </Text>
+
+            <View style={styles.chipWrap}>
+              {profile.interests.map(
+                (interest) => (
+                  <View
+                    key={interest.id}
+                    style={styles.chip}
+                  >
+                    <Text style={styles.chipText}>
+                      {interest.name}
+                    </Text>
+                  </View>
+                )
+              )}
+            </View>
+          </View>
+        ) : null}
+
         {errorMessage ? (
           <Text style={styles.errorText}>
             {errorMessage}
@@ -580,50 +698,50 @@ onPress={handleBack}
         ) : null}
 
         {/* PASS / LIKE */}
-{!fromChat && (
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            activeOpacity={0.8}
-            disabled={submitting}
-            onPress={() =>
-              submitAction('pass')
-            }
-          >
-            {submitting ? (
-              <ActivityIndicator
-                color="#444444"
-              />
-            ) : (
-              <Ionicons
-                name="close"
-                size={38}
-                color="#444444"
-              />
-            )}
-          </TouchableOpacity>
+        {!fromChat && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              activeOpacity={0.8}
+              disabled={submitting}
+              onPress={() =>
+                submitAction('pass')
+              }
+            >
+              {submitting ? (
+                <ActivityIndicator
+                  color="#444444"
+                />
+              ) : (
+                <Ionicons
+                  name="close"
+                  size={38}
+                  color="#444444"
+                />
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionButton}
-            activeOpacity={0.8}
-            disabled={submitting}
-            onPress={() =>
-              submitAction('like')
-            }
-          >
-            {submitting ? (
-              <ActivityIndicator
-                color="#FF5964"
-              />
-            ) : (
-              <Ionicons
-                name="heart"
-                size={34}
-                color="#FF5964"
-              />
-            )}
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={styles.actionButton}
+              activeOpacity={0.8}
+              disabled={submitting}
+              onPress={() =>
+                submitAction('like')
+              }
+            >
+              {submitting ? (
+                <ActivityIndicator
+                  color="#FF5964"
+                />
+              ) : (
+                <Ionicons
+                  name="heart"
+                  size={34}
+                  color="#FF5964"
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
       <MatchModal

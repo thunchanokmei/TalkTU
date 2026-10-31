@@ -178,6 +178,10 @@ function PreviewProfileContent() {
   const [locations, setLocations] = useState<NamedItem[]>([]);
   const [interests, setInterests] = useState<NamedItem[]>([]);
 
+  const [afterClass, setAfterClass] = useState<string | null>(null);
+  const [favoriteSpot, setFavoriteSpot] = useState<string | null>(null);
+  const [favoriteFoodSpots, setFavoriteFoodSpots] = useState<NamedItem[]>([]);
+
   const [photoIndex, setPhotoIndex] = useState(0);
   const [showDetail, setShowDetail] = useState(false);
 
@@ -207,11 +211,12 @@ function PreviewProfileContent() {
         studentResult,
         interestRowsResult,
         locationRowsResult,
+        foodSpotRowsResult,
       ] = await Promise.all([
         supabase
           .from('profiles')
           .select(
-            'display_name, bio, height_cm, tu_generation, gender_identity'
+            'display_name, bio, height_cm, tu_generation, gender_identity, after_class, favorite_spot'
           )
           .eq('id', user.id)
           .maybeSingle(),
@@ -244,6 +249,11 @@ function PreviewProfileContent() {
           .from('user_locations')
           .select('location_id')
           .eq('user_id', user.id),
+
+        supabase
+          .from('user_favorite_food_spots')
+          .select('food_spot_id')
+          .eq('user_id', user.id),
       ]);
 
       if (profileResult.error) throw profileResult.error;
@@ -252,6 +262,7 @@ function PreviewProfileContent() {
       if (studentResult.error) throw studentResult.error;
       if (interestRowsResult.error) throw interestRowsResult.error;
       if (locationRowsResult.error) throw locationRowsResult.error;
+      if (foodSpotRowsResult.error) throw foodSpotRowsResult.error;
 
       const profile = profileResult.data;
       const privateData = privateResult.data;
@@ -259,6 +270,8 @@ function PreviewProfileContent() {
 
       setDisplayName(profile?.display_name ?? 'User');
       setBio(profile?.bio ?? null);
+      setAfterClass(profile?.after_class ?? null);
+      setFavoriteSpot(profile?.favorite_spot ?? null);
       setHeightCm(
         typeof profile?.height_cm === 'number' && profile.height_cm > 0
           ? profile.height_cm
@@ -287,29 +300,43 @@ function PreviewProfileContent() {
         .map((row) => row.location_id)
         .filter((id): id is number => id !== null);
 
-      const [interestData, locationData] = await Promise.all([
+      const foodSpotIds = (foodSpotRowsResult.data ?? [])
+        .map((row) => row.food_spot_id)
+        .filter((id): id is number => id !== null);
+
+      const [interestData, locationData, foodSpotData] = await Promise.all([
         interestIds.length > 0
           ? supabase
-              .from('interests')
-              .select('id, name')
-              .in('id', interestIds)
-              .eq('is_active', true)
+            .from('interests')
+            .select('id, name')
+            .in('id', interestIds)
+            .eq('is_active', true)
           : Promise.resolve({ data: [], error: null }),
 
         locationIds.length > 0
           ? supabase
-              .from('campus_locations')
-              .select('id, name')
-              .in('id', locationIds)
-              .eq('is_active', true)
+            .from('campus_locations')
+            .select('id, name')
+            .in('id', locationIds)
+            .eq('is_active', true)
+          : Promise.resolve({ data: [], error: null }),
+
+        foodSpotIds.length > 0
+          ? supabase
+            .from('favorite_food_spots')
+            .select('id, name')
+            .in('id', foodSpotIds)
+            .eq('is_active', true)
           : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (interestData.error) throw interestData.error;
+      if (foodSpotData.error) throw foodSpotData.error;
       if (locationData.error) throw locationData.error;
 
       setInterests((interestData.data ?? []) as NamedItem[]);
       setLocations((locationData.data ?? []) as NamedItem[]);
+      setFavoriteFoodSpots((foodSpotData.data ?? []) as NamedItem[]);
     } catch (err) {
       console.error('Unable to load preview profile:', err);
 
@@ -721,7 +748,53 @@ function PreviewProfileContent() {
                 </View>
               ) : null}
 
-              {/* LOCATIONS */}
+            {/* BIO2: AFTER CLASS */}
+
+            {afterClass && afterClass.trim() ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  After Class I Go...
+                </Text>
+                <Text style={styles.bioText}>
+                  {afterClass.trim()}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* BIO2: FAVORITE SPOT */}
+
+            {favoriteSpot && favoriteSpot.trim() ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  My Favorite Spot
+                </Text>
+                <Text style={styles.bioText}>
+                  {favoriteSpot.trim()}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* BIO2: FAVORITE RESTAURANTS */}
+
+            {favoriteFoodSpots.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  My Favorite Restaurant
+                </Text>
+
+                <View style={styles.chipWrap}>
+                  {favoriteFoodSpots.map((foodSpot) => (
+                    <View key={foodSpot.id} style={styles.chip}>
+                      <Text style={styles.chipText}>
+                        {foodSpot.name}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* LOCATIONS */}
 
               {locations.length > 0 ? (
                 <View style={styles.section}>

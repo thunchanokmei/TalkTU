@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import {
-  completeOnboarding,
-} from '@/features/onboarding/services/onboardingService';
 
 import {
   ActivityIndicator,
@@ -542,10 +539,12 @@ export default function Bio1Screen() {
 
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
-  const [genderIdentity, setGenderIdentity] =
-    useState<GenderIdentityLabel | ''>('');
-  const [heightCm, setHeightCm] = useState(HEIGHT_DEFAULT);
-  const [places, setPlaces] = useState<string[]>([]);
+  const [
+    genderIdentity,
+    setGenderIdentity,
+  ] = useState<GenderIdentityLabel | ''>('');
+  const [heightCm, setHeightCm] = useState(170);
+
 
   const [savedPhotos, setSavedPhotos] = useState<ProfilePhoto[]>([]);
   const [slots, setSlots] = useState<(SlotItem | null)[]>(
@@ -570,7 +569,27 @@ export default function Bio1Screen() {
   const finishPulse = useRef(new Animated.Value(1)).current;
   const finishFloat = useRef(new Animated.Value(0)).current;
 
-  /* ---------- โหลดข้อมูลเดิม ---------- */
+  // ความสูงที่ปุ่ม Back กินพื้นที่ ใช้เว้นที่ให้ title ไม่ทับปุ่ม
+  const backButtonSpace =
+    backTop + BACK_BUTTON_OFFSET_TOP + BACK_BUTTON_HEIGHT - 30;
+
+  const largePhotoHeight = Math.max(
+    240,
+    Math.min(screenHeight * 0.34, 330)
+  );
+
+  const sidePhotoHeight = (largePhotoHeight - 10) / 2;
+  const bottomPhotoHeight = Math.max(
+    110,
+    Math.min(screenHeight * 0.15, 150)
+  );
+
+  const genderOptions = GENDER_IDENTITY_OPTIONS;
+
+  const heightOptions = Array.from(
+    { length: 251 },
+    (_, index) => String(index)
+  );
 
   useEffect(() => {
     const loadExistingProfile = async () => {
@@ -580,8 +599,120 @@ export default function Bio1Screen() {
           error: userError,
         } = await supabase.auth.getUser();
 
-        if (userError) {
-          throw userError;
+          if (userError) {
+            throw userError;
+          }
+
+          if (!user) {
+            return;
+          }
+
+          const {
+            data: profile,
+            error: profileError,
+          } =
+            await supabase
+              .from('profiles')
+              .select(
+                'display_name, bio, height_cm, gender_identity'
+              )
+              .eq('id', user.id)
+              .maybeSingle();
+
+          if (profileError) {
+            throw profileError;
+          }
+
+          setDisplayName(
+            profile?.display_name ??
+            ''
+          );
+
+          setBio(
+            profile?.bio ??
+            ''
+          );
+
+          // โหลดรูปเดิมจาก profile_photos
+          const {
+            data: photoRows,
+            error: photoRowsError,
+          } = await supabase
+            .from('profile_photos')
+            .select('storage_path, position')
+            .eq('user_id', user.id)
+            .order('position', {
+              ascending: true,
+            });
+
+          if (photoRowsError) {
+            throw photoRowsError;
+          }
+
+          const loadedImages: (string | null)[] = [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+          ];
+
+          const loadedStoragePaths: (string | null)[] = [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+          ];
+
+          for (const photo of photoRows ?? []) {
+            const index = photo.position - 1;
+
+            if (
+              index < 0 ||
+              index >= loadedImages.length
+            ) {
+              continue;
+            }
+
+            const publicUrl = supabase.storage
+              .from('profile-photos')
+              .getPublicUrl(
+                photo.storage_path
+              )
+              .data.publicUrl;
+
+            loadedImages[index] = publicUrl;
+            loadedStoragePaths[index] = photo.storage_path;
+          }
+
+          setImages(loadedImages);
+          setImageStoragePaths(loadedStoragePaths);
+
+          if (
+            typeof profile?.height_cm ===
+            'number'
+          ) {
+            setHeightCm(
+              profile.height_cm
+            );
+          }
+
+          const savedGender = profile?.gender_identity;
+
+          const genderLabel = GENDER_IDENTITY_OPTIONS.find(
+            (option) => GENDER_IDENTITY_MAP[option] === savedGender
+          );
+
+          setGenderIdentity(genderLabel ?? '');
+
+        } catch (error) {
+          console.error(
+            'Load existing Bio profile error:',
+            error
+          );
         }
 
         if (!user) {
@@ -1081,6 +1212,15 @@ export default function Bio1Screen() {
   };
 
   /* ---------- บันทึก ---------- */
+  useEffect(() => {
+    if (!heightModal) return;
+    requestAnimationFrame(() => {
+      heightListRef.current?.scrollToOffset({
+        offset: heightCm * 44,
+        animated: false,
+      });
+    });
+  }, [heightModal]);
 
   const handleStart = async () => {
     if (saving || dragFrom !== null) {
@@ -1174,6 +1314,206 @@ export default function Bio1Screen() {
 
       // 5. แสดง popup เสร็จสิ้น แล้วให้ผู้ใช้กดเข้าใช้งานเอง
       setFinishVisible(true);
+      // ------------------------------------------------------
+      // 3. Upload selected photos
+      // ------------------------------------------------------
+      for (
+        let i = 0;
+        i < images.length;
+        i++
+      ) {
+
+        const imageUri = images[i];
+
+        if (!imageUri) {
+          continue;
+        }
+
+        const isExistingPhoto =
+          imageStoragePaths[i] !== null &&
+          (
+            imageUri.startsWith('http://') ||
+            imageUri.startsWith('https://')
+          );
+
+        if (isExistingPhoto) {
+          continue;
+        }
+
+        const position = i + 1;
+
+
+        let arrayBuffer:
+          ArrayBuffer;
+
+        let contentType =
+          'image/jpeg';
+
+        let extension =
+          'jpg';
+
+        /*
+         * expo-image-manipulator currently crashes
+         * on Web for some browser blob images with:
+         * "source height is zero or not a number".
+         *
+         * On Web we upload the ImagePicker file
+         * directly. On iOS/Android we still resize
+         * and compress before upload.
+         */
+        if (
+          Platform.OS === 'web'
+        ) {
+          const response =
+            await fetch(
+              imageUri
+            );
+
+          const blob =
+            await response.blob();
+
+          contentType =
+            blob.type ||
+            'image/jpeg';
+
+          if (
+            contentType.includes(
+              'png'
+            )
+          ) {
+            extension =
+              'png';
+          } else if (
+            contentType.includes(
+              'webp'
+            )
+          ) {
+            extension =
+              'webp';
+          } else {
+            extension =
+              'jpg';
+          }
+
+          arrayBuffer =
+            await blob.arrayBuffer();
+        } else {
+          const imageContext =
+            ImageManipulator
+              .manipulate(
+                imageUri
+              );
+
+          /*
+           * Do not pass height: null.
+           * Let the manipulator preserve
+           * the original aspect ratio.
+           */
+          imageContext.resize({
+            width: 1200,
+          });
+
+          const renderedImage =
+            await imageContext
+              .renderAsync();
+
+          const compressedImage =
+            await renderedImage
+              .saveAsync({
+                compress: 0.75,
+                format:
+                  SaveFormat.JPEG,
+              });
+
+          const response =
+            await fetch(
+              compressedImage.uri
+            );
+
+          arrayBuffer =
+            await response
+              .arrayBuffer();
+
+          contentType =
+            'image/jpeg';
+
+          extension =
+            'jpg';
+        }
+
+        const oldStoragePath =
+          imageStoragePaths[i];
+
+        const storagePath =
+          `${user.id}/${position}-${Date.now()}.${extension}`;
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from('profile-photos')
+          .upload(
+            storagePath,
+            arrayBuffer,
+            {
+              contentType,
+              upsert: false,
+            }
+          );
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const {
+          error: photoError,
+        } = await supabase
+          .from('profile_photos')
+          .upsert(
+            {
+              user_id: user.id,
+              storage_path:
+                storagePath,
+              position,
+            },
+            {
+              onConflict:
+                'user_id,position',
+            }
+          );
+
+        if (photoError) {
+          throw photoError;
+        }
+
+        if (
+          oldStoragePath &&
+          oldStoragePath !== storagePath
+        ) {
+          const { error: removeOldError } =
+            await supabase.storage
+              .from('profile-photos')
+              .remove([oldStoragePath]);
+
+          if (removeOldError) {
+            console.warn(
+              'Unable to remove old profile photo:',
+              removeOldError
+            );
+          }
+        }
+
+        setImageStoragePaths((current) => {
+          const updated = [...current];
+          updated[i] = storagePath;
+          return updated;
+        });
+
+      }
+
+      // ------------------------------------------------------
+      // 4. Continue to Bio2
+      // ------------------------------------------------------
+      router.push('/bio2');
     } catch (error) {
       console.error('Complete bio setup error:', error);
 
@@ -1356,6 +1696,16 @@ export default function Bio1Screen() {
               ))}
             </View>
           </FadeInView>
+          <Text style={styles.sectionTitle}>Height</Text>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.selectField}
+            onPress={() => setHeightModal(true)}
+          >
+            <Text style={styles.selectFieldText}>{heightCm} cm</Text>
+            <Ionicons name="chevron-down" size={20} color="#777777" />
+          </TouchableOpacity>
 
           {errorMessage ? (
             <Text style={styles.errorText}>{errorMessage}</Text>
@@ -1363,7 +1713,7 @@ export default function Bio1Screen() {
 
           {/* Shared onboarding go button */}
           <OnboardingGoButton
-            label={saving ? 'Saving...' : 'Start Now!'}
+            label={saving ? 'Saving...' : 'go!'}
             loading={saving}
             disabled={saving}
             onPress={handleStart}
@@ -1765,6 +2115,163 @@ const styles = StyleSheet.create({
   locationChipTextSelected: {
     color: '#C75D70',
     fontWeight: '600',
+  detailsCard: {
+    marginTop: 18,
+    borderRadius: 24,
+    paddingHorizontal: 17,
+    paddingTop: 17,
+    paddingBottom: 20,
+    borderWidth: 1,
+    borderColor: '#fefdfa',
+    shadowColor: '#C45C6D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 19,
+  },
+
+  detailsHeaderIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    marginRight: 11,
+    shadowColor: '#C45C6D',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 7,
+    elevation: 2,
+  },
+
+  detailsHeaderCopy: {
+    flex: 1,
+  },
+
+  detailsHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#482C35',
+  },
+
+  detailsSubheading: {
+    marginTop: 3,
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#98737D',
+  },
+
+  label: {
+    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    color: '#583642',
+  },
+
+  bioInput: {
+    minHeight: 112,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F4DDE2',
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#442D35',
+  },
+
+  counter: {
+    marginTop: 6,
+    marginBottom: 19,
+    textAlign: 'right',
+    fontSize: 11,
+    color: '#A17D86',
+  },
+
+  dropdown: {
+    minHeight: 50,
+    borderRadius: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 14,
+    paddingRight: 9,
+    marginBottom: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F4DDE2',
+    shadowColor: '#A64D61',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+
+  dropdownText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#50343D',
+  },
+
+  placeholderText: {
+    color: '#999999',
+  },
+
+  dropdownIcon: {
+    width: 31,
+    height: 31,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF0F2',
+  },
+
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+
+    gap: 6,
+  },
+
+  chip: {
+    minHeight: 34,
+    borderRadius: 999,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F1DDE1',
+  },
+
+  chipSelected: {
+    backgroundColor: '#623D4A',
+    borderColor: '#623D4A',
+    shadowColor: '#A64D61',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+
+  chipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#846873',
+  },
+
+  chipTextSelected: {
+    color: '#FFFFFF',
   },
 
   errorText: {

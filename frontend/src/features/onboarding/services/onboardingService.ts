@@ -178,6 +178,46 @@ export async function getMyFaculty() {
   );
 }
 
+export type Campus =
+  | 'รังสิต'
+  | 'ท่าพระจันทร์'
+  | 'พัทยา'
+  | 'ลำปาง';
+
+export async function getCampus(): Promise<Campus | null> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('campus')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data?.campus as Campus | null | undefined) ?? null;
+}
+
+export async function saveCampus(campus: Campus) {
+  const userId = await getCurrentUserId();
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        campus,
+      },
+      { onConflict: 'id' }
+    );
+
+  if (error) {
+    throw error;
+  }
+}
+
 /* ================ TU GENERATION ================= */
 
 export async function getTuGenerations() {
@@ -469,7 +509,7 @@ export async function completeOnboarding() {
   } = await supabase
     .from('profiles')
     .select(
-      'display_name, tu_generation'
+      'display_name, tu_generation, campus'
     )
     .eq('id', userId)
     .maybeSingle();
@@ -519,6 +559,10 @@ export async function completeOnboarding() {
   const hasTuGeneration =
     profile?.tu_generation != null;
 
+  const hasCampus =
+    profile?.campus != null &&
+    profile.campus.trim() !== '';
+
   const hasPhoto =
     (photoCount ?? 0) >= 1;
 
@@ -526,10 +570,11 @@ export async function completeOnboarding() {
     !hasDisplayName ||
     !hasBirthDate ||
     !hasTuGeneration ||
+    !hasCampus ||
     !hasPhoto
   ) {
     throw new Error(
-      'Please complete your name, birthday, TU generation, and add at least one photo.'
+      'Please complete your name, birthday, TU generation, campus, and add at least one photo.'
     );
   }
 

@@ -39,45 +39,45 @@ export default function MatchModal({
   const rightCardAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-  if (!visible) return;
+    if (!visible) return;
 
-  leftCardAnim.setValue(0);
-  rightCardAnim.setValue(0);
-  matchAnim.setValue(0);
+    leftCardAnim.setValue(0);
+    rightCardAnim.setValue(0);
+    matchAnim.setValue(0);
 
-  Animated.sequence([
-    // การ์ดสองฝั่งวิ่งเข้าหากัน
-    Animated.parallel([
-      Animated.spring(leftCardAnim, {
-        toValue: 1,
-        speed: 7,
-        bounciness: 8,
-        useNativeDriver: true,
-      }),
-      Animated.spring(rightCardAnim, {
-        toValue: 1,
-        speed: 7,
-        bounciness: 8,
-        useNativeDriver: true,
-      }),
-    ]),
-
-    // โลโก้ MATCH เด้งขึ้นมา
     Animated.sequence([
-      Animated.timing(matchAnim, {
-        toValue: 0.8,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.spring(matchAnim, {
-        toValue: 1,
-        speed: 12,
-        bounciness: 22,
-        useNativeDriver: true,
-      }),
-    ]),
-  ]).start();
-}, [visible, leftCardAnim, rightCardAnim, matchAnim]);
+      // การ์ดสองฝั่งวิ่งเข้าหากัน
+      Animated.parallel([
+        Animated.spring(leftCardAnim, {
+          toValue: 1,
+          speed: 7,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(rightCardAnim, {
+          toValue: 1,
+          speed: 7,
+          bounciness: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+
+      // โลโก้ MATCH เด้งขึ้นมา
+      Animated.sequence([
+        Animated.timing(matchAnim, {
+          toValue: 0.8,
+          duration: 250,
+          useNativeDriver: true,
+        }),
+        Animated.spring(matchAnim, {
+          toValue: 1,
+          speed: 12,
+          bounciness: 22,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, [visible, leftCardAnim, rightCardAnim, matchAnim]);
   const [sending, setSending] = useState(false);
   const [sendSucceeded, setSendSucceeded] = useState(false);
   useEffect(() => {
@@ -282,6 +282,14 @@ export default function MatchModal({
         locations={[0, 0.5, 1]}
         style={styles.container}
       >
+        <TouchableOpacity
+            style={styles.closeButton}
+            onPress={onContinue}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+
+          </TouchableOpacity>
 
         <View style={styles.centerArea}>
           <View style={styles.photoArea}>
@@ -368,63 +376,51 @@ export default function MatchModal({
 
           </View>
 
+
+
+        </View>
+
+
+        {toastMessage !== '' && (
+          <View style={styles.toastContainer}>
+            <Text style={styles.toastText}>{toastMessage}</Text>
+          </View>
+        )}
+
+        <View style={styles.bottomArea}>
+          <View style={styles.messageRow}>
+            <TextInput
+              placeholder={`Say something to ${displayName}`}
+              placeholderTextColor="#999999"
+              style={[
+                styles.messageInput,
+                Platform.OS === 'web' && ({ outline: 'none' } as any),
+              ]}
+              value={message}
+              onChangeText={setMessage}
+              editable={!sending && !sendSucceeded}
+              maxLength={5000}
+            />
+
+            {message.trim().length > 0 && (
+              <TouchableOpacity
+                style={styles.sendButton}
+                onPress={handleSendMessage}
+                disabled={sending || sendSucceeded}
+                activeOpacity={0.7}
+              >
+                {sending ? (
+                  <ActivityIndicator color="#FF7885" size="small" />
+                ) : (
+                  <Ionicons name="arrow-up" size={20} color="#FF7885" />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
           
-            
         </View>
-      
-
-      {toastMessage !== '' && (
-        <View style={styles.toastContainer}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
-        </View>
-      )}
-
-      <View style={styles.bottomArea}>
-        <View style={styles.messageRow}>
-          <TextInput
-            placeholder={`Say something to ${displayName}`}
-            placeholderTextColor="#999999"
-            style={[
-              styles.messageInput,
-              Platform.OS === 'web' && ({ outline: 'none' } as any),
-            ]}
-            value={message}
-            onChangeText={setMessage}
-            editable={!sending && !sendSucceeded}
-            maxLength={5000}
-          />
-
-          {message.trim().length > 0 && (
-            <TouchableOpacity
-              style={styles.sendButton}
-              onPress={handleSendMessage}
-              disabled={sending || sendSucceeded}
-              activeOpacity={0.7}
-            >
-              {sending ? (
-                <ActivityIndicator color="#FF7885" size="small" />
-              ) : (
-                <Ionicons name="arrow-up" size={20} color="#FF7885" />
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onContinue}
-        >
-          <LinearGradient
-            colors={['#FF7885', '#FFD17A']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.doneButton}
-          >
-            <Text style={styles.doneText}>Done</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
+      </LinearGradient>
     </Modal >
   );
 }
@@ -470,13 +466,13 @@ const styles = StyleSheet.create({
   leftPhoto: {
     top: 15,
     left: '5%',
-    
+
   },
 
   rightPhoto: {
     bottom: 10,
     right: '5%',
-   
+
   },
 
   photoPlaceholder: {
@@ -517,19 +513,6 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
 
-  doneButton: {
-    height: 54,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  doneText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-
   photo: {
     width: '100%',
     height: '100%',
@@ -563,4 +546,17 @@ const styles = StyleSheet.create({
     fontSize: 23,
     color: '#FF7885',
   },
+  closeButton: {
+    position: 'absolute',
+    top: 50,
+    left: 24,
+    zIndex: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
 });

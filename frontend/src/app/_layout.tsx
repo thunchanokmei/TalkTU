@@ -11,7 +11,12 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
-        {/* ...screen เดิมของคุณ... */}
+        <Stack.Screen
+    name="(main)"
+    options={{
+      gestureEnabled: false,
+    }}
+  />{/* ...screen เดิมของคุณ... */}
 
         <Stack.Screen name="edit-profile" options={slideUp} />
         <Stack.Screen name="preview-profile" options={slideUp} />

@@ -214,10 +214,11 @@ export default function ChatRoom() {
       (e: any) => {
         stickToBottomRef.current = true;
 
+        // เลื่อนหลังแป้นพิมพ์เปิดเสร็จ (layout หดครบแล้ว) เพื่อให้ถึงข้อความสุดท้ายจริงๆ
         const delay =
           Platform.OS === 'ios'
-            ? Math.max(0, Number(e?.duration ?? 250) - 50)
-            : 50;
+            ? Number(e?.duration ?? 250) + 60
+            : 120;
 
         if (timer) clearTimeout(timer);
 
@@ -1250,7 +1251,7 @@ messages: {
   messageContent: {
     paddingHorizontal: 10,
     paddingTop: 18,
-    paddingBottom: 16,
+    paddingBottom: 18,
   },
 
   startConversation: {

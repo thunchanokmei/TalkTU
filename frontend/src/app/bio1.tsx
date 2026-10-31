@@ -1496,7 +1496,7 @@ export default function Bio1Screen() {
                 },
               ]}
             >
-              ✨
+              
             </Animated.Text>
 
             <Animated.Text
@@ -1515,7 +1515,7 @@ export default function Bio1Screen() {
                 },
               ]}
             >
-              💛
+              
             </Animated.Text>
 
             <Animated.View
@@ -1531,7 +1531,7 @@ export default function Bio1Screen() {
               </LinearGradient>
             </Animated.View>
 
-            <Text style={styles.finishTitle}>You're all set! 🎉</Text>
+            <Text style={styles.finishTitle}>You're all set!</Text>
 
             <Text style={styles.finishBody}>
               Your profile is ready{displayName ? `, ${displayName}` : ''}.

@@ -4,6 +4,7 @@ import {
     Alert,
     Animated,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -154,6 +155,11 @@ export default function Bio2Screen() {
     const [selectedFoodSpotIds, setSelectedFoodSpotIds] = useState<number[]>([]);
     const [campusLocations, setCampusLocations] = useState<CampusLocation[]>([]);
     const [selectedLocationIds, setSelectedLocationIds] = useState<number[]>([]);
+
+    const [finishVisible, setFinishVisible] = useState(false);
+    const finishOpacity = useRef(new Animated.Value(0)).current;
+    const finishScale = useRef(new Animated.Value(0.9)).current;
+    const finishFloat = useRef(new Animated.Value(0)).current;
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -354,6 +360,47 @@ export default function Bio2Screen() {
         }
     }
 
+    function goToSwipe() {
+        setFinishVisible(false);
+        router.replace('/swipe');
+    }
+
+    useEffect(() => {
+        if (!finishVisible) return;
+
+        finishOpacity.setValue(0);
+        finishScale.setValue(0.9);
+        finishFloat.setValue(0);
+
+        Animated.parallel([
+            Animated.timing(finishOpacity, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }),
+            Animated.spring(finishScale, {
+                toValue: 1,
+                useNativeDriver: true,
+                speed: 14,
+                bounciness: 4,
+            }),
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(finishFloat, {
+                        toValue: 1,
+                        duration: 900,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(finishFloat, {
+                        toValue: 0,
+                        duration: 900,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ),
+        ]).start();
+    }, [finishVisible, finishOpacity, finishScale, finishFloat]);
+
     async function handleSave() {
         if (saving || loading) return;
 
@@ -382,8 +429,8 @@ export default function Bio2Screen() {
             await saveLocations(user.id);
 
             await completeOnboarding();
+            setFinishVisible(true);
 
-            router.replace('/swipe');
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : 'Something went wrong.';
@@ -547,6 +594,91 @@ export default function Bio2Screen() {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* FINISH POPUP */}
+            <Modal
+                visible={finishVisible}
+                transparent
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={goToSwipe}
+            >
+                <View style={styles.finishOverlay}>
+                    <Animated.View
+                        style={[
+                            styles.finishCard,
+                            {
+                                opacity: finishOpacity,
+                                transform: [{ scale: finishScale }],
+                            },
+                        ]}
+                    >
+                        <View style={styles.finishAccent} />
+
+                        <Animated.View
+                            style={[
+                                styles.finishDecor,
+                                {
+                                    transform: [
+                                        {
+                                            translateY: finishFloat.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [0, -6],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <View style={styles.finishDecorCircle} />
+                            <View style={styles.finishDecorLine} />
+                            <View style={styles.finishDecorDot} />
+                        </Animated.View>
+
+                        <View style={styles.finishIconCircle}>
+                            <Ionicons
+                                name="checkmark"
+                                size={36}
+                                color="#FFFFFF"
+                            />
+                        </View>
+
+                        <Text style={styles.finishTitle}>
+                            You're all set!
+                        </Text>
+
+                        <Text style={styles.finishBody}>
+                            Your profile is ready.
+                            {'\n'}
+                            Let's start TalkTU and meet new friends!
+                        </Text>
+
+                        <Pressable
+                            style={styles.finishButtonShadow}
+                            onPress={goToSwipe}
+                            accessibilityRole="button"
+                            accessibilityLabel="Let's start TalkTU"
+                        >
+                            <LinearGradient
+                                colors={THEME_GRADIENT}
+                                start={{ x: 0, y: 0.5 }}
+                                end={{ x: 1, y: 0.5 }}
+                                style={styles.finishButton}
+                            >
+                                <Text style={styles.finishButtonText}>
+                                    Let's start TalkTU
+                                </Text>
+                                <Ionicons
+                                    name="arrow-forward"
+                                    size={20}
+                                    color="#FFFFFF"
+                                />
+                            </LinearGradient>
+                        </Pressable>
+                    </Animated.View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }
@@ -681,4 +813,123 @@ const styles = StyleSheet.create({
         marginTop: 12,
         marginBottom: 20,
     },
+
+    finishOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(45, 28, 36, 0.42)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    finishCard: {
+        width: '100%',
+        maxWidth: 380,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 28,
+        paddingHorizontal: 26,
+        paddingTop: 34,
+        paddingBottom: 28,
+        alignItems: 'center',
+        overflow: 'hidden',
+        shadowColor: '#7D4655',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
+        elevation: 12,
+    },
+    finishAccent: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 7,
+        backgroundColor: '#FFAF79',
+    },
+    finishDecor: {
+        position: 'absolute',
+        top: 38,
+        right: 30,
+        width: 48,
+        height: 42,
+    },
+    finishDecorCircle: {
+        position: 'absolute',
+        right: 2,
+        top: 0,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        backgroundColor: '#FFD86E',
+    },
+    finishDecorLine: {
+        position: 'absolute',
+        right: 22,
+        top: 18,
+        width: 18,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#FFAF79',
+        transform: [{ rotate: '-35deg' }],
+    },
+    finishDecorDot: {
+        position: 'absolute',
+        left: 0,
+        bottom: 2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#F08A8E',
+    },
+    finishIconCircle: {
+        width: 76,
+        height: 76,
+        borderRadius: 38,
+        backgroundColor: '#F08A8E',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 22,
+        shadowColor: '#F08A8E',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.25,
+        shadowRadius: 9,
+        elevation: 5,
+    },
+    finishTitle: {
+        color: '#3D2630',
+        fontSize: 26,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+    finishBody: {
+        color: '#81767A',
+        fontSize: 15,
+        lineHeight: 24,
+        textAlign: 'center',
+        marginBottom: 28,
+    },
+    finishButtonShadow: {
+        width: '100%',
+        borderRadius: 18,
+        shadowColor: '#D98A83',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    finishButton: {
+        minHeight: 54,
+        borderRadius: 18,
+        paddingHorizontal: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    finishButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+    },
+
 });

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-
-import { useRouter } from 'expo-router';
-
+import { usePathname, useRouter } from 'expo-router';
 import {
   Linking,
   Platform,
@@ -19,11 +17,47 @@ const SUPPORT_EMAIL =
 
 export default function AccountDeletionPage() {
   const router = useRouter();
-
+  const pathname = usePathname();
   const [language, setLanguage] =
     useState<Language>('en');
-
   const isThai = language === 'th';
+
+  const webPolicyLinks = isThai ? [
+    {
+      label: 'นโยบายความเป็นส่วนตัว',
+      href: '/privacy-policy' as const,
+    },
+    {
+      label: 'ข้อกำหนดการใช้บริการ',
+      href: '/terms-of-service' as const,
+    },
+    {
+      label: 'แนวทางชุมชน',
+      href: '/community-guidelines' as const,
+    },
+    {
+      label: 'การลบบัญชี',
+      href: '/account-deletion' as const,
+    },
+  ]
+    : [
+      {
+        label: 'Privacy Policy',
+        href: '/privacy-policy' as const,
+      },
+      {
+        label: 'Terms of Service',
+        href: '/terms-of-service' as const,
+      },
+      {
+        label: 'Community Guidelines',
+        href: '/community-guidelines' as const,
+      },
+      {
+        label: 'Account Deletion',
+        href: '/account-deletion' as const,
+      },
+    ];
 
   const canGoBack = router.canGoBack();
 
@@ -97,7 +131,7 @@ Thank you.`;
               style={({ pressed }) => [
                 styles.backButton,
                 pressed &&
-                  styles.backButtonPressed,
+                styles.backButtonPressed,
               ]}
               onPress={handleBack}
               accessibilityRole="button"
@@ -127,10 +161,10 @@ Thank you.`;
                 styles.languageButton,
 
                 isThai &&
-                  styles.languageButtonActive,
+                styles.languageButtonActive,
 
                 pressed &&
-                  styles.languageButtonPressed,
+                styles.languageButtonPressed,
               ]}
               onPress={() =>
                 setLanguage('th')
@@ -143,7 +177,7 @@ Thank you.`;
                   styles.languageText,
 
                   isThai &&
-                    styles.languageTextActive,
+                  styles.languageTextActive,
                 ]}
               >
                 ไทย
@@ -155,10 +189,10 @@ Thank you.`;
                 styles.languageButton,
 
                 !isThai &&
-                  styles.languageButtonActive,
+                styles.languageButtonActive,
 
                 pressed &&
-                  styles.languageButtonPressed,
+                styles.languageButtonPressed,
               ]}
               onPress={() =>
                 setLanguage('en')
@@ -171,7 +205,7 @@ Thank you.`;
                   styles.languageText,
 
                   !isThai &&
-                    styles.languageTextActive,
+                  styles.languageTextActive,
                 ]}
               >
                 EN
@@ -235,7 +269,7 @@ Thank you.`;
             styles.button,
 
             pressed &&
-              styles.buttonPressed,
+            styles.buttonPressed,
           ]}
           onPress={
             handleRequestDeletion
@@ -346,6 +380,45 @@ Thank you.`;
             ? 'หลังจากกระบวนการลบบัญชีเสร็จสมบูรณ์ ผู้ใช้อาจไม่สามารถกู้คืนบัญชี โปรไฟล์ การจับคู่ ข้อความ หรือข้อมูลอื่นที่ถูกลบไปแล้วได้'
             : 'After the account-deletion process is completed, you may not be able to recover your account, profile, matches, messages, or other information that has been deleted.'}
         </Text>
+
+        {Platform.OS === 'web' && (
+          <View style={styles.webPolicyNav}>
+            <Text style={styles.webPolicyNavTitle}>TalkTU</Text>
+
+            <View style={styles.webPolicyNavLinks}>
+              {webPolicyLinks.map((link, index) => {
+                const isCurrentPage = pathname === link.href;
+
+                return (
+                  <React.Fragment key={link.href}>
+                    <Pressable
+                      accessibilityRole="link"
+                      disabled={isCurrentPage}
+                      onPress={() => router.push(link.href)}
+                      style={({ pressed }) => [
+                        styles.webPolicyNavLink,
+                        pressed && !isCurrentPage && styles.webPolicyNavLinkPressed,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.webPolicyNavLinkText,
+                          isCurrentPage && styles.webPolicyNavLinkTextActive,
+                        ]}
+                      >
+                        {link.label}
+                      </Text>
+                    </Pressable>
+
+                    {index < webPolicyLinks.length - 1 && (
+                      <Text style={styles.webPolicyNavSeparator}>·</Text>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         <Text style={styles.footer}>
           {isThai
@@ -555,5 +628,50 @@ const styles = StyleSheet.create({
     color: '#999999',
 
     textAlign: 'center',
+  },
+
+  webPolicyNav: {
+    marginTop: 28,
+    paddingTop: 22,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+
+  webPolicyNavTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+
+  webPolicyNavLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  webPolicyNavLink: {
+    paddingVertical: 4,
+  },
+
+  webPolicyNavLinkPressed: {
+    opacity: 0.6,
+  },
+
+  webPolicyNavLinkText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+
+  webPolicyNavLinkTextActive: {
+    fontWeight: '700',
+    textDecorationLine: 'none',
+  },
+
+  webPolicyNavSeparator: {
+    fontSize: 14,
+    opacity: 0.45,
   },
 });

@@ -1,8 +1,7 @@
 import React from 'react';
-
-import { useRouter } from 'expo-router';
-
+import { usePathname, useRouter } from 'expo-router';
 import {
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,8 +41,48 @@ export default function PolicyPageLayout({
   footer,
 }: Props) {
   const router = useRouter();
-
   const canGoBack = router.canGoBack();
+
+  const pathname = usePathname();
+
+  const webPolicyLinks =
+    language === 'th'
+      ? [
+        {
+          label: 'นโยบายความเป็นส่วนตัว',
+          href: '/privacy-policy' as const,
+        },
+        {
+          label: 'ข้อกำหนดการใช้บริการ',
+          href: '/terms-of-service' as const,
+        },
+        {
+          label: 'แนวทางชุมชน',
+          href: '/community-guidelines' as const,
+        },
+        {
+          label: 'การลบบัญชี',
+          href: '/account-deletion' as const,
+        },
+      ]
+      : [
+        {
+          label: 'Privacy Policy',
+          href: '/privacy-policy' as const,
+        },
+        {
+          label: 'Terms of Service',
+          href: '/terms-of-service' as const,
+        },
+        {
+          label: 'Community Guidelines',
+          href: '/community-guidelines' as const,
+        },
+        {
+          label: 'Account Deletion',
+          href: '/account-deletion' as const,
+        },
+      ];
 
   const handleBack = () => {
     if (canGoBack) {
@@ -63,7 +102,7 @@ export default function PolicyPageLayout({
               style={({ pressed }) => [
                 styles.backButton,
                 pressed &&
-                  styles.backButtonPressed,
+                styles.backButtonPressed,
               ]}
               onPress={handleBack}
               accessibilityRole="button"
@@ -93,10 +132,10 @@ export default function PolicyPageLayout({
                 styles.languageButton,
 
                 language === 'th' &&
-                  styles.languageButtonActive,
+                styles.languageButtonActive,
 
                 pressed &&
-                  styles.languageButtonPressed,
+                styles.languageButtonPressed,
               ]}
               onPress={() =>
                 onChangeLanguage('th')
@@ -109,7 +148,7 @@ export default function PolicyPageLayout({
                   styles.languageText,
 
                   language === 'th' &&
-                    styles.languageTextActive,
+                  styles.languageTextActive,
                 ]}
               >
                 ไทย
@@ -121,10 +160,10 @@ export default function PolicyPageLayout({
                 styles.languageButton,
 
                 language === 'en' &&
-                  styles.languageButtonActive,
+                styles.languageButtonActive,
 
                 pressed &&
-                  styles.languageButtonPressed,
+                styles.languageButtonPressed,
               ]}
               onPress={() =>
                 onChangeLanguage('en')
@@ -137,7 +176,7 @@ export default function PolicyPageLayout({
                   styles.languageText,
 
                   language === 'en' &&
-                    styles.languageTextActive,
+                  styles.languageTextActive,
                 ]}
               >
                 EN
@@ -224,6 +263,45 @@ export default function PolicyPageLayout({
             )}
           </View>
         ))}
+
+        {Platform.OS === 'web' && (
+          <View style={styles.webPolicyNav}>
+            <Text style={styles.webPolicyNavTitle}>TalkTU</Text>
+
+            <View style={styles.webPolicyNavLinks}>
+              {webPolicyLinks.map((link, index) => {
+                const isCurrentPage = pathname === link.href;
+
+                return (
+                  <React.Fragment key={link.href}>
+                    <Pressable
+                      accessibilityRole="link"
+                      disabled={isCurrentPage}
+                      onPress={() => router.push(link.href)}
+                      style={({ pressed }) => [
+                        styles.webPolicyNavLink,
+                        pressed && !isCurrentPage && styles.webPolicyNavLinkPressed,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.webPolicyNavLinkText,
+                          isCurrentPage && styles.webPolicyNavLinkTextActive,
+                        ]}
+                      >
+                        {link.label}
+                      </Text>
+                    </Pressable>
+
+                    {index < webPolicyLinks.length - 1 && (
+                      <Text style={styles.webPolicyNavSeparator}>·</Text>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {/* Footer */}
         <Text style={styles.footer}>
@@ -430,5 +508,50 @@ const styles = StyleSheet.create({
     color: '#999999',
 
     textAlign: 'center',
+  },
+
+  webPolicyNav: {
+    marginTop: 28,
+    paddingTop: 22,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    alignItems: 'center',
+  },
+
+  webPolicyNavTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+
+  webPolicyNavLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+
+  webPolicyNavLink: {
+    paddingVertical: 4,
+  },
+
+  webPolicyNavLinkPressed: {
+    opacity: 0.6,
+  },
+
+  webPolicyNavLinkText: {
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+
+  webPolicyNavLinkTextActive: {
+    fontWeight: '700',
+    textDecorationLine: 'none',
+  },
+
+  webPolicyNavSeparator: {
+    fontSize: 14,
+    opacity: 0.45,
   },
 });

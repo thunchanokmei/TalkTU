@@ -211,7 +211,7 @@ export default function ChatPage() {
       {/* ================= HEADER (กลาง: เหมือนหน้า Like / Profile) ================= */}
 
       <AppHeader
-        logo={require('../../../../assets/images/chat-header.jpeg')}
+        logo={require('../../../../assets/images/chat-header_background.jpeg')}
         centerLogo
       />
 

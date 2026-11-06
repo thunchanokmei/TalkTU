@@ -200,70 +200,45 @@ export default function UserProfileScreen() {
     { id: number; name: string }[]
   >([]);
 
-  React.useEffect(() => {
-    if (!profile?.user_id) return;
+ 
+React.useEffect(() => {
+if (!profile?.user_id) return;
+  let cancelled = false;
 
-    let cancelled = false;
+  const loadBio2 = async () => {
+    setAfterClass(null);
+    setFavoriteSpot(null);
+    setFavoriteRestaurants([]);
 
-    const loadBio2 = async () => {
-      setAfterClass(null);
-      setFavoriteSpot(null);
-      setFavoriteRestaurants([]);
+    try {
+      const { data, error } = await supabase.rpc(
+  'get_profile_bio2',
+  {
+    p_user_id: profile.user_id,
+    ...(mode ? { p_mode: mode } : {}),
+  }
+);
 
+      if (error) throw error;
+      if (cancelled || !data) return;
 
-      try {
-        const [profileResult, foodSpotResult] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('after_class, favorite_spot')
-            .eq('id', profile.user_id)
-            .maybeSingle(),
+      setAfterClass(data.after_class ?? null);
+      setFavoriteSpot(data.favorite_spot ?? null);
+      setFavoriteRestaurants(
+        data.favorite_restaurants ?? []
+      );
+    } catch (error) {
+      console.error('Load Bio2 error:', error);
+    }
+  };
 
-          supabase
-            .from('user_favorite_food_spots')
-            .select('food_spot_id')
-            .eq('user_id', profile.user_id),
-        ]);
+  void loadBio2();
 
+  return () => {
+    cancelled = true;
+  };
+}, [profile?.user_id, mode]);
 
-        if (profileResult.error) throw profileResult.error;
-        if (foodSpotResult.error) throw foodSpotResult.error;
-
-        const foodSpotIds = (foodSpotResult.data ?? [])
-          .map((row) => row.food_spot_id)
-          .filter((id): id is number => id !== null);
-
-
-        let restaurantData: { id: number; name: string }[] = [];
-
-        if (foodSpotIds.length > 0) {
-          const result = await supabase
-            .from('favorite_food_spots')
-            .select('id, name')
-            .in('id', foodSpotIds)
-            .eq('is_active', true);
-
-
-          if (result.error) throw result.error;
-          restaurantData = result.data ?? [];
-        }
-
-        if (cancelled) return;
-
-        setAfterClass(profileResult.data?.after_class ?? null);
-        setFavoriteSpot(profileResult.data?.favorite_spot ?? null);
-        setFavoriteRestaurants(restaurantData);
-      } catch (error) {
-        console.error('Load Bio2 error:', error);
-      }
-    };
-
-    void loadBio2();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [profile?.user_id]);
 
   if (!profile && fetching) {
     return (

@@ -207,7 +207,7 @@ const handleContinue = async () => {
             },
           ]}
         >
-          What you
+          What are you
           {'\n'}
           looking for?
         </Text>

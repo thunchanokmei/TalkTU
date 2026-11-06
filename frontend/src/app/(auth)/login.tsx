@@ -171,7 +171,7 @@ export default function LoginScreen() {
 
             <TextInput
               style={[styles.input, styles.passwordInput]}
-              placeholder="TU password"
+              placeholder="TU Password"
               placeholderTextColor="#f7d3d3"
               value={password}
               onChangeText={setPassword}

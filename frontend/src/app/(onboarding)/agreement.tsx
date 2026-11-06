@@ -219,7 +219,7 @@ export default function AgreementScreen() {
                     ) : null}
 
                     <Text style={styles.notice}>
-                        You must accept all three policies before continuing.
+                        Please accept all policies to continue.
                     </Text>
                 </ScrollView>
             </SafeAreaView>

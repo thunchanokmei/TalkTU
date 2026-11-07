@@ -116,6 +116,7 @@ export default function BottomNavigation({
           void loadTotalUnread();
         }
       )
+      .subscribe();
 
     return () => {
       mounted = false;

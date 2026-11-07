@@ -128,7 +128,6 @@ export default function ChatPage() {
           table: 'messages',
         },
         () => {
-          void loadUnreadCounts();
           void loadChats(false);
         }
       )

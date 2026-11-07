@@ -1021,7 +1021,7 @@ export default function FeedScreen() {
       >
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={[styles.createModalCard, { width: pageWidth }]}>
             <View style={styles.modalHeader}>
@@ -1158,7 +1158,7 @@ export default function FeedScreen() {
           >
             <KeyboardAvoidingView
               style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
 
               {/* DETAIL HEADER */}
@@ -1568,7 +1568,7 @@ export default function FeedScreen() {
       >
         <KeyboardAvoidingView
           style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <View style={[styles.editModalCard, { width: pageWidth }]}>
             <View style={styles.modalHeader}>

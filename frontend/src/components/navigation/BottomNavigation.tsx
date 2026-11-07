@@ -36,7 +36,7 @@ const NAV_ITEMS: {
 }[] = [
     { key: 'swap', label: 'Swap', icon: 'happy' },
     { key: 'like', label: 'Like', icon: 'heart' },
-    { key: 'board', label: 'Board', icon: 'albums-outline' },
+    { key: 'board', label: 'Feed', icon: 'albums-outline' },
     { key: 'chat', label: 'Chat', icon: 'chatbubble-ellipses' },
     { key: 'profile', label: 'Profile', icon: 'person' },
   ];

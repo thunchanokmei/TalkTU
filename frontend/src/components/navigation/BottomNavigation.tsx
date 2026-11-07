@@ -34,7 +34,7 @@ const NAV_ITEMS: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
 }[] = [
-    { key: 'swap', label: 'Swap', icon: 'happy' },
+    { key: 'swap', label: 'Swipe', icon: 'happy' },
     { key: 'like', label: 'Like', icon: 'heart' },
     { key: 'board', label: 'Feed', icon: 'albums-outline' },
     { key: 'chat', label: 'Chat', icon: 'chatbubble-ellipses' },

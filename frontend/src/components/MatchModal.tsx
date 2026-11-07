@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   StyleSheet,
@@ -78,8 +79,10 @@ export default function MatchModal({
       ]),
     ]).start();
   }, [visible, leftCardAnim, rightCardAnim, matchAnim]);
+
   const [sending, setSending] = useState(false);
   const [sendSucceeded, setSendSucceeded] = useState(false);
+
   useEffect(() => {
     if (visible) {
       setMessage('');
@@ -88,6 +91,7 @@ export default function MatchModal({
       setToastMessage('');
     }
   }, [visible, matchId]);
+
   const [toastMessage, setToastMessage] = useState('');
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,10 +152,7 @@ export default function MatchModal({
       try {
         const path = candidatePhotoPath!;
 
-        if (
-          path.startsWith('https://') ||
-          path.startsWith('http://')
-        ) {
+        if (path.startsWith('https://') || path.startsWith('http://')) {
           if (!cancelled) setCandidateImageUrl(path);
           return;
         }
@@ -177,8 +178,7 @@ export default function MatchModal({
     };
   }, [visible, candidatePhotoPath]);
 
-  const [myImageUrl, setMyImageUrl] =
-    useState<string | null>(null);
+  const [myImageUrl, setMyImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -199,14 +199,13 @@ export default function MatchModal({
         const userId = authData.user?.id;
         if (!userId) return;
 
-        const { data: photo, error: photoError } =
-          await supabase
-            .from('profile_photos')
-            .select('storage_path')
-            .eq('user_id', userId)
-            .order('position', { ascending: true })
-            .limit(1)
-            .maybeSingle();
+        const { data: photo, error: photoError } = await supabase
+          .from('profile_photos')
+          .select('storage_path')
+          .eq('user_id', userId)
+          .order('position', { ascending: true })
+          .limit(1)
+          .maybeSingle();
 
         if (photoError) throw photoError;
         if (!photo?.storage_path) return;
@@ -282,146 +281,145 @@ export default function MatchModal({
         locations={[0, 0.5, 1]}
         style={styles.container}
       >
-        <TouchableOpacity
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <TouchableOpacity
             style={styles.closeButton}
             onPress={onContinue}
             activeOpacity={0.7}
           >
             <Ionicons name="close" size={28} color="#FFFFFF" />
-
           </TouchableOpacity>
 
-        <View style={styles.centerArea}>
-          <View style={styles.photoArea}>
-
-            {/* Left Card */}
-            <Animated.View
-              style={[
-                styles.photoCard,
-                styles.leftPhoto,
-                {
-                  transform: [
-                    {
-                      translateX: leftCardAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-280, 0],
-                      }),
-                    },
-                    { rotate: '-13deg' },
-                  ],
-                },
-              ]}
-            >
-              {candidateImageUrl ? (
-                <Image
-                  source={{ uri: candidateImageUrl }}
-                  style={styles.photo}
-                  resizeMode="cover"
-                />
-              ) : candidatePhotoPath ? (
-                <ActivityIndicator color="#FF7885" />
-              ) : (
-                <Text style={styles.photoPlaceholder}>♡</Text>
-              )}
-            </Animated.View>
-
-            {/* Right Card */}
-            <Animated.View
-              style={[
-                styles.photoCard,
-                styles.rightPhoto,
-                {
-                  transform: [
-                    {
-                      translateX: rightCardAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [280, 0],
-                      }),
-                    },
-                    { rotate: '13deg' },
-                  ],
-                },
-              ]}
-            >
-              {myImageUrl ? (
-                <Image
-                  source={{ uri: myImageUrl }}
-                  style={styles.photo}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Text style={styles.photoPlaceholder}>♡</Text>
-              )}
-            </Animated.View>
-
-            {/* MATCH Logo */}
-            <Animated.Image
-              source={matchLogo}
-              resizeMode="contain"
-              style={[
-                styles.matchLogo,
-                {
-                  opacity: matchAnim,
-                  transform: [
-                    {
-                      scale: matchAnim.interpolate({
-                        inputRange: [0, 0.65, 0.85, 1],
-                        outputRange: [0.1, 2.5, 0.8, 1],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            />
-
-          </View>
-
-
-
-        </View>
-
-
-        {toastMessage !== '' && (
-          <View style={styles.toastContainer}>
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        )}
-
-        <View style={styles.bottomArea}>
-          <View style={styles.messageRow}>
-            <TextInput
-              placeholder={`Say something to ${displayName}`}
-              placeholderTextColor="#999999"
-              style={[
-                styles.messageInput,
-                Platform.OS === 'web' && ({ outline: 'none' } as any),
-              ]}
-              value={message}
-              onChangeText={setMessage}
-              editable={!sending && !sendSucceeded}
-              maxLength={5000}
-            />
-
-            {message.trim().length > 0 && (
-              <TouchableOpacity
-                style={styles.sendButton}
-                onPress={handleSendMessage}
-                disabled={sending || sendSucceeded}
-                activeOpacity={0.7}
+          <View style={styles.centerArea}>
+            <View style={styles.photoArea}>
+              {/* Left Card */}
+              <Animated.View
+                style={[
+                  styles.photoCard,
+                  styles.leftPhoto,
+                  {
+                    transform: [
+                      {
+                        translateX: leftCardAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-280, 0],
+                        }),
+                      },
+                      { rotate: '-13deg' },
+                    ],
+                  },
+                ]}
               >
-                {sending ? (
-                  <ActivityIndicator color="#FF7885" size="small" />
+                {candidateImageUrl ? (
+                  <Image
+                    source={{ uri: candidateImageUrl }}
+                    style={styles.photo}
+                    resizeMode="cover"
+                  />
+                ) : candidatePhotoPath ? (
+                  <ActivityIndicator color="#FF7885" />
                 ) : (
-                  <Ionicons name="arrow-up" size={20} color="#FF7885" />
+                  <Text style={styles.photoPlaceholder}>♡</Text>
                 )}
-              </TouchableOpacity>
-            )}
+              </Animated.View>
+
+              {/* Right Card */}
+              <Animated.View
+                style={[
+                  styles.photoCard,
+                  styles.rightPhoto,
+                  {
+                    transform: [
+                      {
+                        translateX: rightCardAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [280, 0],
+                        }),
+                      },
+                      { rotate: '13deg' },
+                    ],
+                  },
+                ]}
+              >
+                {myImageUrl ? (
+                  <Image
+                    source={{ uri: myImageUrl }}
+                    style={styles.photo}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.photoPlaceholder}>♡</Text>
+                )}
+              </Animated.View>
+
+              {/* MATCH Logo */}
+              <Animated.Image
+                source={matchLogo}
+                resizeMode="contain"
+                style={[
+                  styles.matchLogo,
+                  {
+                    opacity: matchAnim,
+                    transform: [
+                      {
+                        scale: matchAnim.interpolate({
+                          inputRange: [0, 0.65, 0.85, 1],
+                          outputRange: [0.1, 2.5, 0.8, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
           </View>
 
-          
-        </View>
+          {toastMessage !== '' && (
+            <View style={styles.toastContainer}>
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          )}
+
+          <View style={styles.bottomArea}>
+            <View style={styles.messageRow}>
+              <TextInput
+                placeholder={`Say something to ${displayName}`}
+                placeholderTextColor="#999999"
+                style={[
+                  styles.messageInput,
+                  Platform.OS === 'web' && ({ outline: 'none' } as any),
+                ]}
+                value={message}
+                onChangeText={setMessage}
+                editable={!sending && !sendSucceeded}
+                maxLength={5000}
+                returnKeyType="send"
+                onSubmitEditing={handleSendMessage}
+              />
+
+              {message.trim().length > 0 && (
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={handleSendMessage}
+                  disabled={sending || sendSucceeded}
+                  activeOpacity={0.7}
+                >
+                  {sending ? (
+                    <ActivityIndicator color="#FF7885" size="small" />
+                  ) : (
+                    <Ionicons name="arrow-up" size={20} color="#FF7885" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </LinearGradient>
-    </Modal >
+    </Modal>
   );
 }
 
@@ -433,6 +431,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 80,
     paddingBottom: 65,
+  },
+
+  keyboardAvoidingView: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 
   centerArea: {
@@ -466,13 +471,11 @@ const styles = StyleSheet.create({
   leftPhoto: {
     top: 15,
     left: '5%',
-
   },
 
   rightPhoto: {
     bottom: 10,
     right: '5%',
-
   },
 
   photoPlaceholder: {
@@ -546,6 +549,7 @@ const styles = StyleSheet.create({
     fontSize: 23,
     color: '#FF7885',
   },
+
   closeButton: {
     position: 'absolute',
     top: 50,
@@ -558,5 +562,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-
 });

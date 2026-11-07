@@ -36,7 +36,7 @@ function OptionRow({
   selected: boolean;
   onPress: () => void;
 }) {
-  return (
+   (
     <TouchableOpacity
       style={[styles.option, selected && styles.optionSelected]}
       onPress={onPress}

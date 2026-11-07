@@ -688,7 +688,7 @@ export default function ChatRoom() {
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
 
@@ -730,108 +730,108 @@ export default function ChatRoom() {
               </TouchableOpacity>
             </View>
           ) : (
-              <ScrollView
-                ref={scrollRef}
-                style={[
-                  styles.messages,
-                  { opacity: messages.length === 0 || showMessages ? 1 : 0 },
-                ]}
-                contentContainerStyle={styles.messageContent}
-                showsVerticalScrollIndicator={false}
-                onScroll={handleScroll}
-                scrollEventThrottle={200}
-                onScrollBeginDrag={() => {
-                  stickToBottomRef.current = false;
-                }}
-                onLayout={() => {
-                  // พื้นที่แชทหดลงตอนแป้นพิมพ์เปิด -> ดันข้อความล่าสุดขึ้นมาให้เห็น
-                  if (isNearBottomRef.current || stickToBottomRef.current) {
-                    scrollRef.current?.scrollToEnd({ animated: true });
-                  }
-                }}
-                onContentSizeChange={() => {
-                  if (isNearBottomRef.current || stickToBottomRef.current) {
-                    scrollRef.current?.scrollToEnd({ animated: false });
-                  }
-                }}
-              >
-                {loadingOlder && (
-                  <ActivityIndicator
-                    size="small"
-                    color="#FFFFFF"
-                    style={{ marginBottom: 12 }}
-                  />
-                )}
+            <ScrollView
+              ref={scrollRef}
+              style={[
+                styles.messages,
+                { opacity: messages.length === 0 || showMessages ? 1 : 0 },
+              ]}
+              contentContainerStyle={styles.messageContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={200}
+              onScrollBeginDrag={() => {
+                stickToBottomRef.current = false;
+              }}
+              onLayout={() => {
+                // พื้นที่แชทหดลงตอนแป้นพิมพ์เปิด -> ดันข้อความล่าสุดขึ้นมาให้เห็น
+                if (isNearBottomRef.current || stickToBottomRef.current) {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }
+              }}
+              onContentSizeChange={() => {
+                if (isNearBottomRef.current || stickToBottomRef.current) {
+                  scrollRef.current?.scrollToEnd({ animated: false });
+                }
+              }}
+            >
+              {loadingOlder && (
+                <ActivityIndicator
+                  size="small"
+                  color="#FFFFFF"
+                  style={{ marginBottom: 12 }}
+                />
+              )}
 
-                {!hasMore && messages.length > 0 && (
-                  <Text style={styles.startConversation}>
-                    Start of conversation
+              {!hasMore && messages.length > 0 && (
+                <Text style={styles.startConversation}>
+                  Start of conversation
+                </Text>
+              )}
+
+              {messages.length === 0 ? (
+                <View style={styles.emptyChatText}>
+                  <Text style={styles.emptyChatText}>
+                    Say hi to {name} 👋
                   </Text>
-                )}
+                </View>
+              ) : (
+                messages.map((message, index) => {
+                  const isMe =
+                    currentUserId !== null &&
+                    message.sender_id === currentUserId;
 
-                {messages.length === 0 ? (
-                  <View style={styles.emptyChatText}>
-                    <Text style={styles.emptyChatText}>
-                      Say hi to {name} 👋
-                    </Text>
-                  </View>
-                ) : (
-                  messages.map((message, index) => {
-                    const isMe =
-                      currentUserId !== null &&
-                      message.sender_id === currentUserId;
+                  const next = messages[index + 1];
+                  const showAvatar = !next || next.sender_id !== message.sender_id;
 
-                    const next = messages[index + 1];
-                    const showAvatar = !next || next.sender_id !== message.sender_id;
-
-                    return (
-                      <MessageBubble
-                        key={message.id}
-                        message={message}
-                        isMe={isMe}
-                        showAvatar={showAvatar}
-                        avatarUri={image}
-                        onAvatarPress={openProfile}
-                      />
-                    );
-                  })
-                )}
-              </ScrollView>
+                  return (
+                    <MessageBubble
+                      key={message.id}
+                      message={message}
+                      isMe={isMe}
+                      showAvatar={showAvatar}
+                      avatarUri={image}
+                      onAvatarPress={openProfile}
+                    />
+                  );
+                })
+              )}
+            </ScrollView>
           )}
 
           {/* INPUT (แสดงตลอด ไม่ซ่อนตอนโหลด) */}
 
-              <View style={styles.inputBar}>
-                <TextInput
-                  ref={inputRef}
-                  value={input}
-                  onChangeText={setInput}
-                  placeholder={`Say something to ${name}`}
-                  placeholderTextColor="#999999"
-                  multiline
-                  maxLength={5000}
-                  style={[
-                    styles.input,
-                    Platform.OS === 'web' && ({
-                      outline: 'none',
-                    } as any),
-                  ]}
-                />
-                <TouchableOpacity
-                  style={[
-                    styles.sendButton,
-                    (!input.trim() || loading || !!error) && styles.sendDisabled,
-                  ]}
-                  disabled={!input.trim() || sending || loading || !!error}
-                  onPress={handleSend}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
-                  )}
-                </TouchableOpacity>
-              </View>
+          <View style={styles.inputBar}>
+            <TextInput
+              ref={inputRef}
+              value={input}
+              onChangeText={setInput}
+              placeholder={`Say something to ${name}`}
+              placeholderTextColor="#999999"
+              multiline
+              maxLength={5000}
+              style={[
+                styles.input,
+                Platform.OS === 'web' && ({
+                  outline: 'none',
+                } as any),
+              ]}
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                (!input.trim() || loading || !!error) && styles.sendDisabled,
+              ]}
+              disabled={!input.trim() || sending || loading || !!error}
+              onPress={handleSend}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Ionicons name="arrow-up" size={20} color="#FFFFFF" />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ================= SAFETY MODAL ================= */}

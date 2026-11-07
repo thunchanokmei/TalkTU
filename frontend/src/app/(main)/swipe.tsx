@@ -1152,480 +1152,480 @@ export default function SwipeScreen() {
           }
         >
           <KeyboardAvoidingView
-    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    keyboardVerticalOffset={0}
-    style={{
-      flex: 1,
-      width: '100%',
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-    }}
-  >
-          <Pressable
-            style={[
-              styles.safetyModal,
-              {
-                width:
-                  screenWidth >= 768
-                    ? 420
-                    : screenWidth - 40,
-              },
-            ]}
-            onPress={(event) => {
-              event.stopPropagation();
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+            style={{
+              flex: 1,
+              width: '100%',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              paddingBottom: Platform.OS === 'ios' ? 28 : 8,
             }}
           >
-            {/* HEADER */}
-
-            <View
-              style={
-                styles.safetyHeader
-              }
+            <Pressable
+              style={[
+                styles.safetyModal,
+                {
+                  width:
+                    screenWidth >= 768
+                      ? 420
+                      : screenWidth - 40,
+                },
+              ]}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
             >
-              <TouchableOpacity
-                style={
-                  styles.safetyClose
-                }
-                disabled={
-                  safetyBusy
-                }
-                onPress={
-                  safetyView === 'menu' ||
-                    safetyView ===
-                    'reportBlockPrompt'
-                    ? closeSafety
-                    : () =>
-                      setSafetyView(
-                        'menu'
-                      )
-                }
-              >
-                <Text
-                  style={
-                    styles.safetyCloseText
-                  }
-                >
-                  {safetyView ===
-                    'menu' ||
-                    safetyView ===
-                    'reportBlockPrompt'
-                    ? '×'
-                    : '‹'}
-                </Text>
-              </TouchableOpacity>
-
-              <Text
-                style={
-                  styles.safetyTitle
-                }
-              >
-                {safetyView ===
-                  'menu' &&
-                  'Safety Tools'}
-
-                {safetyView ===
-                  'blockConfirm' &&
-                  'Block User'}
-
-                {safetyView ===
-                  'reportForm' &&
-                  'Report User'}
-
-                {safetyView ===
-                  'reportBlockPrompt' &&
-                  'Report Submitted'}
-              </Text>
+              {/* HEADER */}
 
               <View
                 style={
-                  styles.safetyHeaderSpacer
+                  styles.safetyHeader
                 }
-              />
-            </View>
-
-            {/* MENU */}
-
-            {safetyView ===
-              'menu' &&
-              currentCandidate && (
-                <>
-                  <TouchableOpacity
-                    style={
-                      styles.safetyOption
-                    }
-                    onPress={() =>
-                      setSafetyView(
-                        'blockConfirm'
-                      )
-                    }
-                  >
-                    <Ionicons
-                      name="ban-outline"
-                      size={18}
-                      color="#333333"
-                    />
-
-                    <Text
-                      style={
-                        styles.safetyOptionText
-                      }
-                    >
-                      Block{' '}
-                      {
-                        currentCandidate.display_name
-                      }
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={
-                      styles.safetyOption
-                    }
-                    onPress={() => {
-                      setReportReason(
-                        ''
-                      );
-
-                      setReportDetails(
-                        ''
-                      );
-
-                      setSafetyView(
-                        'reportForm'
-                      );
-                    }}
-                  >
-                    <Ionicons
-                      name="flag-outline"
-                      size={18}
-                      color="#333333"
-                    />
-
-                    <Text
-                      style={
-                        styles.safetyOptionText
-                      }
-                    >
-                      Report{' '}
-                      {
-                        currentCandidate.display_name
-                      }
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-
-            {/* BLOCK CONFIRM */}
-
-            {safetyView ===
-              'blockConfirm' &&
-              currentCandidate && (
-                <>
-                  <Text
-                    style={
-                      styles.safetyBody
-                    }
-                  >
-                    Are you sure you
-                    want to block{' '}
-                    {
-                      currentCandidate.display_name
-                    }
-                    ?
-                    {'\n\n'}
-                    You will no longer
-                    be able to discover
-                    or interact with
-                    each other.
-                  </Text>
-
-                  <View
-                    style={
-                      styles.safetyActions
-                    }
-                  >
-                    <TouchableOpacity
-                      style={
-                        styles.safetyCancel
-                      }
-                      disabled={
-                        safetyBusy
-                      }
-                      onPress={() =>
+              >
+                <TouchableOpacity
+                  style={
+                    styles.safetyClose
+                  }
+                  disabled={
+                    safetyBusy
+                  }
+                  onPress={
+                    safetyView === 'menu' ||
+                      safetyView ===
+                      'reportBlockPrompt'
+                      ? closeSafety
+                      : () =>
                         setSafetyView(
                           'menu'
                         )
+                  }
+                >
+                  <Text
+                    style={
+                      styles.safetyCloseText
+                    }
+                  >
+                    {safetyView ===
+                      'menu' ||
+                      safetyView ===
+                      'reportBlockPrompt'
+                      ? '×'
+                      : '‹'}
+                  </Text>
+                </TouchableOpacity>
+
+                <Text
+                  style={
+                    styles.safetyTitle
+                  }
+                >
+                  {safetyView ===
+                    'menu' &&
+                    'Safety Tools'}
+
+                  {safetyView ===
+                    'blockConfirm' &&
+                    'Block User'}
+
+                  {safetyView ===
+                    'reportForm' &&
+                    'Report User'}
+
+                  {safetyView ===
+                    'reportBlockPrompt' &&
+                    'Report Submitted'}
+                </Text>
+
+                <View
+                  style={
+                    styles.safetyHeaderSpacer
+                  }
+                />
+              </View>
+
+              {/* MENU */}
+
+              {safetyView ===
+                'menu' &&
+                currentCandidate && (
+                  <>
+                    <TouchableOpacity
+                      style={
+                        styles.safetyOption
+                      }
+                      onPress={() =>
+                        setSafetyView(
+                          'blockConfirm'
+                        )
                       }
                     >
+                      <Ionicons
+                        name="ban-outline"
+                        size={18}
+                        color="#333333"
+                      />
+
                       <Text
                         style={
-                          styles.safetyCancelText
+                          styles.safetyOptionText
                         }
                       >
-                        Cancel
+                        Block{' '}
+                        {
+                          currentCandidate.display_name
+                        }
                       </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
                       style={
-                        styles.safetyConfirm
+                        styles.safetyOption
                       }
-                      disabled={
-                        safetyBusy
-                      }
-                      onPress={
-                        confirmBlockCandidate
-                      }
+                      onPress={() => {
+                        setReportReason(
+                          ''
+                        );
+
+                        setReportDetails(
+                          ''
+                        );
+
+                        setSafetyView(
+                          'reportForm'
+                        );
+                      }}
                     >
+                      <Ionicons
+                        name="flag-outline"
+                        size={18}
+                        color="#333333"
+                      />
+
                       <Text
                         style={
-                          styles.safetyConfirmText
+                          styles.safetyOptionText
                         }
                       >
-                        {safetyBusy
-                          ? 'Blocking...'
-                          : 'Block'}
+                        Report{' '}
+                        {
+                          currentCandidate.display_name
+                        }
                       </Text>
                     </TouchableOpacity>
-                  </View>
-                </>
-              )}
+                  </>
+                )}
 
-            {/* REPORT */}
+              {/* BLOCK CONFIRM */}
 
-            {safetyView ===
-              'reportForm' &&
-              currentCandidate && (
-                <>
-                  <Text
-                    style={
-                      styles.safetyBody
-                    }
-                  >
-                    Why are you
-                    reporting{' '}
-                    {
-                      currentCandidate.display_name
-                    }
-                    ?
-                  </Text>
+              {safetyView ===
+                'blockConfirm' &&
+                currentCandidate && (
+                  <>
+                    <Text
+                      style={
+                        styles.safetyBody
+                      }
+                    >
+                      Are you sure you
+                      want to block{' '}
+                      {
+                        currentCandidate.display_name
+                      }
+                      ?
+                      {'\n\n'}
+                      You will no longer
+                      be able to discover
+                      or interact with
+                      each other.
+                    </Text>
 
-                  <ScrollView
-                    style={
-                      styles.reportScroll
-                    }
-                    showsVerticalScrollIndicator={
-                      false
-                    }
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {PROFILE_REPORT_REASONS.map(
-                      (reason) => (
-                        <TouchableOpacity
-                          key={
-                            reason.value
-                          }
-                          style={[
-                            styles.reportReason,
-                            reportReason ===
-                            reason.value &&
-                            styles.reportReasonSelected,
-                          ]}
-                          onPress={() =>
-                            setReportReason(
-                              reason.value
-                            )
+                    <View
+                      style={
+                        styles.safetyActions
+                      }
+                    >
+                      <TouchableOpacity
+                        style={
+                          styles.safetyCancel
+                        }
+                        disabled={
+                          safetyBusy
+                        }
+                        onPress={() =>
+                          setSafetyView(
+                            'menu'
+                          )
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.safetyCancelText
                           }
                         >
-                          <Ionicons
-                            name={
-                              reportReason ===
-                                reason.value
-                                ? 'radio-button-on'
-                                : 'radio-button-off'
-                            }
-                            size={17}
-                            color={
-                              reportReason ===
-                                reason.value
-                                ? '#E88A43'
-                                : '#666666'
-                            }
-                          />
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
 
-                          <Text
-                            style={
-                              styles.safetyOptionText
+                      <TouchableOpacity
+                        style={
+                          styles.safetyConfirm
+                        }
+                        disabled={
+                          safetyBusy
+                        }
+                        onPress={
+                          confirmBlockCandidate
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.safetyConfirmText
+                          }
+                        >
+                          {safetyBusy
+                            ? 'Blocking...'
+                            : 'Block'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+
+              {/* REPORT */}
+
+              {safetyView ===
+                'reportForm' &&
+                currentCandidate && (
+                  <>
+                    <Text
+                      style={
+                        styles.safetyBody
+                      }
+                    >
+                      Why are you
+                      reporting{' '}
+                      {
+                        currentCandidate.display_name
+                      }
+                      ?
+                    </Text>
+
+                    <ScrollView
+                      style={
+                        styles.reportScroll
+                      }
+                      showsVerticalScrollIndicator={
+                        false
+                      }
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      {PROFILE_REPORT_REASONS.map(
+                        (reason) => (
+                          <TouchableOpacity
+                            key={
+                              reason.value
+                            }
+                            style={[
+                              styles.reportReason,
+                              reportReason ===
+                              reason.value &&
+                              styles.reportReasonSelected,
+                            ]}
+                            onPress={() =>
+                              setReportReason(
+                                reason.value
+                              )
                             }
                           >
-                            {
-                              reason.label
-                            }
-                          </Text>
-                        </TouchableOpacity>
-                      )
-                    )}
+                            <Ionicons
+                              name={
+                                reportReason ===
+                                  reason.value
+                                  ? 'radio-button-on'
+                                  : 'radio-button-off'
+                              }
+                              size={17}
+                              color={
+                                reportReason ===
+                                  reason.value
+                                  ? '#E88A43'
+                                  : '#666666'
+                              }
+                            />
 
-                    <TextInput
-                      style={
-                        styles.reportDetails
-                      }
-                      placeholder="Additional details (optional)"
-                      placeholderTextColor="#888888"
-                      multiline
-                      maxLength={1000}
-                      value={
-                        reportDetails
-                      }
-                      onChangeText={
-                        setReportDetails
-                      }
-                      textAlignVertical="top"
-                    />
-                  </ScrollView>
-
-                  <View
-                    style={
-                      styles.safetyActions
-                    }
-                  >
-                    <TouchableOpacity
-                      style={
-                        styles.safetyCancel
-                      }
-                      disabled={
-                        safetyBusy
-                      }
-                      onPress={() =>
-                        setSafetyView(
-                          'menu'
+                            <Text
+                              style={
+                                styles.safetyOptionText
+                              }
+                            >
+                              {
+                                reason.label
+                              }
+                            </Text>
+                          </TouchableOpacity>
                         )
-                      }
-                    >
-                      <Text
-                        style={
-                          styles.safetyCancelText
-                        }
-                      >
-                        Cancel
-                      </Text>
-                    </TouchableOpacity>
+                      )}
 
-                    <TouchableOpacity
+                      <TextInput
+                        style={
+                          styles.reportDetails
+                        }
+                        placeholder="Additional details (optional)"
+                        placeholderTextColor="#888888"
+                        multiline
+                        maxLength={1000}
+                        value={
+                          reportDetails
+                        }
+                        onChangeText={
+                          setReportDetails
+                        }
+                        textAlignVertical="top"
+                      />
+                    </ScrollView>
+
+                    <View
                       style={
-                        styles.safetyConfirm
-                      }
-                      disabled={
-                        safetyBusy ||
-                        !reportReason
-                      }
-                      onPress={
-                        submitProfileReport
+                        styles.safetyActions
                       }
                     >
-                      <Text
+                      <TouchableOpacity
                         style={
-                          styles.safetyConfirmText
+                          styles.safetyCancel
+                        }
+                        disabled={
+                          safetyBusy
+                        }
+                        onPress={() =>
+                          setSafetyView(
+                            'menu'
+                          )
                         }
                       >
-                        {safetyBusy
-                          ? 'Submitting...'
-                          : 'Submit Report'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
+                        <Text
+                          style={
+                            styles.safetyCancelText
+                          }
+                        >
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
 
-            {/* REPORT SUCCESS / ASK BLOCK */}
+                      <TouchableOpacity
+                        style={
+                          styles.safetyConfirm
+                        }
+                        disabled={
+                          safetyBusy ||
+                          !reportReason
+                        }
+                        onPress={
+                          submitProfileReport
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.safetyConfirmText
+                          }
+                        >
+                          {safetyBusy
+                            ? 'Submitting...'
+                            : 'Submit Report'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
 
-            {safetyView ===
-              'reportBlockPrompt' &&
-              currentCandidate && (
-                <>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={46}
-                    color="#E88A43"
-                    style={{
-                      alignSelf:
-                        'center',
-                      marginVertical:
-                        12,
-                    }}
-                  />
+              {/* REPORT SUCCESS / ASK BLOCK */}
 
-                  <Text
-                    style={
-                      styles.safetyBody
-                    }
-                  >
-                    Your report has
-                    been submitted.
-                    {'\n\n'}
-                    Would you also
-                    like to block{' '}
-                    {
-                      currentCandidate.display_name
-                    }
-                    ?
-                  </Text>
+              {safetyView ===
+                'reportBlockPrompt' &&
+                currentCandidate && (
+                  <>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={46}
+                      color="#E88A43"
+                      style={{
+                        alignSelf:
+                          'center',
+                        marginVertical:
+                          12,
+                      }}
+                    />
 
-                  <View
-                    style={
-                      styles.safetyActions
-                    }
-                  >
-                    <TouchableOpacity
+                    <Text
                       style={
-                        styles.safetyCancel
-                      }
-                      disabled={
-                        safetyBusy
-                      }
-                      onPress={
-                        closeSafety
+                        styles.safetyBody
                       }
                     >
-                      <Text
-                        style={
-                          styles.safetyCancelText
-                        }
-                      >
-                        Not now
-                      </Text>
-                    </TouchableOpacity>
+                      Your report has
+                      been submitted.
+                      {'\n\n'}
+                      Would you also
+                      like to block{' '}
+                      {
+                        currentCandidate.display_name
+                      }
+                      ?
+                    </Text>
 
-                    <TouchableOpacity
+                    <View
                       style={
-                        styles.safetyConfirm
-                      }
-                      disabled={
-                        safetyBusy
-                      }
-                      onPress={
-                        confirmBlockCandidate
+                        styles.safetyActions
                       }
                     >
-                      <Text
+                      <TouchableOpacity
                         style={
-                          styles.safetyConfirmText
+                          styles.safetyCancel
+                        }
+                        disabled={
+                          safetyBusy
+                        }
+                        onPress={
+                          closeSafety
                         }
                       >
-                        {safetyBusy
-                          ? 'Blocking...'
-                          : `Block ${currentCandidate.display_name}`}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-          </Pressable>
+                        <Text
+                          style={
+                            styles.safetyCancelText
+                          }
+                        >
+                          Not now
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={
+                          styles.safetyConfirm
+                        }
+                        disabled={
+                          safetyBusy
+                        }
+                        onPress={
+                          confirmBlockCandidate
+                        }
+                      >
+                        <Text
+                          style={
+                            styles.safetyConfirmText
+                          }
+                        >
+                          {safetyBusy
+                            ? 'Blocking...'
+                            : `Block ${currentCandidate.display_name}`}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+            </Pressable>
           </KeyboardAvoidingView>
-          
+
         </Pressable>
-        
+
       </Modal>
 
       {/* ================= SETTINGS BOTTOM SHEET ================= */}
@@ -1872,15 +1872,17 @@ const styles = StyleSheet.create({
 
   /* ================= PHOTO DASHES ================= */
 
+
   photoDashes: {
     position: 'absolute',
     top: 18,
-
+    left: 60,
     right: 60,
     flexDirection: 'row',
     gap: 4,
     zIndex: 10,
   },
+
 
   photoDash: {
     flex: 1,
@@ -2372,7 +2374,7 @@ const styles = StyleSheet.create({
 
   reportScroll: {
     maxHeight: 430,
-    
+
   },
 
   reportReason: {

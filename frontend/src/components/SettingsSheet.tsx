@@ -27,7 +27,6 @@ type Props = {
   onSaved?: (mode: AppMode) => void;
 };
 
-
 function OptionRow({
   label,
   selected,
@@ -37,7 +36,7 @@ function OptionRow({
   selected: boolean;
   onPress: () => void;
 }) {
-  return (
+   return (
     <TouchableOpacity
       style={[styles.option, selected && styles.optionSelected]}
       onPress={onPress}
@@ -48,7 +47,6 @@ function OptionRow({
     </TouchableOpacity>
   );
 }
-
 
 export default function SettingsSheet({
   visible,

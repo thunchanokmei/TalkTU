@@ -202,31 +202,33 @@ export default function ProfileScreen() {
   return (
     // edges ว่าง: AppHeader เว้นพื้นที่ใต้ status bar ให้เองแล้ว
     <SafeAreaView style={styles.container} edges={[]}>
+      {/* HEADER - Fixed */}
+      <AppHeader
+        logo={require('../../../assets/images/profile.jpeg')}
+        right={
+          <TouchableOpacity
+            onPress={() => router.push('/account-settings')}
+            accessibilityRole="button"
+            accessibilityLabel="Account Settings"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="settings-sharp"
+              size={34}
+              color={GEAR_YELLOW}
+            />
+          </TouchableOpacity>
+        }
+      />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ================= HEADER ================= */}
 
-        <AppHeader
-          logo={require('../../../assets/images/profile.jpeg')}
-          right={
-            <TouchableOpacity
-              onPress={() => router.push('/account-settings')}
-              accessibilityRole="button"
-              accessibilityLabel="Account Settings"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="settings-sharp"
-                size={34}
-                color={GEAR_YELLOW}
-              />
-            </TouchableOpacity>
-          }
-        />
+
+
 
         {/* ================= PROFILE CARD ================= */}
 

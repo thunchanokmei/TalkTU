@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   ActivityIndicator,
+  AppState,
   FlatList,
   StyleSheet,
   Text,
@@ -12,19 +14,22 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 
 import AppHeader from '../../components/AppHeader';
 import { getMode } from '../../features/onboarding/services/onboardingService';
 
-// 🖼️ โลโก้ "Like" (ไฟล์นี้อยู่ใน app/(main)/ → ../../../ คือ root ของโปรเจกต์)
 const LIKE_LOGO = require('../../../assets/images/like.jpeg');
 
 type SwipeMode = 'date' | 'friends';
 
-type GenderIdentity = 'man' | 'woman' | 'non_binary' | 'prefer_not_to_say';
+type GenderIdentity =
+  | 'man'
+  | 'woman'
+  | 'non_binary'
+  | 'prefer_not_to_say';
 
 type CandidatePhoto = {
   id: string;
@@ -65,21 +70,40 @@ export default function LikeScreen() {
 
   const [mode, setMode] = useState<SwipeMode | null>(null);
   const [likes, setLikes] = useState<IncomingLike[]>([]);
+
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadLikes = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // ป้องกันผลลัพธ์จาก request เก่ามาทับข้อมูลใหม่
+  const requestIdRef = useRef(0);
 
+  // เช็กว่าผู้ใช้กำลังอยู่หน้า Like หรือไม่
+  const isFocusedRef = useRef(false);
+
+  // เช็กสถานะของแอป
+  const appStateRef = useRef(AppState.currentState);
+
+  // --------------------------------------------
+  // Load / Refresh Likes
+  // --------------------------------------------
+  const loadLikes = useCallback(async (isPullRefresh = false) => {
+    const requestId = ++requestIdRef.current;
+
+    if (isPullRefresh) {
+      setRefreshing(true);
+    } else {
+      setRefreshing(false);
+    }
+
+    setError(null);
+
+    try {
       const savedMode = await getMode();
 
       if (!savedMode) {
         throw new Error('Unable to determine current mode.');
       }
-
-      setMode(savedMode);
 
       const { data, error: rpcError } = await supabase.rpc(
         'get_incoming_likes',
@@ -94,27 +118,110 @@ export default function LikeScreen() {
         throw rpcError;
       }
 
+      // ไม่ใช้ผลลัพธ์ถ้าออกจากหน้าแล้ว
+      // หรือมี request ใหม่กว่าเกิดขึ้น
+      if (
+        requestId !== requestIdRef.current ||
+        !isFocusedRef.current
+      ) {
+        return;
+      }
+
+      setMode(savedMode);
       setLikes((data ?? []) as IncomingLike[]);
     } catch (err) {
+      if (
+        requestId !== requestIdRef.current ||
+        !isFocusedRef.current
+      ) {
+        return;
+      }
+
       console.error('get_incoming_likes error:', err);
 
-      setError(err instanceof Error ? err.message : 'Unable to load likes.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to load likes.'
+      );
     } finally {
-      setLoading(false);
+      if (
+        requestId === requestIdRef.current &&
+        isFocusedRef.current
+      ) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
+  // --------------------------------------------
+  // Auto Refresh เมื่อเข้าหน้า Like
+  // --------------------------------------------
+  useFocusEffect(
+    useCallback(() => {
+      isFocusedRef.current = true;
+
+      void loadLikes();
+
+      return () => {
+        isFocusedRef.current = false;
+
+        // ยกเลิกผลลัพธ์ของ request ที่ยังไม่เสร็จ
+        requestIdRef.current += 1;
+      };
+    }, [loadLikes])
+  );
+
+  // --------------------------------------------
+  // Auto Refresh เมื่อกลับเข้าแอป
+  // --------------------------------------------
   useEffect(() => {
-    loadLikes();
+    const subscription = AppState.addEventListener(
+      'change',
+      (nextAppState) => {
+        const wasInactive =
+          appStateRef.current === 'background' ||
+          appStateRef.current === 'inactive';
+
+        if (
+          wasInactive &&
+          nextAppState === 'active' &&
+          isFocusedRef.current
+        ) {
+          void loadLikes();
+        }
+
+        appStateRef.current = nextAppState;
+      }
+    );
+
+    return () => {
+      subscription.remove();
+    };
   }, [loadLikes]);
 
-  // ขนาดการ์ดให้ใกล้เคียงรูปตัวอย่าง (กว้าง ~140, สูง ~200)
+  // --------------------------------------------
+  // Pull to Refresh
+  // --------------------------------------------
+  const handleRefresh = useCallback(() => {
+    void loadLikes(true);
+  }, [loadLikes]);
+
+  // --------------------------------------------
+  // Card Dimensions
+  // --------------------------------------------
   const horizontalPadding = Math.max(24, width * 0.08);
   const gap = Math.max(14, width * 0.04);
-  const cardWidth = (width - horizontalPadding * 2 - gap) / 2;
+
+  const cardWidth =
+    (width - horizontalPadding * 2 - gap) / 2;
+
   const cardHeight = cardWidth * 1.42;
 
-  // กดการ์ด → ไปหน้าโปรไฟล์ (หน้าเดียวกับที่ใช้ในหน้า swipe)
+  // --------------------------------------------
+  // Open User Profile
+  // --------------------------------------------
   const openProfile = (candidate: IncomingLike) => {
     if (!mode) {
       return;
@@ -133,43 +240,78 @@ export default function LikeScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* Header กลาง: ตำแหน่งและขนาดโลโก้เท่ากับหน้า Profile / Chat */}
       <AppHeader logo={LIKE_LOGO} centerLogo />
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#FF7F87" />
-        </View>
-      ) : error ? (
-        <View style={styles.center}>
-          <Text style={styles.errorText}>{error}</Text>
-
-          <TouchableOpacity style={styles.retryButton} onPress={loadLikes}>
-            <Text style={styles.retryText}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : likes.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="heart-outline" size={48} color="#FF9A82" />
-
-          <Text style={styles.emptyTitle}>No likes yet</Text>
-
-          <Text style={styles.emptyText}>
-            People who like you will appear here.
-          </Text>
+          <ActivityIndicator
+            size="large"
+            color="#FF7F87"
+          />
         </View>
       ) : (
         <FlatList
-          data={likes}
+          data={error ? [] : likes}
           keyExtractor={(item) => item.user_id}
           numColumns={2}
           columnWrapperStyle={{ gap }}
-          contentContainerStyle={{
-            paddingHorizontal: horizontalPadding,
-            paddingTop: 0,
-            paddingBottom: 24,
-          }}
+
+          // Pull to Refresh
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          alwaysBounceVertical
+          overScrollMode="always"
+
+          contentContainerStyle={[
+            {
+              paddingHorizontal: horizontalPadding,
+              paddingTop: 0,
+              paddingBottom: 24,
+              flexGrow: 1,
+            },
+            (error || likes.length === 0) && {
+              justifyContent: 'center',
+            },
+          ]}
+
           showsVerticalScrollIndicator={false}
+
+          // ทำให้ Refresh ได้แม้ไม่มี Like
+          ListEmptyComponent={
+            error ? (
+              <View style={styles.center}>
+                <Text style={styles.errorText}>
+                  {error}
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.retryButton}
+                  onPress={() => void loadLikes()}
+                >
+                  <Text style={styles.retryText}>
+                    Try again
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.center}>
+                <Ionicons
+                  name="heart-outline"
+                  size={48}
+                  color="#FF9A82"
+                />
+
+                <Text style={styles.emptyTitle}>
+                  No likes yet
+                </Text>
+
+                <Text style={styles.emptyText}>
+                  People who like you will appear here.
+                </Text>
+              </View>
+            )
+          }
+
           renderItem={({ item }) => {
             const firstPhoto = item.photos?.[0];
 
@@ -178,7 +320,10 @@ export default function LikeScreen() {
                 activeOpacity={0.85}
                 style={[
                   styles.card,
-                  { width: cardWidth, height: cardHeight },
+                  {
+                    width: cardWidth,
+                    height: cardHeight,
+                  },
                 ]}
                 onPress={() => openProfile(item)}
               >
@@ -186,7 +331,9 @@ export default function LikeScreen() {
                   {firstPhoto?.storage_path ? (
                     <ExpoImage
                       source={{
-                        uri: getProfilePhotoUrl(firstPhoto.storage_path),
+                        uri: getProfilePhotoUrl(
+                          firstPhoto.storage_path
+                        ),
                       }}
                       style={styles.photo}
                       contentFit="cover"
@@ -212,11 +359,16 @@ export default function LikeScreen() {
 }
 
 function getProfilePhotoUrl(storagePath: string) {
-  if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+  if (
+    storagePath.startsWith('http://') ||
+    storagePath.startsWith('https://')
+  ) {
     return storagePath;
   }
 
-  return supabase.storage.from('profile-photos').getPublicUrl(storagePath)
+  return supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(storagePath)
     .data.publicUrl;
 }
 
@@ -233,7 +385,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
 
-  // ตัว wrapper ใส่เงา (ต้องไม่ใส่ overflow: hidden ไม่งั้นเงาหาย)
   card: {
     marginBottom: 16,
     borderRadius: 20,
@@ -246,7 +397,6 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  // ตัวตัดมุมรูป
   cardInner: {
     flex: 1,
     borderRadius: 20,

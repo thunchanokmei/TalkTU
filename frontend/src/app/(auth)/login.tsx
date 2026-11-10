@@ -159,7 +159,7 @@ export default function LoginScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="TU Username"
+              placeholder="TU StudentID"
               placeholderTextColor="#f7d3d3"
               value={username}
               onChangeText={setUsername}
